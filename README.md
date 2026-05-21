@@ -61,6 +61,7 @@ Myco Quest adaptive AI game-core + ecosystem backend for King Myco.
 
 ### Analytics
 - `GET /api/analytics/summary` (admin key)
+- `GET /api/ecosystem/communication` (admin key)
 
 ### Webhooks
 - `POST /webhooks/mycokingdom_bot`
@@ -98,6 +99,17 @@ Challenges are one-time and expire automatically.
 8. Backend creates unsigned transfer intent and debits spores immediately.
 9. Settlement service updates result using `POST /api/solana/rewards/status` or `POST /api/solana/rewards/process`.
 10. If status becomes `failed`, spores are automatically refunded (including daily cap ledger rollback).
+
+## Ecosystem communication diagnostics
+
+Use `GET /api/ecosystem/communication` to confirm that all ecosystem surfaces are actively communicating.
+
+Optional query params:
+- `windowMinutes` (default `120`)
+- `minEventsPerSource` (default `1`)
+- `limit` (default `1000`, max `2000`)
+
+The response includes per-source event counts, last-seen timestamps, observed event types, and a global `allSourcesActive` boolean.
 
 ## Security model
 

@@ -486,6 +486,30 @@ const start = async (): Promise<void> => {
         return sendJson(response, 200, summary);
       }
 
+      if (method === "GET" && pathname === "/api/ecosystem/communication") {
+        assertAdminKey(request, adminKey);
+        const windowMinutesRaw = parsedUrl.searchParams.get("windowMinutes");
+        const minEventsPerSourceRaw = parsedUrl.searchParams.get("minEventsPerSource");
+        const limitRaw = parsedUrl.searchParams.get("limit");
+
+        const status = await hub.getEcosystemCommunicationStatus({
+          windowMinutes:
+            windowMinutesRaw && Number.isFinite(Number(windowMinutesRaw))
+              ? Number(windowMinutesRaw)
+              : undefined,
+          minEventsPerSource:
+            minEventsPerSourceRaw && Number.isFinite(Number(minEventsPerSourceRaw))
+              ? Number(minEventsPerSourceRaw)
+              : undefined,
+          limit:
+            limitRaw && Number.isFinite(Number(limitRaw))
+              ? Number(limitRaw)
+              : undefined,
+        });
+
+        return sendJson(response, 200, status);
+      }
+
       const playerMatch = pathname.match(/^\/api\/player\/([^/]+)$/);
       if (method === "GET" && playerMatch) {
         const playerId = decodeURIComponent(playerMatch[1]);

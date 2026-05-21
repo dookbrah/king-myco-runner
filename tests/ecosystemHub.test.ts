@@ -646,7 +646,60 @@ describe("King Myco ecosystem integration", () => {
     ).rejects.toThrow(/IP wallet diversity limit exceeded/);
   });
 
+  it("reports all ecosystem sources as active when communicating", async () => {
+    await hub.linkIdentity({
+      source: "mycokingdom_bot",
+      externalId: "tg-comms-1",
+      claims: {
+        telegramUserId: "tg-comms-1",
+      },
+    });
 
+    await hub.generateCoaching({
+      source: "mycoai_bot",
+      externalId: "ai-comms-1",
+      claims: {
+        mycoAiUserId: "ai-comms-1",
+      },
+      prompt: "status",
+    });
+
+    await hub.generateRun({
+      source: "kingdom.kingmyco.com",
+      externalId: "kingdom-comms-1",
+      claims: {
+        kingdomAccountId: "kingdom-comms-1",
+      },
+      encounters: 4,
+      seed: "comms-seed",
+    });
+
+    await hub.linkIdentity({
+      source: "kingmyco.io",
+      externalId: "web-comms-1",
+      claims: {
+        walletAddress: "0xcommunicationwallet",
+      },
+    });
+
+    await hub.ingestWebhookEvent("openclaw", "comms_heartbeat", {
+      system: "openclaw",
+      ok: true,
+    });
+
+    const status = await hub.getEcosystemCommunicationStatus({
+      windowMinutes: 180,
+      minEventsPerSource: 1,
+      limit: 500,
+    });
+
+    expect(status.allSourcesActive).toBe(true);
+    expect(status.silentSources).toHaveLength(0);
+    for (const source of status.requiredSources) {
+      expect(status.sourceStatuses[source].healthy).toBe(true);
+      expect(status.sourceStatuses[source].eventCount).toBeGreaterThan(0);
+    }
+  });
 
   it("temporarily blocks high-risk claimants adaptively", async () => {
     const signer = Keypair.generate();
@@ -740,6 +793,5 @@ describe("King Myco ecosystem integration", () => {
       }),
     ).rejects.toThrow(/temporarily blocked due to elevated risk/);
   });
-
 
 });

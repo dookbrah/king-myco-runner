@@ -1,7 +1,10 @@
 import { average } from "../utils/math";
 import {
   AnalyticsSummary,
+  ECOSYSTEM_SOURCES,
+  EcosystemCommunicationStatus,
   EcosystemSource,
+  EcosystemSourceCommunication,
   PlatformEvent,
   PlatformEventType,
 } from "./types";
@@ -18,7 +21,88 @@ const initBreakdown = (): Record<PlatformEventType, number> => ({
   reward_intent_status_updated: 0,
 });
 
+const createSourceStatus = (
+  source: EcosystemSource,
+  minEventsPerSource: number,
+): EcosystemSourceCommunication => ({
+  source,
+  eventCount: 0,
+  observedEventTypes: [],
+  healthy: minEventsPerSource <= 0,
+});
+
 export class AnalyticsService {
+  communicationStatus(
+    events: PlatformEvent[],
+    options: {
+      windowMinutes: number;
+      minEventsPerSource?: number;
+      nowIso?: string;
+    },
+  ): EcosystemCommunicationStatus {
+    const windowMinutes = Math.max(1, Math.floor(options.windowMinutes));
+    const minEventsPerSource = Math.max(1, Math.floor(options.minEventsPerSource ?? 1));
+    const nowMs = Date.parse(options.nowIso ?? new Date().toISOString());
+    const safeNowMs = Number.isNaN(nowMs) ? Date.now() : nowMs;
+    const windowStartMs = safeNowMs - windowMinutes * 60 * 1000;
+
+    const sourceStatuses = Object.fromEntries(
+      ECOSYSTEM_SOURCES.map((source) => [
+        source,
+        createSourceStatus(source, minEventsPerSource),
+      ]),
+    ) as Record<EcosystemSource, EcosystemSourceCommunication>;
+
+    let totalEventsInWindow = 0;
+
+    for (const event of events) {
+      const eventMs = Date.parse(event.timestamp);
+      if (Number.isNaN(eventMs) || eventMs < windowStartMs) {
+        continue;
+      }
+
+      totalEventsInWindow += 1;
+
+      if (!event.source) {
+        continue;
+      }
+
+      const status = sourceStatuses[event.source];
+      status.eventCount += 1;
+      status.lastEventAt =
+        !status.lastEventAt || event.timestamp > status.lastEventAt
+          ? event.timestamp
+          : status.lastEventAt;
+      if (!status.observedEventTypes.includes(event.type)) {
+        status.observedEventTypes.push(event.type);
+      }
+    }
+
+    for (const source of ECOSYSTEM_SOURCES) {
+      const status = sourceStatuses[source];
+      status.observedEventTypes.sort((left, right) => left.localeCompare(right));
+      status.healthy = status.eventCount >= minEventsPerSource;
+    }
+
+    const silentSources = ECOSYSTEM_SOURCES.filter(
+      (source) => sourceStatuses[source].eventCount === 0,
+    );
+    const activeSourceCount = ECOSYSTEM_SOURCES.length - silentSources.length;
+
+    return {
+      generatedAt: new Date(safeNowMs).toISOString(),
+      windowMinutes,
+      windowStart: new Date(windowStartMs).toISOString(),
+      minEventsPerSource,
+      requiredSources: [...ECOSYSTEM_SOURCES],
+      activeSourceCount,
+      allSourcesActive: silentSources.length === 0,
+      totalEventsInWindow,
+      sourceStatuses,
+      silentSources,
+    };
+  }
+
   summarize(events: PlatformEvent[]): AnalyticsSummary {
     const eventBreakdown = initBreakdown();
     const sourceBreakdown: Partial<Record<EcosystemSource, number>> = {};

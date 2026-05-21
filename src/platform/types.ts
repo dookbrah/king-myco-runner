@@ -163,6 +163,27 @@ export interface AnalyticsSummary {
   averageSessionScore: number;
 }
 
+export interface EcosystemSourceCommunication {
+  source: EcosystemSource;
+  eventCount: number;
+  lastEventAt?: string;
+  observedEventTypes: PlatformEventType[];
+  healthy: boolean;
+}
+
+export interface EcosystemCommunicationStatus {
+  generatedAt: string;
+  windowMinutes: number;
+  windowStart: string;
+  minEventsPerSource: number;
+  requiredSources: EcosystemSource[];
+  activeSourceCount: number;
+  allSourcesActive: boolean;
+  totalEventsInWindow: number;
+  sourceStatuses: Record<EcosystemSource, EcosystemSourceCommunication>;
+  silentSources: EcosystemSource[];
+}
+
 export interface SolanaWalletProof {
   playerId: string;
   source: EcosystemSource;

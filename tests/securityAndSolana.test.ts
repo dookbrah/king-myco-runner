@@ -211,6 +211,50 @@ describe("Security and Solana integration helpers", () => {
     }
   });
 
+  it("computes communication health across ecosystem sources", () => {
+    const analytics = new AnalyticsService();
+    const nowIso = new Date().toISOString();
+    const staleIso = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString();
+
+    const status = analytics.communicationStatus(
+      [
+        {
+          id: "source-1",
+          type: "identity_linked",
+          timestamp: nowIso,
+          source: "kingmyco.io",
+          payload: {},
+        },
+        {
+          id: "source-2",
+          type: "webhook_ingested",
+          timestamp: nowIso,
+          source: "openclaw",
+          payload: {},
+        },
+        {
+          id: "source-3",
+          type: "coaching_generated",
+          timestamp: staleIso,
+          source: "mycoai_bot",
+          payload: {},
+        },
+      ],
+      {
+        windowMinutes: 120,
+        minEventsPerSource: 1,
+        nowIso,
+      },
+    );
+
+    expect(status.totalEventsInWindow).toBe(2);
+    expect(status.sourceStatuses["kingmyco.io"].healthy).toBe(true);
+    expect(status.sourceStatuses.openclaw.healthy).toBe(true);
+    expect(status.sourceStatuses.mycoai_bot.healthy).toBe(false);
+    expect(status.silentSources).toContain("mycoai_bot");
+    expect(status.allSourcesActive).toBe(false);
+  });
+
   it("summarizes event analytics window", () => {
     const analytics = new AnalyticsService();
     const summary = analytics.summarize([

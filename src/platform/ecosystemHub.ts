@@ -19,6 +19,7 @@ import {
   AnalyticsSummary,
   CoachingRequest,
   CoachingResponse,
+  EcosystemCommunicationStatus,
   EcosystemSource,
   IdentityLinkRequest,
   PlatformEventType,
@@ -1066,6 +1067,25 @@ export class KingMycoEcosystemHub {
   async getAnalyticsSummary(limit = 300): Promise<AnalyticsSummary> {
     const events = await this.repository.getRecentEvents(limit);
     return this.analytics.summarize(events);
+  }
+
+  async getEcosystemCommunicationStatus(options: {
+    windowMinutes?: number;
+    minEventsPerSource?: number;
+    limit?: number;
+  } = {}): Promise<EcosystemCommunicationStatus> {
+    const windowMinutes = Math.max(1, Math.floor(options.windowMinutes ?? 120));
+    const minEventsPerSource = Math.max(
+      1,
+      Math.floor(options.minEventsPerSource ?? 1),
+    );
+    const limit = Math.max(50, Math.min(Math.floor(options.limit ?? 1000), 2000));
+
+    const events = await this.repository.getRecentEvents(limit);
+    return this.analytics.communicationStatus(events, {
+      windowMinutes,
+      minEventsPerSource,
+    });
   }
 
   private buildWalletChallenge(input: {
