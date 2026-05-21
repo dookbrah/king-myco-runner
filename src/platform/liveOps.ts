@@ -19,6 +19,9 @@ export interface LiveOpsConfig {
   maxClaimsPerHourPerWallet: number;
   maxClaimsPerHourPerIp: number;
   maxUniqueWalletsPerIpPerDay: number;
+  riskScoreDecayPerHour: number;
+  riskThrottleWeight: number;
+  riskHardBlockThreshold: number;
 }
 
 export type DeepPartial<T> = {
@@ -58,6 +61,9 @@ export const DEFAULT_LIVE_OPS: LiveOpsConfig = {
   maxClaimsPerHourPerWallet: 8,
   maxClaimsPerHourPerIp: 20,
   maxUniqueWalletsPerIpPerDay: 6,
+  riskScoreDecayPerHour: 0.03,
+  riskThrottleWeight: 0.7,
+  riskHardBlockThreshold: 0.95,
 };
 
 export const sanitizeLiveOpsConfig = (config: LiveOpsConfig): LiveOpsConfig => {
@@ -100,6 +106,9 @@ export const sanitizeLiveOpsConfig = (config: LiveOpsConfig): LiveOpsConfig => {
     maxUniqueWalletsPerIpPerDay: Math.round(
       clamp(config.maxUniqueWalletsPerIpPerDay, 1, 5000),
     ),
+    riskScoreDecayPerHour: clamp(config.riskScoreDecayPerHour, 0, 1),
+    riskThrottleWeight: clamp(config.riskThrottleWeight, 0, 1.5),
+    riskHardBlockThreshold: clamp(config.riskHardBlockThreshold, 0.2, 1),
   };
 };
 

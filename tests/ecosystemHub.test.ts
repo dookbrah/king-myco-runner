@@ -643,4 +643,100 @@ describe("King Myco ecosystem integration", () => {
     ).rejects.toThrow(/IP wallet diversity limit exceeded/);
   });
 
+
+
+  it("temporarily blocks high-risk claimants adaptively", async () => {
+    const signer = Keypair.generate();
+
+    await hub.updateLiveOps({
+      claimCooldownSec: 0,
+      maxDailySporeRedeem: 500000,
+      minSporesPerClaim: 100,
+      maxSporesPerClaim: 1000,
+      maxClaimsPerHourPerWallet: 20,
+      maxClaimsPerHourPerIp: 100,
+      maxUniqueWalletsPerIpPerDay: 20,
+      riskHardBlockThreshold: 0.2,
+      riskThrottleWeight: 0.9,
+      riskScoreDecayPerHour: 0,
+    });
+
+    await hub.generateRun({
+      source: "kingmyco.io",
+      externalId: "player-risk-adaptive",
+      claims: { walletAddress: signer.publicKey.toBase58() },
+    });
+
+    await hub.recordSession({
+      source: "kingmyco.io",
+      externalId: "player-risk-adaptive",
+      claims: { walletAddress: signer.publicKey.toBase58() },
+      telemetry: {
+        playerId: "player-risk-adaptive",
+        completedEncounters: 12,
+        failedEncounters: 1,
+        damageTaken: 25,
+        perfectActions: 6,
+        discoveryActions: 3,
+        riskyActions: 4,
+        sessionLengthSec: 760,
+        usedElements: ["fire", "water"],
+        abandoned: false,
+      },
+      score: 21000,
+    });
+
+    await hub.recordSession({
+      source: "kingmyco.io",
+      externalId: "player-risk-adaptive",
+      claims: { walletAddress: signer.publicKey.toBase58() },
+      telemetry: {
+        playerId: "player-risk-adaptive",
+        completedEncounters: 25,
+        failedEncounters: 0,
+        damageTaken: 0,
+        perfectActions: 160,
+        discoveryActions: 0,
+        riskyActions: 2,
+        sessionLengthSec: 28,
+        usedElements: ["fire"],
+        abandoned: false,
+      },
+      score: 800000,
+    });
+
+    const challenge = await hub.createSolanaWalletChallenge({
+      source: "kingmyco.io",
+      externalId: "player-risk-adaptive",
+      claims: { walletAddress: signer.publicKey.toBase58() },
+      walletAddress: signer.publicKey.toBase58(),
+    });
+
+    const signature = nacl.sign.detached(
+      new TextEncoder().encode(challenge.message),
+      signer.secretKey,
+    );
+
+    await hub.verifySolanaWalletLink({
+      source: "kingmyco.io",
+      externalId: "player-risk-adaptive",
+      claims: { walletAddress: signer.publicKey.toBase58() },
+      walletAddress: signer.publicKey.toBase58(),
+      message: challenge.message,
+      signature: Buffer.from(signature).toString("base64"),
+    });
+
+    await expect(
+      hub.claimSolanaRewards({
+        source: "kingmyco.io",
+        externalId: "player-risk-adaptive",
+        claims: { walletAddress: signer.publicKey.toBase58() },
+        destinationWallet: signer.publicKey.toBase58(),
+        sporesToRedeem: 120,
+        clientIp: "198.51.100.77",
+      }),
+    ).rejects.toThrow(/temporarily blocked due to elevated risk/);
+  });
+
+
 });

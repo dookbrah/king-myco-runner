@@ -46,6 +46,23 @@ import {
 const DEFAULT_MODE = "myco-quest";
 const DEFAULT_CHALLENGE_TTL_MS = 10 * 60 * 1000;
 
+const scaleLimitByRisk = (
+  baseLimit: number,
+  maxRisk: number,
+  riskThrottleWeight: number,
+): number => {
+  const throttleFactor = clamp(1 - maxRisk * riskThrottleWeight, 0.2, 1);
+  return Math.max(1, Math.floor(baseLimit * throttleFactor));
+};
+
+const riskDeltaFromFraud = (flagged: boolean, riskScore: number): number => {
+  if (flagged) {
+    return clamp(0.2 + riskScore * 0.4, 0.1, 0.6);
+  }
+
+  return clamp(-0.06 + riskScore * 0.04, -0.08, 0);
+};
+
 const secondsSince = (fromIso: string | undefined, nowMs: number): number | null => {
   if (!fromIso) {
     return null;
@@ -240,6 +257,13 @@ export class KingMycoEcosystemHub {
       this.repository.setWallet(playerId, nextWallet);
     }
 
+    const riskSnapshot = this.repository.adjustAdaptiveRisk({
+      playerId,
+      nowIso: new Date().toISOString(),
+      decayPerHour: liveOps.riskScoreDecayPerHour,
+      playerDelta: riskDeltaFromFraud(fraud.flagged, fraud.riskScore),
+    });
+
     const table = this.repository.getLeaderboard(mode);
     const updatedTable = this.leaderboard.submit(table, {
       playerId,
@@ -261,6 +285,7 @@ export class KingMycoEcosystemHub {
         fraudFlagged: fraud.flagged,
         suspiciousScore: fraud.riskScore,
         awardedSpores: rewards.awardedSpores,
+        adaptiveRiskScore: riskSnapshot.playerRisk,
       },
     });
 
@@ -475,6 +500,27 @@ export class KingMycoEcosystemHub {
       throw new Error(`Claim cooldown active. Retry in ${waitFor}s`);
     }
 
+    const riskSnapshot = this.repository.getAdaptiveRiskSnapshot({
+      playerId,
+      clientIp: request.clientIp,
+      nowIso,
+      decayPerHour: liveOps.riskScoreDecayPerHour,
+    });
+
+    if (riskSnapshot.maxRisk >= liveOps.riskHardBlockThreshold) {
+      this.repository.adjustAdaptiveRisk({
+        playerId,
+        clientIp: request.clientIp,
+        nowIso,
+        decayPerHour: liveOps.riskScoreDecayPerHour,
+        playerDelta: 0.05,
+        ipDelta: request.clientIp ? 0.05 : undefined,
+      });
+      throw new Error(
+        `Claim temporarily blocked due to elevated risk (${riskSnapshot.maxRisk.toFixed(2)})`,
+      );
+    }
+
     const todayKey = nowIso.slice(0, 10);
     const redeemedToday = claimLedger.dailyRedeemed[todayKey] ?? 0;
 
@@ -484,28 +530,68 @@ export class KingMycoEcosystemHub {
       nowIso,
     });
 
-    if (velocity.walletClaimsLastHour >= liveOps.maxClaimsPerHourPerWallet) {
+    const effectiveWalletClaimsPerHour = scaleLimitByRisk(
+      liveOps.maxClaimsPerHourPerWallet,
+      riskSnapshot.maxRisk,
+      liveOps.riskThrottleWeight,
+    );
+    const effectiveIpClaimsPerHour = scaleLimitByRisk(
+      liveOps.maxClaimsPerHourPerIp,
+      riskSnapshot.maxRisk,
+      liveOps.riskThrottleWeight,
+    );
+    const effectiveUniqueWalletsPerIpPerDay = scaleLimitByRisk(
+      liveOps.maxUniqueWalletsPerIpPerDay,
+      riskSnapshot.maxRisk,
+      liveOps.riskThrottleWeight,
+    );
+
+    if (velocity.walletClaimsLastHour >= effectiveWalletClaimsPerHour) {
+      this.repository.adjustAdaptiveRisk({
+        playerId,
+        clientIp: request.clientIp,
+        nowIso,
+        decayPerHour: liveOps.riskScoreDecayPerHour,
+        playerDelta: 0.04,
+        ipDelta: request.clientIp ? 0.02 : undefined,
+      });
       throw new Error(
-        `Wallet claim velocity exceeded (${liveOps.maxClaimsPerHourPerWallet}/hour)`,
+        `Wallet claim velocity exceeded (${effectiveWalletClaimsPerHour}/hour effective limit)`,
       );
     }
 
     if (
       request.clientIp &&
-      velocity.ipClaimsLastHour >= liveOps.maxClaimsPerHourPerIp
+      velocity.ipClaimsLastHour >= effectiveIpClaimsPerHour
     ) {
+      this.repository.adjustAdaptiveRisk({
+        playerId,
+        clientIp: request.clientIp,
+        nowIso,
+        decayPerHour: liveOps.riskScoreDecayPerHour,
+        playerDelta: 0.02,
+        ipDelta: 0.04,
+      });
       throw new Error(
-        `IP claim velocity exceeded (${liveOps.maxClaimsPerHourPerIp}/hour)`,
+        `IP claim velocity exceeded (${effectiveIpClaimsPerHour}/hour effective limit)`,
       );
     }
 
     if (
       request.clientIp &&
       !velocity.ipHasWalletToday &&
-      velocity.uniqueWalletsForIpToday >= liveOps.maxUniqueWalletsPerIpPerDay
+      velocity.uniqueWalletsForIpToday >= effectiveUniqueWalletsPerIpPerDay
     ) {
+      this.repository.adjustAdaptiveRisk({
+        playerId,
+        clientIp: request.clientIp,
+        nowIso,
+        decayPerHour: liveOps.riskScoreDecayPerHour,
+        playerDelta: 0.03,
+        ipDelta: 0.05,
+      });
       throw new Error(
-        `IP wallet diversity limit exceeded (${liveOps.maxUniqueWalletsPerIpPerDay} wallets/day)`,
+        `IP wallet diversity limit exceeded (${effectiveUniqueWalletsPerIpPerDay} wallets/day effective limit)`,
       );
     }
 
@@ -563,6 +649,14 @@ export class KingMycoEcosystemHub {
       clientIp: request.clientIp,
       timestampIso: nowIso,
     });
+    const postClaimRisk = this.repository.adjustAdaptiveRisk({
+      playerId,
+      clientIp: request.clientIp,
+      nowIso,
+      decayPerHour: liveOps.riskScoreDecayPerHour,
+      playerDelta: -0.01,
+      ipDelta: request.clientIp ? -0.005 : undefined,
+    });
     this.repository.setTransferIntent(intent);
 
     if (idempotencyKey) {
@@ -587,6 +681,10 @@ export class KingMycoEcosystemHub {
         destinationWallet: intent.destinationWallet,
         clientIpPresent: Boolean(request.clientIp),
         clientFingerprintPresent: Boolean(request.clientFingerprint),
+        adaptiveRiskScore: postClaimRisk.maxRisk,
+        effectiveWalletClaimsPerHour,
+        effectiveIpClaimsPerHour,
+        effectiveUniqueWalletsPerIpPerDay,
       },
     });
 
@@ -926,6 +1024,12 @@ export class KingMycoEcosystemHub {
         sporeToLamportsRate: merged.sporeToLamportsRate,
         claimCooldownSec: merged.claimCooldownSec,
         maxDailySporeRedeem: merged.maxDailySporeRedeem,
+        maxClaimsPerHourPerWallet: merged.maxClaimsPerHourPerWallet,
+        maxClaimsPerHourPerIp: merged.maxClaimsPerHourPerIp,
+        maxUniqueWalletsPerIpPerDay: merged.maxUniqueWalletsPerIpPerDay,
+        riskScoreDecayPerHour: merged.riskScoreDecayPerHour,
+        riskThrottleWeight: merged.riskThrottleWeight,
+        riskHardBlockThreshold: merged.riskHardBlockThreshold,
       },
     });
 

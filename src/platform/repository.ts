@@ -3,6 +3,7 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { createInitialProfile } from "../ai/playerModel";
 import { PlannedRun, PlayerProfile } from "../types";
+import { clamp } from "../utils/math";
 import { LiveOpsConfig } from "./liveOps";
 import { PostgresRedisAdapter } from "./postgresRedisAdapter";
 import {
@@ -61,6 +62,7 @@ const challengeKey = (playerId: string, walletAddress: string): string => {
 
 const CLAIM_HISTORY_KEEP_SEC = 72 * 60 * 60;
 const CLAIM_WINDOW_SEC = 60 * 60;
+const RISK_SCORE_MAX = 1;
 
 export class KingMycoRepository {
   private constructor(
@@ -465,6 +467,80 @@ export class KingMycoRepository {
     }
   }
 
+  getAdaptiveRiskSnapshot(input: {
+    playerId: string;
+    clientIp?: string;
+    nowIso: string;
+    decayPerHour: number;
+  }): {
+    playerRisk: number;
+    ipRisk: number;
+    maxRisk: number;
+  } {
+    const nowIso = this.normalizeIso(input.nowIso);
+    const playerRisk = this.getDecayedRiskScore(
+      this.state.adaptiveRisk.playerScores,
+      input.playerId,
+      nowIso,
+      input.decayPerHour,
+    );
+
+    const ipKey = input.clientIp?.trim().toLowerCase();
+    const ipRisk = ipKey
+      ? this.getDecayedRiskScore(
+          this.state.adaptiveRisk.ipScores,
+          ipKey,
+          nowIso,
+          input.decayPerHour,
+        )
+      : 0;
+
+    return {
+      playerRisk,
+      ipRisk,
+      maxRisk: Math.max(playerRisk, ipRisk),
+    };
+  }
+
+  adjustAdaptiveRisk(input: {
+    playerId: string;
+    clientIp?: string;
+    nowIso: string;
+    decayPerHour: number;
+    playerDelta?: number;
+    ipDelta?: number;
+  }): {
+    playerRisk: number;
+    ipRisk: number;
+    maxRisk: number;
+  } {
+    const nowIso = this.normalizeIso(input.nowIso);
+    const playerRisk = this.updateRiskScore(
+      this.state.adaptiveRisk.playerScores,
+      input.playerId,
+      nowIso,
+      input.decayPerHour,
+      input.playerDelta ?? 0,
+    );
+
+    const ipKey = input.clientIp?.trim().toLowerCase();
+    const ipRisk = ipKey
+      ? this.updateRiskScore(
+          this.state.adaptiveRisk.ipScores,
+          ipKey,
+          nowIso,
+          input.decayPerHour,
+          input.ipDelta ?? 0,
+        )
+      : 0;
+
+    return {
+      playerRisk,
+      ipRisk,
+      maxRisk: Math.max(playerRisk, ipRisk),
+    };
+  }
+
   async appendEvent(event: PlatformEvent): Promise<void> {
     this.state.events.push(event);
     this.state.events = this.state.events.slice(-5000);
@@ -592,6 +668,20 @@ export class KingMycoRepository {
     }
     this.state.claimLedgers[targetId] = targetLedger;
 
+    const targetRisk = this.state.adaptiveRisk.playerScores[targetId];
+    const fromRisk = this.state.adaptiveRisk.playerScores[fromId];
+    if (fromRisk) {
+      const mergedScore = Math.max(targetRisk?.score ?? 0, fromRisk.score);
+      const mergedUpdatedAt =
+        targetRisk && targetRisk.lastUpdatedAt > fromRisk.lastUpdatedAt
+          ? targetRisk.lastUpdatedAt
+          : fromRisk.lastUpdatedAt;
+      this.state.adaptiveRisk.playerScores[targetId] = {
+        score: mergedScore,
+        lastUpdatedAt: mergedUpdatedAt,
+      };
+    }
+
     for (const [intentId, intent] of Object.entries(this.state.transferIntents)) {
       if (intent.playerId === fromId) {
         this.state.transferIntents[intentId] = {
@@ -621,6 +711,7 @@ export class KingMycoRepository {
 
     delete this.state.lastRunByPlayer[fromId];
     delete this.state.claimLedgers[fromId];
+    delete this.state.adaptiveRisk.playerScores[fromId];
   }
 
   private toUtcDayKey(timestampIso: string): string {
@@ -666,6 +757,67 @@ export class KingMycoRepository {
 
   private createIpDayKey(ip: string, dayKey: string): string {
     return `${ip}:${dayKey}`;
+  }
+
+  private normalizeIso(timestampIso: string): string {
+    const timestampMs = Date.parse(timestampIso);
+    if (Number.isNaN(timestampMs)) {
+      return new Date().toISOString();
+    }
+
+    return new Date(timestampMs).toISOString();
+  }
+
+  private getDecayedRiskScore(
+    scores: Record<string, { score: number; lastUpdatedAt: string }>,
+    key: string,
+    nowIso: string,
+    decayPerHour: number,
+  ): number {
+    const nowMs = Date.parse(nowIso);
+    const existing = scores[key];
+    if (!existing) {
+      return 0;
+    }
+
+    const lastMs = Date.parse(existing.lastUpdatedAt);
+    const hoursElapsed =
+      Number.isNaN(lastMs) || lastMs >= nowMs ? 0 : (nowMs - lastMs) / (60 * 60 * 1000);
+    const decayed = clamp(existing.score - hoursElapsed * Math.max(0, decayPerHour), 0, RISK_SCORE_MAX);
+
+    if (decayed === 0) {
+      delete scores[key];
+      return 0;
+    }
+
+    scores[key] = {
+      score: decayed,
+      lastUpdatedAt: nowIso,
+    };
+
+    return decayed;
+  }
+
+  private updateRiskScore(
+    scores: Record<string, { score: number; lastUpdatedAt: string }>,
+    key: string,
+    nowIso: string,
+    decayPerHour: number,
+    delta: number,
+  ): number {
+    const base = this.getDecayedRiskScore(scores, key, nowIso, decayPerHour);
+    const next = clamp(base + delta, 0, RISK_SCORE_MAX);
+    if (next === 0) {
+      delete scores[key];
+      return 0;
+    }
+
+    scores[key] = {
+      score: next,
+      lastUpdatedAt: nowIso,
+    };
+
+    return next;
   }
 
   private createClaimIdempotencyKey(

@@ -91,11 +91,12 @@ Challenges are one-time and expire automatically.
 1. Verified player calls `POST /api/solana/rewards/claim` with `sporesToRedeem`.
 2. Optional idempotency protection: send `idempotencyKey` (or `x-idempotency-key`) to prevent duplicate debit on retries.
 3. Backend enforces live-ops claim guardrails (`claimCooldownSec`, `maxDailySporeRedeem`).
-4. Backend applies redemption velocity throttles (wallet/hour, IP/hour, and unique-wallets-per-IP/day).
-5. Backend converts spores to lamports via `sporeToLamportsRate` in live ops.
-6. Backend creates unsigned transfer intent and debits spores immediately.
-7. Settlement service updates result using `POST /api/solana/rewards/status` or `POST /api/solana/rewards/process`.
-8. If status becomes `failed`, spores are automatically refunded (including daily cap ledger rollback).
+4. Backend evaluates adaptive risk score (player/IP) and can temporarily hard-block high-risk claimants.
+5. Backend applies redemption velocity throttles (wallet/hour, IP/hour, and unique-wallets-per-IP/day) using risk-tightened effective limits.
+6. Backend converts spores to lamports via `sporeToLamportsRate` in live ops.
+7. Backend creates unsigned transfer intent and debits spores immediately.
+8. Settlement service updates result using `POST /api/solana/rewards/status` or `POST /api/solana/rewards/process`.
+9. If status becomes `failed`, spores are automatically refunded (including daily cap ledger rollback).
 
 ## Security model
 
@@ -142,6 +143,9 @@ Example:
 - `maxClaimsPerHourPerWallet`
 - `maxClaimsPerHourPerIp`
 - `maxUniqueWalletsPerIpPerDay`
+- `riskScoreDecayPerHour`
+- `riskThrottleWeight`
+- `riskHardBlockThreshold`
 
 ## Remote signer contract (HSM/KMS gateway)
 

@@ -22,6 +22,16 @@ export interface ClaimVelocityState {
   ipWalletDaily: Record<string, string[]>;
 }
 
+export interface RiskScoreRecord {
+  score: number;
+  lastUpdatedAt: string;
+}
+
+export interface AdaptiveRiskState {
+  playerScores: Record<string, RiskScoreRecord>;
+  ipScores: Record<string, RiskScoreRecord>;
+}
+
 export interface PersistentState {
   profiles: Record<string, PlayerProfile>;
   wallets: Record<string, PlayerWallet>;
@@ -38,6 +48,7 @@ export interface PersistentState {
   claimIdempotency: Record<string, SolanaClaimIdempotencyRecord>;
   claimLedgers: Record<string, SporeClaimLedger>;
   claimVelocity: ClaimVelocityState;
+  adaptiveRisk: AdaptiveRiskState;
 }
 
 export const createDefaultWallet = (): PlayerWallet => ({
@@ -60,7 +71,18 @@ export const normalizePersistentState = (
   identityByKey: raw?.identityByKey ?? {},
   identitiesByPlayer: raw?.identitiesByPlayer ?? {},
   leaderboards: raw?.leaderboards ?? {},
-  liveOps: raw?.liveOps ?? DEFAULT_LIVE_OPS,
+  liveOps: {
+    ...DEFAULT_LIVE_OPS,
+    ...(raw?.liveOps ?? {}),
+    sourceMultipliers: {
+      ...DEFAULT_LIVE_OPS.sourceMultipliers,
+      ...(raw?.liveOps?.sourceMultipliers ?? {}),
+    },
+    laneRewardMultipliers: {
+      ...DEFAULT_LIVE_OPS.laneRewardMultipliers,
+      ...(raw?.liveOps?.laneRewardMultipliers ?? {}),
+    },
+  },
   recentFingerprints: raw?.recentFingerprints ?? {},
   lastRunByPlayer: raw?.lastRunByPlayer ?? {},
   events: raw?.events ?? [],
@@ -73,5 +95,9 @@ export const normalizePersistentState = (
     walletClaimTimestamps: raw?.claimVelocity?.walletClaimTimestamps ?? {},
     ipClaimTimestamps: raw?.claimVelocity?.ipClaimTimestamps ?? {},
     ipWalletDaily: raw?.claimVelocity?.ipWalletDaily ?? {},
+  },
+  adaptiveRisk: {
+    playerScores: raw?.adaptiveRisk?.playerScores ?? {},
+    ipScores: raw?.adaptiveRisk?.ipScores ?? {},
   },
 });
