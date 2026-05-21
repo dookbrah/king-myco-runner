@@ -6,17 +6,6 @@ import {
   PlatformEventType,
 } from "./types";
 
-const EVENT_TYPES: PlatformEventType[] = [
-  "identity_linked",
-  "run_generated",
-  "session_recorded",
-  "coaching_generated",
-  "liveops_updated",
-  "webhook_ingested",
-  "solana_wallet_verified",
-  "reward_intent_prepared",
-];
-
 const initBreakdown = (): Record<PlatformEventType, number> => ({
   identity_linked: 0,
   run_generated: 0,
@@ -26,6 +15,7 @@ const initBreakdown = (): Record<PlatformEventType, number> => ({
   webhook_ingested: 0,
   solana_wallet_verified: 0,
   reward_intent_prepared: 0,
+  reward_intent_status_updated: 0,
 });
 
 export class AnalyticsService {

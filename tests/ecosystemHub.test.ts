@@ -1,21 +1,33 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { Keypair } from "@solana/web3.js";
+import nacl from "tweetnacl";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { KingMycoEcosystemHub } from "../src/platform/ecosystemHub";
 
 let tempDir = "";
 let statePath = "";
 let hub: KingMycoEcosystemHub;
+let priorTreasury: string | undefined;
 
 describe("King Myco ecosystem integration", () => {
   beforeEach(async () => {
     tempDir = await mkdtemp(join(tmpdir(), "kingmyco-hub-"));
     statePath = join(tempDir, "state.json");
     hub = await KingMycoEcosystemHub.create(statePath);
+
+    priorTreasury = process.env.KINGMYCO_TREASURY_WALLET;
+    process.env.KINGMYCO_TREASURY_WALLET = Keypair.generate().publicKey.toBase58();
   });
 
   afterEach(async () => {
+    if (priorTreasury) {
+      process.env.KINGMYCO_TREASURY_WALLET = priorTreasury;
+    } else {
+      delete process.env.KINGMYCO_TREASURY_WALLET;
+    }
+
     await rm(tempDir, { recursive: true, force: true });
   });
 
@@ -135,5 +147,120 @@ describe("King Myco ecosystem integration", () => {
 
     expect(coaching.playerId).toBe(linked.playerId);
     expect(coaching.recommendations.length).toBeGreaterThan(0);
+  });
+
+  it("requires fresh wallet challenge for solana verification", async () => {
+    const signer = Keypair.generate();
+
+    const challenge = await hub.createSolanaWalletChallenge({
+      source: "kingmyco.io",
+      externalId: "wallet-session-1",
+      claims: {
+        walletAddress: signer.publicKey.toBase58(),
+      },
+      walletAddress: signer.publicKey.toBase58(),
+    });
+
+    const signature = nacl.sign.detached(
+      new TextEncoder().encode(challenge.message),
+      signer.secretKey,
+    );
+
+    const verified = await hub.verifySolanaWalletLink({
+      source: "kingmyco.io",
+      externalId: "wallet-session-1",
+      claims: {
+        walletAddress: signer.publicKey.toBase58(),
+      },
+      walletAddress: signer.publicKey.toBase58(),
+      message: challenge.message,
+      signature: Buffer.from(signature).toString("base64"),
+    });
+
+    expect(verified.verified).toBe(true);
+
+    await expect(
+      hub.verifySolanaWalletLink({
+        source: "kingmyco.io",
+        externalId: "wallet-session-1",
+        claims: {
+          walletAddress: signer.publicKey.toBase58(),
+        },
+        walletAddress: signer.publicKey.toBase58(),
+        message: challenge.message,
+        signature: Buffer.from(signature).toString("base64"),
+      }),
+    ).rejects.toThrow(/already been used/);
+  });
+
+  it("creates reward claims and refunds spores on failed payout", async () => {
+    const signer = Keypair.generate();
+
+    await hub.generateRun({
+      source: "kingmyco.io",
+      externalId: "player-sol",
+      claims: { walletAddress: signer.publicKey.toBase58() },
+    });
+
+    const sessionReceipt = await hub.recordSession({
+      source: "kingmyco.io",
+      externalId: "player-sol",
+      claims: { walletAddress: signer.publicKey.toBase58() },
+      telemetry: {
+        playerId: "player-sol",
+        completedEncounters: 12,
+        failedEncounters: 1,
+        damageTaken: 40,
+        perfectActions: 6,
+        discoveryActions: 3,
+        riskyActions: 4,
+        sessionLengthSec: 780,
+        usedElements: ["fire", "water"],
+        abandoned: false,
+      },
+      score: 22500,
+    });
+
+    const challenge = await hub.createSolanaWalletChallenge({
+      source: "kingmyco.io",
+      externalId: "player-sol",
+      claims: { walletAddress: signer.publicKey.toBase58() },
+      walletAddress: signer.publicKey.toBase58(),
+    });
+
+    const signature = nacl.sign.detached(
+      new TextEncoder().encode(challenge.message),
+      signer.secretKey,
+    );
+
+    await hub.verifySolanaWalletLink({
+      source: "kingmyco.io",
+      externalId: "player-sol",
+      claims: { walletAddress: signer.publicKey.toBase58() },
+      walletAddress: signer.publicKey.toBase58(),
+      message: challenge.message,
+      signature: Buffer.from(signature).toString("base64"),
+    });
+
+    const claim = await hub.claimSolanaRewards({
+      source: "kingmyco.io",
+      externalId: "player-sol",
+      claims: { walletAddress: signer.publicKey.toBase58() },
+      destinationWallet: signer.publicKey.toBase58(),
+      sporesToRedeem: 150,
+    });
+
+    expect(claim.sporesDebited).toBe(150);
+    expect(claim.intent.status).toBe("prepared");
+    expect(claim.wallet.spores).toBe(sessionReceipt.wallet.spores - 150);
+
+    const failed = await hub.updateSolanaRewardTransferStatus({
+      intentId: claim.intent.id,
+      status: "failed",
+      failureReason: "simulation failure",
+    });
+
+    expect(failed.intent.status).toBe("failed");
+    expect(failed.wallet.spores).toBe(sessionReceipt.wallet.spores);
   });
 });

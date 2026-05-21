@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { AdaptiveDirector } from "../ai/adaptiveDirector";
 import { applySessionTelemetry } from "../ai/playerModel";
 import { PlannedRun, SessionTelemetry } from "../types";
@@ -27,14 +27,21 @@ import {
   RunGenerationRequest,
   SessionIngestRequest,
   SessionReceipt,
+  SolanaRewardClaimReceipt,
+  SolanaRewardClaimRequest,
   SolanaRewardTransferIntent,
   SolanaRewardTransferRequest,
+  SolanaRewardTransferStatusReceipt,
+  SolanaRewardTransferStatusRequest,
+  SolanaWalletChallenge,
+  SolanaWalletChallengeRequest,
   SolanaWalletVerificationRequest,
   SolanaWalletVerificationResponse,
   WebhookReceipt,
 } from "./types";
 
 const DEFAULT_MODE = "myco-quest";
+const DEFAULT_CHALLENGE_TTL_MS = 10 * 60 * 1000;
 
 const zeroRewards = (): RewardBreakdown => ({
   baseSpores: 0,
@@ -305,6 +312,30 @@ export class KingMycoEcosystemHub {
     };
   }
 
+  async createSolanaWalletChallenge(
+    request: SolanaWalletChallengeRequest,
+  ): Promise<SolanaWalletChallenge> {
+    const playerId = this.repository.resolveOrCreatePlayer(
+      request.source,
+      request.externalId,
+      {
+        ...request.claims,
+        walletAddress: request.walletAddress,
+      },
+    );
+
+    const challenge = this.buildWalletChallenge({
+      playerId,
+      source: request.source,
+      externalId: request.externalId,
+      walletAddress: request.walletAddress,
+    });
+
+    this.repository.setWalletChallenge(challenge);
+    await this.repository.save();
+    return challenge;
+  }
+
   async verifySolanaWalletLink(
     request: SolanaWalletVerificationRequest,
   ): Promise<SolanaWalletVerificationResponse> {
@@ -317,6 +348,27 @@ export class KingMycoEcosystemHub {
       },
     );
 
+    const challenge = this.repository.getWalletChallenge(
+      playerId,
+      request.walletAddress,
+    );
+
+    if (!challenge) {
+      throw new Error("No active wallet challenge found for this player and wallet");
+    }
+
+    if (challenge.consumedAt) {
+      throw new Error("Wallet challenge has already been used");
+    }
+
+    if (Date.parse(challenge.expiresAt) < Date.now()) {
+      throw new Error("Wallet challenge has expired");
+    }
+
+    if (challenge.message !== request.message) {
+      throw new Error("Wallet challenge message mismatch");
+    }
+
     const proof = this.solana.verifyWalletProof({
       playerId,
       source: request.source,
@@ -326,6 +378,7 @@ export class KingMycoEcosystemHub {
       signature: request.signature,
     });
 
+    this.repository.consumeWalletChallenge(playerId, request.walletAddress);
     this.repository.setWalletProof(proof);
     const player = this.getPlayerSnapshot(playerId);
     const wallet = await this.solana.getWalletSnapshot(request.walletAddress);
@@ -348,6 +401,94 @@ export class KingMycoEcosystemHub {
     };
   }
 
+  async claimSolanaRewards(
+    request: SolanaRewardClaimRequest,
+  ): Promise<SolanaRewardClaimReceipt> {
+    const playerId = this.repository.resolveOrCreatePlayer(
+      request.source,
+      request.externalId,
+      {
+        ...request.claims,
+        walletAddress: request.destinationWallet,
+      },
+    );
+
+    const proof = this.repository.getWalletProof(request.destinationWallet);
+    if (!proof || proof.playerId !== playerId || !proof.verified) {
+      throw new Error(
+        "Destination wallet is not verified for this player. Complete /api/solana/challenge and /api/solana/verify-link first.",
+      );
+    }
+
+    const liveOps = this.repository.getLiveOps();
+    const sporesToRedeem = Math.floor(request.sporesToRedeem);
+
+    if (!Number.isInteger(sporesToRedeem) || sporesToRedeem <= 0) {
+      throw new Error("sporesToRedeem must be a positive integer");
+    }
+
+    if (sporesToRedeem < liveOps.minSporesPerClaim) {
+      throw new Error(
+        `sporesToRedeem must be >= ${liveOps.minSporesPerClaim}`,
+      );
+    }
+
+    if (sporesToRedeem > liveOps.maxSporesPerClaim) {
+      throw new Error(
+        `sporesToRedeem must be <= ${liveOps.maxSporesPerClaim}`,
+      );
+    }
+
+    const wallet = this.repository.getWallet(playerId);
+    if (wallet.spores < sporesToRedeem) {
+      throw new Error("Insufficient spore balance for claim");
+    }
+
+    const lamports = Math.floor(sporesToRedeem * liveOps.sporeToLamportsRate);
+    if (lamports <= 0) {
+      throw new Error("Claim conversion produced zero lamports");
+    }
+
+    const intent = await this.solana.prepareSolTransfer({
+      playerId,
+      source: request.source,
+      destinationWallet: request.destinationWallet,
+      lamports,
+      sporesDebited: sporesToRedeem,
+      memo:
+        request.memo ??
+        `kingmyco reward claim | player:${playerId} | spores:${sporesToRedeem}`,
+    });
+
+    const updatedWallet = {
+      ...wallet,
+      spores: wallet.spores - sporesToRedeem,
+    };
+    this.repository.setWallet(playerId, updatedWallet);
+    this.repository.setTransferIntent(intent);
+
+    await this.emitEvent("reward_intent_prepared", {
+      playerId,
+      source: request.source,
+      payload: {
+        intentId: intent.id,
+        lamports,
+        sporesDebited: sporesToRedeem,
+        destinationWallet: intent.destinationWallet,
+      },
+    });
+
+    await this.repository.save();
+
+    return {
+      playerId,
+      sporesDebited: sporesToRedeem,
+      lamports,
+      wallet: updatedWallet,
+      intent,
+    };
+  }
+
   async prepareSolanaRewardTransfer(
     request: SolanaRewardTransferRequest,
   ): Promise<SolanaRewardTransferIntent> {
@@ -360,12 +501,65 @@ export class KingMycoEcosystemHub {
       payload: {
         intentId: intent.id,
         lamports: intent.lamports,
+        sporesDebited: intent.sporesDebited,
         destinationWallet: intent.destinationWallet,
       },
     });
 
     await this.repository.save();
     return intent;
+  }
+
+  async updateSolanaRewardTransferStatus(
+    request: SolanaRewardTransferStatusRequest,
+  ): Promise<SolanaRewardTransferStatusReceipt> {
+    const existing = this.repository.getTransferIntent(request.intentId);
+    if (!existing) {
+      throw new Error(`Transfer intent not found: ${request.intentId}`);
+    }
+
+    if (existing.status === "settled") {
+      throw new Error("Settled intents are immutable");
+    }
+
+    const status = request.status;
+    const updatedIntent: SolanaRewardTransferIntent = {
+      ...existing,
+      status,
+      txSignature: request.txSignature ?? existing.txSignature,
+      failureReason: request.failureReason,
+      updatedAt: new Date().toISOString(),
+    };
+
+    let wallet = this.repository.getWallet(existing.playerId);
+
+    if (status === "failed" && existing.status !== "failed" && existing.sporesDebited > 0) {
+      wallet = {
+        ...wallet,
+        spores: wallet.spores + existing.sporesDebited,
+      };
+      this.repository.setWallet(existing.playerId, wallet);
+    }
+
+    this.repository.setTransferIntent(updatedIntent);
+
+    await this.emitEvent("reward_intent_status_updated", {
+      playerId: existing.playerId,
+      source: existing.source,
+      payload: {
+        intentId: existing.id,
+        previousStatus: existing.status,
+        nextStatus: status,
+        txSignature: updatedIntent.txSignature,
+      },
+    });
+
+    await this.repository.save();
+
+    return {
+      intent: updatedIntent,
+      wallet,
+    };
   }
 
   async getSolanaWalletSnapshot(walletAddress: string) {
@@ -432,6 +626,7 @@ export class KingMycoEcosystemHub {
       payload: {
         antiExploitThreshold: merged.antiExploitThreshold,
         rewardMultiplier: merged.rewardMultiplier,
+        sporeToLamportsRate: merged.sporeToLamportsRate,
       },
     });
 
@@ -444,12 +639,53 @@ export class KingMycoEcosystemHub {
     return this.analytics.summarize(events);
   }
 
-  private async emitEvent(inputType: PlatformEventType, input: {
-    playerId?: string;
-    source?: EcosystemSource;
-    mode?: string;
-    payload: Record<string, unknown>;
-  }): Promise<void> {
+  private buildWalletChallenge(input: {
+    playerId: string;
+    source: EcosystemSource;
+    externalId: string;
+    walletAddress: string;
+  }): SolanaWalletChallenge {
+    const ttlMs = Number(
+      process.env.KINGMYCO_SOLANA_CHALLENGE_TTL_MS ?? DEFAULT_CHALLENGE_TTL_MS,
+    );
+    const createdAtMs = Date.now();
+    const createdAt = new Date(createdAtMs).toISOString();
+    const expiresAt = new Date(createdAtMs + ttlMs).toISOString();
+    const nonce = randomBytes(24).toString("hex");
+
+    const message = [
+      "King Myco Wallet Link",
+      `player_id:${input.playerId}`,
+      `source:${input.source}`,
+      `external_id:${input.externalId}`,
+      `wallet:${input.walletAddress}`,
+      `nonce:${nonce}`,
+      `issued_at:${createdAt}`,
+      `expires_at:${expiresAt}`,
+    ].join("\n");
+
+    return {
+      challengeId: randomUUID(),
+      playerId: input.playerId,
+      source: input.source,
+      externalId: input.externalId,
+      walletAddress: input.walletAddress,
+      nonce,
+      message,
+      createdAt,
+      expiresAt,
+    };
+  }
+
+  private async emitEvent(
+    inputType: PlatformEventType,
+    input: {
+      playerId?: string;
+      source?: EcosystemSource;
+      mode?: string;
+      payload: Record<string, unknown>;
+    },
+  ): Promise<void> {
     await this.repository.appendEvent({
       id: randomUUID(),
       type: inputType,
@@ -461,7 +697,10 @@ export class KingMycoEcosystemHub {
     });
   }
 
-  private computeFingerprintPreview(telemetry: SessionTelemetry, score: number): string {
+  private computeFingerprintPreview(
+    telemetry: SessionTelemetry,
+    score: number,
+  ): string {
     return [
       telemetry.completedEncounters,
       telemetry.failedEncounters,

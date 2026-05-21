@@ -22,6 +22,7 @@ export type SourceScope =
   | "coach:read"
   | "solana:verify"
   | "solana:reward:prepare"
+  | "solana:reward:update"
   | "webhook:ingest";
 
 export interface SourceAuthConfig {
@@ -139,7 +140,8 @@ export type PlatformEventType =
   | "liveops_updated"
   | "webhook_ingested"
   | "solana_wallet_verified"
-  | "reward_intent_prepared";
+  | "reward_intent_prepared"
+  | "reward_intent_status_updated";
 
 export interface PlatformEvent {
   id: string;
@@ -170,6 +172,23 @@ export interface SolanaWalletProof {
   signature: string;
   verified: boolean;
   verifiedAt: string;
+}
+
+export interface SolanaWalletChallengeRequest extends IdentityLinkRequest {
+  walletAddress: string;
+}
+
+export interface SolanaWalletChallenge {
+  challengeId: string;
+  playerId: string;
+  source: EcosystemSource;
+  externalId: string;
+  walletAddress: string;
+  nonce: string;
+  message: string;
+  createdAt: string;
+  expiresAt: string;
+  consumedAt?: string;
 }
 
 export interface SolanaWalletSnapshot {
@@ -203,12 +222,16 @@ export interface SolanaRewardTransferIntent {
   destinationWallet: string;
   treasuryWallet: string;
   lamports: number;
+  sporesDebited: number;
   memo?: string;
   blockhash: string;
   lastValidBlockHeight: number;
   unsignedTransactionBase64: string;
   status: RewardTransferStatus;
+  txSignature?: string;
+  failureReason?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface SolanaRewardTransferRequest {
@@ -216,7 +239,34 @@ export interface SolanaRewardTransferRequest {
   source: EcosystemSource;
   destinationWallet: string;
   lamports: number;
+  sporesDebited?: number;
   memo?: string;
+}
+
+export interface SolanaRewardClaimRequest extends IdentityLinkRequest {
+  destinationWallet: string;
+  sporesToRedeem: number;
+  memo?: string;
+}
+
+export interface SolanaRewardClaimReceipt {
+  playerId: string;
+  sporesDebited: number;
+  lamports: number;
+  wallet: PlayerWallet;
+  intent: SolanaRewardTransferIntent;
+}
+
+export interface SolanaRewardTransferStatusRequest {
+  intentId: string;
+  status: Exclude<RewardTransferStatus, "prepared">;
+  txSignature?: string;
+  failureReason?: string;
+}
+
+export interface SolanaRewardTransferStatusReceipt {
+  intent: SolanaRewardTransferIntent;
+  wallet: PlayerWallet;
 }
 
 export interface WebhookReceipt {

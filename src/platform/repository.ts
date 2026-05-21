@@ -19,6 +19,7 @@ import {
   PlatformEvent,
   PlayerWallet,
   SolanaRewardTransferIntent,
+  SolanaWalletChallenge,
   SolanaWalletProof,
 } from "./types";
 
@@ -52,6 +53,10 @@ const createIdentityKeys = (
   return keys;
 };
 
+const challengeKey = (playerId: string, walletAddress: string): string => {
+  return `${playerId}:${walletAddress.trim().toLowerCase()}`;
+};
+
 export class KingMycoRepository {
   private constructor(
     private readonly filePath: string,
@@ -78,7 +83,11 @@ export class KingMycoRepository {
       parsed = await pgRedisAdapter.loadSnapshot();
     }
 
-    return new KingMycoRepository(filePath, normalizePersistentState(parsed), pgRedisAdapter);
+    return new KingMycoRepository(
+      filePath,
+      normalizePersistentState(parsed),
+      pgRedisAdapter,
+    );
   }
 
   resolveOrCreatePlayer(
@@ -114,19 +123,49 @@ export class KingMycoRepository {
     const identityTuple: LinkedIdentity[] = [
       { source, externalId, linkedAt: now },
       ...(claims.telegramUserId
-        ? [{ source: "mycokingdom_bot" as EcosystemSource, externalId: claims.telegramUserId, linkedAt: now }]
+        ? [
+            {
+              source: "mycokingdom_bot" as EcosystemSource,
+              externalId: claims.telegramUserId,
+              linkedAt: now,
+            },
+          ]
         : []),
       ...(claims.mycoAiUserId
-        ? [{ source: "mycoai_bot" as EcosystemSource, externalId: claims.mycoAiUserId, linkedAt: now }]
+        ? [
+            {
+              source: "mycoai_bot" as EcosystemSource,
+              externalId: claims.mycoAiUserId,
+              linkedAt: now,
+            },
+          ]
         : []),
       ...(claims.kingdomAccountId
-        ? [{ source: "kingdom.kingmyco.com" as EcosystemSource, externalId: claims.kingdomAccountId, linkedAt: now }]
+        ? [
+            {
+              source: "kingdom.kingmyco.com" as EcosystemSource,
+              externalId: claims.kingdomAccountId,
+              linkedAt: now,
+            },
+          ]
         : []),
       ...(claims.openClawPlayerId
-        ? [{ source: "openclaw" as EcosystemSource, externalId: claims.openClawPlayerId, linkedAt: now }]
+        ? [
+            {
+              source: "openclaw" as EcosystemSource,
+              externalId: claims.openClawPlayerId,
+              linkedAt: now,
+            },
+          ]
         : []),
       ...(claims.walletAddress
-        ? [{ source: "kingmyco.io" as EcosystemSource, externalId: claims.walletAddress, linkedAt: now }]
+        ? [
+            {
+              source: "kingmyco.io" as EcosystemSource,
+              externalId: claims.walletAddress,
+              linkedAt: now,
+            },
+          ]
         : []),
     ];
 
@@ -135,7 +174,8 @@ export class KingMycoRepository {
         !linked.some(
           (existing) =>
             existing.source === identity.source &&
-            existing.externalId.toLowerCase() === identity.externalId.toLowerCase(),
+            existing.externalId.toLowerCase() ===
+              identity.externalId.toLowerCase(),
         )
       ) {
         linked.push(identity);
@@ -223,8 +263,38 @@ export class KingMycoRepository {
     return this.state.walletProofs[walletAddress.toLowerCase()];
   }
 
+  setWalletChallenge(challenge: SolanaWalletChallenge): void {
+    this.state.walletChallenges[
+      challengeKey(challenge.playerId, challenge.walletAddress)
+    ] = challenge;
+  }
+
+  getWalletChallenge(
+    playerId: string,
+    walletAddress: string,
+  ): SolanaWalletChallenge | undefined {
+    return this.state.walletChallenges[challengeKey(playerId, walletAddress)];
+  }
+
+  consumeWalletChallenge(playerId: string, walletAddress: string): void {
+    const key = challengeKey(playerId, walletAddress);
+    const existing = this.state.walletChallenges[key];
+    if (!existing) {
+      return;
+    }
+
+    this.state.walletChallenges[key] = {
+      ...existing,
+      consumedAt: new Date().toISOString(),
+    };
+  }
+
   setTransferIntent(intent: SolanaRewardTransferIntent): void {
     this.state.transferIntents[intent.id] = intent;
+  }
+
+  getTransferIntent(intentId: string): SolanaRewardTransferIntent | undefined {
+    return this.state.transferIntents[intentId];
   }
 
   getTransferIntents(playerId?: string): SolanaRewardTransferIntent[] {
@@ -285,7 +355,10 @@ export class KingMycoRepository {
     if (fromWallet) {
       targetWallet.spores += fromWallet.spores;
       targetWallet.lifetimeSpores += fromWallet.lifetimeSpores;
-      targetWallet.sessionStreak = Math.max(targetWallet.sessionStreak, fromWallet.sessionStreak);
+      targetWallet.sessionStreak = Math.max(
+        targetWallet.sessionStreak,
+        fromWallet.sessionStreak,
+      );
       targetWallet.suspiciousSessions += fromWallet.suspiciousSessions;
       targetWallet.lastSessionAt =
         targetWallet.lastSessionAt && fromWallet.lastSessionAt
@@ -298,17 +371,28 @@ export class KingMycoRepository {
 
     const targetIdentities = this.state.identitiesByPlayer[targetId] ?? [];
     const fromIdentities = this.state.identitiesByPlayer[fromId] ?? [];
-    this.state.identitiesByPlayer[targetId] = [...targetIdentities, ...fromIdentities];
+    this.state.identitiesByPlayer[targetId] = [
+      ...targetIdentities,
+      ...fromIdentities,
+    ];
 
     const targetFingerprints = this.state.recentFingerprints[targetId] ?? [];
     const fromFingerprints = this.state.recentFingerprints[fromId] ?? [];
-    this.state.recentFingerprints[targetId] = [...targetFingerprints, ...fromFingerprints].slice(-12);
+    this.state.recentFingerprints[targetId] = [
+      ...targetFingerprints,
+      ...fromFingerprints,
+    ].slice(-12);
 
-    if (!this.state.lastRunByPlayer[targetId] && this.state.lastRunByPlayer[fromId]) {
+    if (
+      !this.state.lastRunByPlayer[targetId] &&
+      this.state.lastRunByPlayer[fromId]
+    ) {
       this.state.lastRunByPlayer[targetId] = this.state.lastRunByPlayer[fromId];
     }
 
-    for (const [identityKey, mappedPlayerId] of Object.entries(this.state.identityByKey)) {
+    for (const [identityKey, mappedPlayerId] of Object.entries(
+      this.state.identityByKey,
+    )) {
       if (mappedPlayerId === fromId) {
         this.state.identityByKey[identityKey] = targetId;
       }
@@ -318,6 +402,15 @@ export class KingMycoRepository {
       if (proof.playerId === fromId) {
         this.state.walletProofs[proof.walletAddress.toLowerCase()] = {
           ...proof,
+          playerId: targetId,
+        };
+      }
+    }
+
+    for (const [key, challenge] of Object.entries(this.state.walletChallenges)) {
+      if (challenge.playerId === fromId) {
+        this.state.walletChallenges[key] = {
+          ...challenge,
           playerId: targetId,
         };
       }

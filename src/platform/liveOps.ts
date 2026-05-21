@@ -11,6 +11,9 @@ export interface LiveOpsConfig {
   difficultyMax: number;
   streakBonusStep: number;
   streakBonusCap: number;
+  sporeToLamportsRate: number;
+  minSporesPerClaim: number;
+  maxSporesPerClaim: number;
 }
 
 export type DeepPartial<T> = {
@@ -42,6 +45,9 @@ export const DEFAULT_LIVE_OPS: LiveOpsConfig = {
   difficultyMax: 10,
   streakBonusStep: 0.04,
   streakBonusCap: 0.4,
+  sporeToLamportsRate: 120,
+  minSporesPerClaim: 100,
+  maxSporesPerClaim: 100000,
 };
 
 export const sanitizeLiveOpsConfig = (config: LiveOpsConfig): LiveOpsConfig => {
@@ -70,6 +76,9 @@ export const sanitizeLiveOpsConfig = (config: LiveOpsConfig): LiveOpsConfig => {
     difficultyMax: clamp(config.difficultyMax, 1, 10),
     streakBonusStep: clamp(config.streakBonusStep, 0, 0.2),
     streakBonusCap: clamp(config.streakBonusCap, 0, 1.5),
+    sporeToLamportsRate: clamp(config.sporeToLamportsRate, 1, 1000000),
+    minSporesPerClaim: Math.round(clamp(config.minSporesPerClaim, 1, 1000000000)),
+    maxSporesPerClaim: Math.round(clamp(config.maxSporesPerClaim, 1, 1000000000)),
   };
 };
 
@@ -94,6 +103,12 @@ export const mergeLiveOpsConfig = (
     const swap = merged.difficultyMin;
     merged.difficultyMin = merged.difficultyMax;
     merged.difficultyMax = swap;
+  }
+
+  if (merged.minSporesPerClaim > merged.maxSporesPerClaim) {
+    const swap = merged.minSporesPerClaim;
+    merged.minSporesPerClaim = merged.maxSporesPerClaim;
+    merged.maxSporesPerClaim = swap;
   }
 
   return sanitizeLiveOpsConfig(merged);

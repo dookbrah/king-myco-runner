@@ -24,7 +24,8 @@ Myco Quest adaptive AI game-core + ecosystem backend for King Myco.
 - Signed webhook verification (Telegram secret token + OpenClaw HMAC)
 - Event stream analytics summary endpoint
 - Postgres/Redis adapter for persisted state snapshots + events
-- Solana wallet signature verification and reward transfer intent generation
+- Solana wallet challenge + signature verification
+- Solana reward claim pipeline (spores -> lamports) with status updates and refund-on-failure
 
 ## Architecture map
 
@@ -66,9 +67,29 @@ Myco Quest adaptive AI game-core + ecosystem backend for King Myco.
 - `POST /webhooks/openclaw`
 
 ### Solana (Web3)
+- `POST /api/solana/challenge`
 - `POST /api/solana/verify-link`
 - `GET /api/solana/wallet/:walletAddress`
+- `POST /api/solana/rewards/claim`
 - `POST /api/solana/rewards/prepare` (admin key)
+- `POST /api/solana/rewards/status` (admin key)
+
+## Wallet verification flow
+
+1. Call `POST /api/solana/challenge` with source/externalId/wallet.
+2. Player signs `message` returned in challenge response.
+3. Call `POST /api/solana/verify-link` with signed payload.
+4. Wallet is now trusted for reward redemption.
+
+Challenges are one-time and expire automatically.
+
+## Solana reward claim flow
+
+1. Verified player calls `POST /api/solana/rewards/claim` with `sporesToRedeem`.
+2. Backend converts spores to lamports via `sporeToLamportsRate` in live ops.
+3. Backend creates unsigned transfer intent and debits spores immediately.
+4. Settlement service updates result using `POST /api/solana/rewards/status`.
+5. If status becomes `failed`, spores are automatically refunded.
 
 ## Security model
 
@@ -81,9 +102,9 @@ Example:
 {
   "mycokingdom_bot": { "token": "token-a", "scopes": ["identity:write", "session:write", "webhook:ingest"] },
   "mycoai_bot": { "token": "token-b", "scopes": ["coach:read", "identity:write", "webhook:ingest"] },
-  "kingmyco.io": { "token": "token-c", "scopes": ["identity:write", "run:generate", "session:write", "solana:verify"] },
+  "kingmyco.io": { "token": "token-c", "scopes": ["identity:write", "run:generate", "session:write", "solana:verify", "solana:reward:prepare"] },
   "kingdom.kingmyco.com": { "token": "token-d", "scopes": ["identity:write", "run:generate", "session:write"] },
-  "openclaw": { "token": "token-e", "scopes": ["session:write", "run:generate", "solana:reward:prepare", "webhook:ingest"] }
+  "openclaw": { "token": "token-e", "scopes": ["session:write", "run:generate", "solana:reward:prepare", "solana:reward:update", "webhook:ingest"] }
 }
 ```
 
@@ -98,6 +119,13 @@ Example:
 
 - `SOLANA_RPC_URL` (default `https://api.mainnet-beta.solana.com`)
 - `KINGMYCO_TREASURY_WALLET` (required for reward transfer intent preparation)
+- `KINGMYCO_SOLANA_CHALLENGE_TTL_MS` (optional challenge TTL)
+
+## Live ops Web3 tuning fields
+
+- `sporeToLamportsRate`
+- `minSporesPerClaim`
+- `maxSporesPerClaim`
 
 ## Persistence options
 

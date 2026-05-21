@@ -6,7 +6,10 @@ import { DeepPartial, LiveOpsConfig } from "./platform/liveOps";
 import {
   ECOSYSTEM_SOURCES,
   EcosystemSource,
+  SolanaRewardClaimRequest,
   SolanaRewardTransferRequest,
+  SolanaRewardTransferStatusRequest,
+  SolanaWalletChallengeRequest,
   SolanaWalletVerificationRequest,
   SourceScope,
 } from "./platform/types";
@@ -61,6 +64,14 @@ const parseJsonBody = <T>(rawBody: string): T => {
 const requiredString = (value: unknown, fieldName: string): string => {
   if (typeof value !== "string" || value.trim().length === 0) {
     throw new Error(`Expected non-empty string field: ${fieldName}`);
+  }
+
+  return value;
+};
+
+const requiredNumber = (value: unknown, fieldName: string): number => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(`Expected number field: ${fieldName}`);
   }
 
   return value;
@@ -184,6 +195,22 @@ const start = async (): Promise<void> => {
         return sendJson(response, 200, coaching);
       }
 
+      if (method === "POST" && pathname === "/api/solana/challenge") {
+        const rawBody = await readRawBody(request);
+        const body = parseJsonBody<Record<string, unknown>>(rawBody);
+        const source = parseSource(body.source);
+        authorizeSource(request, source, "solana:verify");
+
+        const challenge = await hub.createSolanaWalletChallenge({
+          source,
+          externalId: requiredString(body.externalId, "externalId"),
+          claims: (body.claims ?? {}) as never,
+          walletAddress: requiredString(body.walletAddress, "walletAddress"),
+        } satisfies SolanaWalletChallengeRequest);
+
+        return sendJson(response, 200, challenge);
+      }
+
       if (method === "POST" && pathname === "/api/solana/verify-link") {
         const rawBody = await readRawBody(request);
         const body = parseJsonBody<Record<string, unknown>>(rawBody);
@@ -209,6 +236,24 @@ const start = async (): Promise<void> => {
         return sendJson(response, 200, snapshot);
       }
 
+      if (method === "POST" && pathname === "/api/solana/rewards/claim") {
+        const rawBody = await readRawBody(request);
+        const body = parseJsonBody<Record<string, unknown>>(rawBody);
+        const source = parseSource(body.source);
+        authorizeSource(request, source, "solana:reward:prepare");
+
+        const receipt = await hub.claimSolanaRewards({
+          source,
+          externalId: requiredString(body.externalId, "externalId"),
+          claims: (body.claims ?? {}) as never,
+          destinationWallet: requiredString(body.destinationWallet, "destinationWallet"),
+          sporesToRedeem: requiredNumber(body.sporesToRedeem, "sporesToRedeem"),
+          memo: typeof body.memo === "string" ? body.memo : undefined,
+        } satisfies SolanaRewardClaimRequest);
+
+        return sendJson(response, 200, receipt);
+      }
+
       if (method === "POST" && pathname === "/api/solana/rewards/prepare") {
         assertAdminKey(request, adminKey);
 
@@ -225,10 +270,34 @@ const start = async (): Promise<void> => {
             "destinationWallet",
           ),
           lamports: Number(body.lamports),
+          sporesDebited:
+            typeof body.sporesDebited === "number"
+              ? body.sporesDebited
+              : undefined,
           memo: typeof body.memo === "string" ? body.memo : undefined,
         } satisfies SolanaRewardTransferRequest);
 
         return sendJson(response, 200, intent);
+      }
+
+      if (method === "POST" && pathname === "/api/solana/rewards/status") {
+        assertAdminKey(request, adminKey);
+
+        const rawBody = await readRawBody(request);
+        const body = parseJsonBody<Record<string, unknown>>(rawBody);
+        const source = parseSource(body.source);
+        authorizeSource(request, source, "solana:reward:update");
+
+        const receipt = await hub.updateSolanaRewardTransferStatus({
+          intentId: requiredString(body.intentId, "intentId"),
+          status: requiredString(body.status, "status") as "submitted" | "settled" | "failed",
+          txSignature:
+            typeof body.txSignature === "string" ? body.txSignature : undefined,
+          failureReason:
+            typeof body.failureReason === "string" ? body.failureReason : undefined,
+        } satisfies SolanaRewardTransferStatusRequest);
+
+        return sendJson(response, 200, receipt);
       }
 
       if (method === "POST" && pathname === "/webhooks/mycokingdom_bot") {

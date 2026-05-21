@@ -5,6 +5,7 @@ import {
   PlatformEvent,
   PlayerWallet,
   SolanaRewardTransferIntent,
+  SolanaWalletChallenge,
   SolanaWalletProof,
 } from "./types";
 import { PlannedRun, PlayerProfile } from "../types";
@@ -20,6 +21,7 @@ export interface PersistentState {
   lastRunByPlayer: Record<string, PlannedRun>;
   events: PlatformEvent[];
   walletProofs: Record<string, SolanaWalletProof>;
+  walletChallenges: Record<string, SolanaWalletChallenge>;
   transferIntents: Record<string, SolanaRewardTransferIntent>;
 }
 
@@ -48,5 +50,6 @@ export const normalizePersistentState = (
   lastRunByPlayer: raw?.lastRunByPlayer ?? {},
   events: raw?.events ?? [],
   walletProofs: raw?.walletProofs ?? {},
+  walletChallenges: raw?.walletChallenges ?? {},
   transferIntents: raw?.transferIntents ?? {},
 });
