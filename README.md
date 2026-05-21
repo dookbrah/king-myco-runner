@@ -48,6 +48,7 @@ Myco Quest adaptive AI game-core + ecosystem backend for King Myco.
 ### Health
 - `GET /health`
 - `GET /dev/myco-quest` (interactive dev UI)
+- `GET /api/dev/myco-quest` (interactive dev UI alias behind /api proxy)
 
 ### Identity and gameplay
 - `POST /api/identity/link`
@@ -257,7 +258,7 @@ Use this to immediately generate adaptive runs and session telemetry while you t
 npm run playground
 ```
 
-Then open `http://127.0.0.1:3000/dev/myco-quest` to drive gameplay calls and inspect morality/magic/spores progression with communication health in one screen.
+Then open `http://127.0.0.1:3000/dev/myco-quest` locally (or `https://<your-domain>/api/dev/myco-quest` when behind an `/api` reverse proxy) to drive gameplay calls and inspect morality/magic/spores progression with communication health in one screen.
 
 The dev UI includes built-in archetype presets (balanced, ruthless, compassionate, speedrunner) plus custom preset save/load/delete in browser localStorage. You can also export presets as JSON, import JSON by paste/upload, and download a shared preset pack for teammates.
 

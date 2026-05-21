@@ -162,7 +162,10 @@ const start = async (): Promise<void> => {
         });
       }
 
-      if (method === "GET" && pathname === "/dev/myco-quest") {
+      if (
+        method === "GET" &&
+        (pathname === "/dev/myco-quest" || pathname === "/api/dev/myco-quest")
+      ) {
         const html = await readFile("public/myco-quest-dev.html", "utf8");
         return sendHtml(response, 200, html);
       }
