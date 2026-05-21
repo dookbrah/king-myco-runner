@@ -730,6 +730,51 @@ describe("King Myco ecosystem integration", () => {
     }
   });
 
+  it("returns a dev HUD bundle with player and communication status", async () => {
+    const generated = await hub.generateRun({
+      source: "kingmyco.io",
+      externalId: "hud-player-1",
+      claims: {
+        walletAddress: "0xhudwallet",
+      },
+      encounters: 4,
+      seed: "hud-seed",
+    });
+
+    await hub.recordSession({
+      source: "kingmyco.io",
+      externalId: "hud-player-1",
+      claims: {
+        walletAddress: "0xhudwallet",
+      },
+      telemetry: {
+        playerId: generated.playerId,
+        completedEncounters: 6,
+        failedEncounters: 1,
+        damageTaken: 26,
+        perfectActions: 5,
+        discoveryActions: 4,
+        riskyActions: 2,
+        sessionLengthSec: 620,
+        usedElements: ["fire", "water", "ice"],
+        abandoned: false,
+      },
+      score: 14200,
+    });
+
+    const bundle = await hub.getDevHudBundle({
+      playerId: generated.playerId,
+      windowMinutes: 180,
+      minEventsPerSource: 1,
+      limit: 500,
+    });
+
+    expect(bundle.player.playerId).toBe(generated.playerId);
+    expect(bundle.player.lastRun?.encounters.length).toBeGreaterThan(0);
+    expect(bundle.communication.sourceStatuses["kingmyco.io"].healthy).toBe(true);
+    expect(bundle.generatedAt).toBeTruthy();
+  });
+
   it("temporarily blocks high-risk claimants adaptively", async () => {
     const signer = Keypair.generate();
 

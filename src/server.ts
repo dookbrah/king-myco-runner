@@ -539,6 +539,34 @@ const start = async (): Promise<void> => {
         return sendJson(response, 200, receipt);
       }
 
+      const devHudMatch = pathname.match(/^\/api\/dev\/hud\/([^/]+)$/);
+      if (method === "GET" && devHudMatch) {
+        assertAdminKey(request, adminKey);
+        const playerId = decodeURIComponent(devHudMatch[1]);
+
+        const windowMinutesRaw = parsedUrl.searchParams.get("windowMinutes");
+        const minEventsPerSourceRaw = parsedUrl.searchParams.get("minEventsPerSource");
+        const limitRaw = parsedUrl.searchParams.get("limit");
+
+        const bundle = await hub.getDevHudBundle({
+          playerId,
+          windowMinutes:
+            windowMinutesRaw && Number.isFinite(Number(windowMinutesRaw))
+              ? Number(windowMinutesRaw)
+              : undefined,
+          minEventsPerSource:
+            minEventsPerSourceRaw && Number.isFinite(Number(minEventsPerSourceRaw))
+              ? Number(minEventsPerSourceRaw)
+              : undefined,
+          limit:
+            limitRaw && Number.isFinite(Number(limitRaw))
+              ? Number(limitRaw)
+              : undefined,
+        });
+
+        return sendJson(response, 200, bundle);
+      }
+
       const playerMatch = pathname.match(/^\/api\/player\/([^/]+)$/);
       if (method === "GET" && playerMatch) {
         const playerId = decodeURIComponent(playerMatch[1]);

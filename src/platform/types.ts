@@ -184,6 +184,19 @@ export interface EcosystemCommunicationStatus {
   silentSources: EcosystemSource[];
 }
 
+export interface DevHudBundleRequest {
+  playerId: string;
+  windowMinutes?: number;
+  minEventsPerSource?: number;
+  limit?: number;
+}
+
+export interface DevHudBundle {
+  generatedAt: string;
+  player: PlayerSnapshot;
+  communication: EcosystemCommunicationStatus;
+}
+
 export interface SolanaWalletProof {
   playerId: string;
   source: EcosystemSource;

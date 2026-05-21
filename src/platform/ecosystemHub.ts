@@ -20,6 +20,8 @@ import {
   ECOSYSTEM_SOURCES,
   CoachingRequest,
   CoachingResponse,
+  DevHudBundle,
+  DevHudBundleRequest,
   EcosystemCommunicationStatus,
   EcosystemHeartbeatPulseReceipt,
   EcosystemSource,
@@ -1147,6 +1149,20 @@ export class KingMycoEcosystemHub {
       windowMinutes,
       minEventsPerSource,
     });
+  }
+
+  async getDevHudBundle(input: DevHudBundleRequest): Promise<DevHudBundle> {
+    const communication = await this.getEcosystemCommunicationStatus({
+      windowMinutes: input.windowMinutes,
+      minEventsPerSource: input.minEventsPerSource,
+      limit: input.limit,
+    });
+
+    return {
+      generatedAt: new Date().toISOString(),
+      player: this.getPlayerSnapshot(input.playerId),
+      communication,
+    };
   }
 
   private buildWalletChallenge(input: {

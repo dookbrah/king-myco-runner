@@ -64,6 +64,7 @@ Myco Quest adaptive AI game-core + ecosystem backend for King Myco.
 - `GET /api/analytics/summary` (admin key)
 - `GET /api/ecosystem/communication` (admin key)
 - `POST /api/ecosystem/heartbeat/pulse` (admin key)
+- `GET /api/dev/hud/:playerId` (admin key)
 
 ### Webhooks
 - `POST /webhooks/mycokingdom_bot`
@@ -263,6 +264,12 @@ Useful playground env overrides:
 - `PLAYGROUND_REUSE_EXISTING_API` (default `true`)
 - `PLAYGROUND_REUSE_EXISTING_HEARTBEAT` (default `true`)
 - `PLAYGROUND_SOURCE_TOKEN` (optional, if source auth is enabled for the selected source)
+
+For frontend iteration, use the dev HUD bundle endpoint to fetch player state + last run + communication health in one request:
+
+```bash
+curl -H "x-admin-key: dev-admin-key" "http://127.0.0.1:3000/api/dev/hud/<player-id>?windowMinutes=30&minEventsPerSource=1"
+```
 
 
 ## Production deployment (kingmyco.io)
