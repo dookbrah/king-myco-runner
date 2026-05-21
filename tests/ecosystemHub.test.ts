@@ -410,4 +410,93 @@ describe("King Myco ecosystem integration", () => {
     expect(second.wallet.spores).toBe(first.wallet.spores);
   });
 
+  it("enforces claim cooldown and daily cap guardrails", async () => {
+    const signer = Keypair.generate();
+
+    await hub.updateLiveOps({
+      claimCooldownSec: 3600,
+      maxDailySporeRedeem: 250,
+      minSporesPerClaim: 100,
+      maxSporesPerClaim: 1000,
+    });
+
+    await hub.generateRun({
+      source: "kingmyco.io",
+      externalId: "player-guardrails",
+      claims: { walletAddress: signer.publicKey.toBase58() },
+    });
+
+    await hub.recordSession({
+      source: "kingmyco.io",
+      externalId: "player-guardrails",
+      claims: { walletAddress: signer.publicKey.toBase58() },
+      telemetry: {
+        playerId: "player-guardrails",
+        completedEncounters: 14,
+        failedEncounters: 0,
+        damageTaken: 26,
+        perfectActions: 6,
+        discoveryActions: 3,
+        riskyActions: 4,
+        sessionLengthSec: 800,
+        usedElements: ["fire", "water", "ice"],
+        abandoned: false,
+      },
+      score: 23000,
+    });
+
+    const challenge = await hub.createSolanaWalletChallenge({
+      source: "kingmyco.io",
+      externalId: "player-guardrails",
+      claims: { walletAddress: signer.publicKey.toBase58() },
+      walletAddress: signer.publicKey.toBase58(),
+    });
+
+    const signature = nacl.sign.detached(
+      new TextEncoder().encode(challenge.message),
+      signer.secretKey,
+    );
+
+    await hub.verifySolanaWalletLink({
+      source: "kingmyco.io",
+      externalId: "player-guardrails",
+      claims: { walletAddress: signer.publicKey.toBase58() },
+      walletAddress: signer.publicKey.toBase58(),
+      message: challenge.message,
+      signature: Buffer.from(signature).toString("base64"),
+    });
+
+    const first = await hub.claimSolanaRewards({
+      source: "kingmyco.io",
+      externalId: "player-guardrails",
+      claims: { walletAddress: signer.publicKey.toBase58() },
+      destinationWallet: signer.publicKey.toBase58(),
+      sporesToRedeem: 200,
+    });
+
+    expect(first.sporesDebited).toBe(200);
+
+    await expect(
+      hub.claimSolanaRewards({
+        source: "kingmyco.io",
+        externalId: "player-guardrails",
+        claims: { walletAddress: signer.publicKey.toBase58() },
+        destinationWallet: signer.publicKey.toBase58(),
+        sporesToRedeem: 120,
+      }),
+    ).rejects.toThrow(/Claim cooldown active/);
+
+    await hub.updateLiveOps({ claimCooldownSec: 0 });
+
+    await expect(
+      hub.claimSolanaRewards({
+        source: "kingmyco.io",
+        externalId: "player-guardrails",
+        claims: { walletAddress: signer.publicKey.toBase58() },
+        destinationWallet: signer.publicKey.toBase58(),
+        sporesToRedeem: 100,
+      }),
+    ).rejects.toThrow(/Daily claim cap exceeded/);
+  });
+
 });

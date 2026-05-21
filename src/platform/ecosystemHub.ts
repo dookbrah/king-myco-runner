@@ -46,6 +46,19 @@ import {
 const DEFAULT_MODE = "myco-quest";
 const DEFAULT_CHALLENGE_TTL_MS = 10 * 60 * 1000;
 
+const secondsSince = (fromIso: string | undefined, nowMs: number): number | null => {
+  if (!fromIso) {
+    return null;
+  }
+
+  const fromMs = Date.parse(fromIso);
+  if (Number.isNaN(fromMs)) {
+    return null;
+  }
+
+  return (nowMs - fromMs) / 1000;
+};
+
 const zeroRewards = (): RewardBreakdown => ({
   baseSpores: 0,
   difficultyBonus: 0,
@@ -453,6 +466,17 @@ export class KingMycoEcosystemHub {
 
     const liveOps = this.repository.getLiveOps();
     const sporesToRedeem = Math.floor(request.sporesToRedeem);
+    const nowIso = new Date().toISOString();
+
+    const claimLedger = this.repository.getClaimLedger(playerId);
+    const cooldownSec = secondsSince(claimLedger.lastClaimAt, Date.now());
+    if (cooldownSec !== null && cooldownSec < liveOps.claimCooldownSec) {
+      const waitFor = Math.ceil(liveOps.claimCooldownSec - cooldownSec);
+      throw new Error(`Claim cooldown active. Retry in ${waitFor}s`);
+    }
+
+    const todayKey = nowIso.slice(0, 10);
+    const redeemedToday = claimLedger.dailyRedeemed[todayKey] ?? 0;
 
     if (!Number.isInteger(sporesToRedeem) || sporesToRedeem <= 0) {
       throw new Error("sporesToRedeem must be a positive integer");
@@ -467,6 +491,12 @@ export class KingMycoEcosystemHub {
     if (sporesToRedeem > liveOps.maxSporesPerClaim) {
       throw new Error(
         `sporesToRedeem must be <= ${liveOps.maxSporesPerClaim}`,
+      );
+    }
+
+    if (redeemedToday + sporesToRedeem > liveOps.maxDailySporeRedeem) {
+      throw new Error(
+        `Daily claim cap exceeded (${liveOps.maxDailySporeRedeem} spores/day)`,
       );
     }
 
@@ -496,6 +526,7 @@ export class KingMycoEcosystemHub {
       spores: wallet.spores - sporesToRedeem,
     };
     this.repository.setWallet(playerId, updatedWallet);
+    this.repository.applyClaimLedgerDelta(playerId, nowIso, sporesToRedeem);
     this.repository.setTransferIntent(intent);
 
     if (idempotencyKey) {
@@ -506,7 +537,7 @@ export class KingMycoEcosystemHub {
         intentId: intent.id,
         sporesDebited: sporesToRedeem,
         lamports,
-        createdAt: new Date().toISOString(),
+        createdAt: nowIso,
       });
     }
 
@@ -608,6 +639,11 @@ export class KingMycoEcosystemHub {
         spores: wallet.spores + existing.sporesDebited,
       };
       this.repository.setWallet(existing.playerId, nextWallet);
+      this.repository.applyClaimLedgerDelta(
+        existing.playerId,
+        existing.createdAt,
+        -existing.sporesDebited,
+      );
     }
 
     this.repository.setTransferIntent(updatedIntent);

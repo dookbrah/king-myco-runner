@@ -11,6 +11,11 @@ import {
 } from "./types";
 import { PlannedRun, PlayerProfile } from "../types";
 
+export interface SporeClaimLedger {
+  lastClaimAt?: string;
+  dailyRedeemed: Record<string, number>;
+}
+
 export interface PersistentState {
   profiles: Record<string, PlayerProfile>;
   wallets: Record<string, PlayerWallet>;
@@ -25,6 +30,7 @@ export interface PersistentState {
   walletChallenges: Record<string, SolanaWalletChallenge>;
   transferIntents: Record<string, SolanaRewardTransferIntent>;
   claimIdempotency: Record<string, SolanaClaimIdempotencyRecord>;
+  claimLedgers: Record<string, SporeClaimLedger>;
 }
 
 export const createDefaultWallet = (): PlayerWallet => ({
@@ -55,4 +61,5 @@ export const normalizePersistentState = (
   walletChallenges: raw?.walletChallenges ?? {},
   transferIntents: raw?.transferIntents ?? {},
   claimIdempotency: raw?.claimIdempotency ?? {},
+  claimLedgers: raw?.claimLedgers ?? {},
 });

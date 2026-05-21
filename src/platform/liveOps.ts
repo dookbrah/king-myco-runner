@@ -14,6 +14,8 @@ export interface LiveOpsConfig {
   sporeToLamportsRate: number;
   minSporesPerClaim: number;
   maxSporesPerClaim: number;
+  claimCooldownSec: number;
+  maxDailySporeRedeem: number;
 }
 
 export type DeepPartial<T> = {
@@ -48,6 +50,8 @@ export const DEFAULT_LIVE_OPS: LiveOpsConfig = {
   sporeToLamportsRate: 120,
   minSporesPerClaim: 100,
   maxSporesPerClaim: 100000,
+  claimCooldownSec: 45,
+  maxDailySporeRedeem: 250000,
 };
 
 export const sanitizeLiveOpsConfig = (config: LiveOpsConfig): LiveOpsConfig => {
@@ -79,6 +83,8 @@ export const sanitizeLiveOpsConfig = (config: LiveOpsConfig): LiveOpsConfig => {
     sporeToLamportsRate: clamp(config.sporeToLamportsRate, 1, 1000000),
     minSporesPerClaim: Math.round(clamp(config.minSporesPerClaim, 1, 1000000000)),
     maxSporesPerClaim: Math.round(clamp(config.maxSporesPerClaim, 1, 1000000000)),
+    claimCooldownSec: Math.round(clamp(config.claimCooldownSec, 0, 86400)),
+    maxDailySporeRedeem: Math.round(clamp(config.maxDailySporeRedeem, 1, 1000000000)),
   };
 };
 

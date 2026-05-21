@@ -90,10 +90,11 @@ Challenges are one-time and expire automatically.
 
 1. Verified player calls `POST /api/solana/rewards/claim` with `sporesToRedeem`.
 2. Optional idempotency protection: send `idempotencyKey` (or `x-idempotency-key`) to prevent duplicate debit on retries.
-3. Backend converts spores to lamports via `sporeToLamportsRate` in live ops.
-4. Backend creates unsigned transfer intent and debits spores immediately.
-5. Settlement service updates result using `POST /api/solana/rewards/status` or `POST /api/solana/rewards/process`.
-6. If status becomes `failed`, spores are automatically refunded.
+3. Backend enforces live-ops claim guardrails (`claimCooldownSec`, `maxDailySporeRedeem`).
+4. Backend converts spores to lamports via `sporeToLamportsRate` in live ops.
+5. Backend creates unsigned transfer intent and debits spores immediately.
+6. Settlement service updates result using `POST /api/solana/rewards/status` or `POST /api/solana/rewards/process`.
+7. If status becomes `failed`, spores are automatically refunded (including daily cap ledger rollback).
 
 ## Security model
 
@@ -135,6 +136,8 @@ Example:
 - `sporeToLamportsRate`
 - `minSporesPerClaim`
 - `maxSporesPerClaim`
+- `claimCooldownSec`
+- `maxDailySporeRedeem`
 
 ## Remote signer contract (HSM/KMS gateway)
 

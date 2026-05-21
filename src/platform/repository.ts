@@ -10,6 +10,7 @@ import {
   emptyLeaderboardTable,
   normalizePersistentState,
   PersistentState,
+  SporeClaimLedger,
 } from "./stateTypes";
 import {
   EcosystemSource,
@@ -215,6 +216,50 @@ export class KingMycoRepository {
 
   setWallet(playerId: string, wallet: PlayerWallet): void {
     this.state.wallets[playerId] = wallet;
+  }
+
+
+  getClaimLedger(playerId: string): SporeClaimLedger {
+    const existing = this.state.claimLedgers[playerId];
+    if (existing) {
+      return existing;
+    }
+
+    const created: SporeClaimLedger = {
+      dailyRedeemed: {},
+    };
+
+    this.state.claimLedgers[playerId] = created;
+    return created;
+  }
+
+  applyClaimLedgerDelta(
+    playerId: string,
+    timestampIso: string,
+    deltaSpores: number,
+  ): SporeClaimLedger {
+    const ledger = this.getClaimLedger(playerId);
+    const dayKey = this.toUtcDayKey(timestampIso);
+    const current = ledger.dailyRedeemed[dayKey] ?? 0;
+
+    const next = Math.max(0, current + Math.round(deltaSpores));
+    if (next === 0) {
+      delete ledger.dailyRedeemed[dayKey];
+    } else {
+      ledger.dailyRedeemed[dayKey] = next;
+    }
+
+    if (deltaSpores > 0) {
+      ledger.lastClaimAt = timestampIso;
+    }
+
+    const keptEntries = Object.entries(ledger.dailyRedeemed)
+      .sort((left, right) => left[0].localeCompare(right[0]))
+      .slice(-35);
+    ledger.dailyRedeemed = Object.fromEntries(keptEntries);
+
+    this.state.claimLedgers[playerId] = ledger;
+    return ledger;
   }
 
   getLiveOps(): LiveOpsConfig {
@@ -434,6 +479,23 @@ export class KingMycoRepository {
       }
     }
 
+    const targetLedger = this.state.claimLedgers[targetId] ?? { dailyRedeemed: {} };
+    const fromLedger = this.state.claimLedgers[fromId];
+    if (fromLedger) {
+      for (const [day, amount] of Object.entries(fromLedger.dailyRedeemed)) {
+        targetLedger.dailyRedeemed[day] =
+          (targetLedger.dailyRedeemed[day] ?? 0) + amount;
+      }
+
+      if (
+        fromLedger.lastClaimAt &&
+        (!targetLedger.lastClaimAt || fromLedger.lastClaimAt > targetLedger.lastClaimAt)
+      ) {
+        targetLedger.lastClaimAt = fromLedger.lastClaimAt;
+      }
+    }
+    this.state.claimLedgers[targetId] = targetLedger;
+
     for (const [intentId, intent] of Object.entries(this.state.transferIntents)) {
       if (intent.playerId === fromId) {
         this.state.transferIntents[intentId] = {
@@ -462,6 +524,16 @@ export class KingMycoRepository {
     delete this.state.recentFingerprints[fromId];
 
     delete this.state.lastRunByPlayer[fromId];
+    delete this.state.claimLedgers[fromId];
+  }
+
+  private toUtcDayKey(timestampIso: string): string {
+    const date = new Date(timestampIso);
+    if (Number.isNaN(date.getTime())) {
+      return new Date().toISOString().slice(0, 10);
+    }
+
+    return date.toISOString().slice(0, 10);
   }
 
   private createClaimIdempotencyKey(
