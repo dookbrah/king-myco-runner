@@ -312,6 +312,19 @@ curl http://127.0.0.1:3000/health
 curl -H "x-admin-key: $KINGMYCO_ADMIN_KEY" "http://127.0.0.1:3000/api/ecosystem/communication?windowMinutes=15&minEventsPerSource=1"
 ```
 
+### 3b) One-shot VPS finalize + verification
+
+When a host keeps reporting deploy success while public routes still serve older code, run this script on the VPS. It force-syncs the branch, rebuilds, restarts PM2, reloads Nginx, and hard-fails unless both local and public objective-chain routes pass.
+
+```bash
+bash scripts/ops/finalize-api-deploy.sh
+```
+
+Optional overrides:
+- `BRANCH` (default `cursor/myco-quest-ai-core-ae3a`)
+- `PUBLIC_BASE_URL` (default `https://api.kingmyco.io`)
+- `EXPECTED_SHA` (fails if deployed commit hash differs)
+
 ### 4) Reverse proxy / TLS
 
 Terminate TLS in your ingress/proxy (Nginx, Caddy, Cloudflare tunnel, etc.) and forward traffic to `api:3000`.
