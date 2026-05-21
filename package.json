@@ -8,7 +8,8 @@
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "demo": "tsx src/demo.ts"
+    "demo": "tsx src/demo.ts",
+    "start:api": "tsx src/server.ts"
   },
   "repository": {
     "type": "git",

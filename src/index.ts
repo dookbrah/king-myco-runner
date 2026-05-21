@@ -1,4 +1,7 @@
 export { MycoQuestEngine } from "./mycoQuestEngine";
 export { AdaptiveDirector } from "./ai/adaptiveDirector";
 export { applySessionTelemetry, createInitialProfile } from "./ai/playerModel";
+export { KingMycoEcosystemHub } from "./platform/ecosystemHub";
+export * from "./platform/liveOps";
+export * from "./platform/types";
 export * from "./types";
