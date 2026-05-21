@@ -212,6 +212,13 @@ const start = async (): Promise<void> => {
       const method = request.method ?? "GET";
       const parsedUrl = new URL(request.url ?? "/", "http://localhost");
       const pathname = parsedUrl.pathname;
+      const routePath =
+        pathname.startsWith("/api/") ||
+        pathname.startsWith("/webhooks/") ||
+        pathname === "/health" ||
+        pathname === "/dev/myco-quest"
+          ? pathname
+          : `/api${pathname}`;
 
       applyCorsHeaders(request, response, corsAllowedOrigins);
 
@@ -221,7 +228,7 @@ const start = async (): Promise<void> => {
         return;
       }
 
-      if (method === "GET" && (pathname === "/health" || pathname === "/api/health")) {
+      if (method === "GET" && (routePath === "/health" || routePath === "/api/health")) {
         return sendJson(response, 200, {
           status: "ok",
           service: "king-myco-ecosystem-hub",
@@ -230,13 +237,13 @@ const start = async (): Promise<void> => {
 
       if (
         method === "GET" &&
-        (pathname === "/dev/myco-quest" || pathname === "/api/dev/myco-quest")
+        (routePath === "/dev/myco-quest" || routePath === "/api/dev/myco-quest")
       ) {
         const html = await readFile("public/myco-quest-dev.html", "utf8");
         return sendHtml(response, 200, html);
       }
 
-      if (method === "POST" && pathname === "/api/identity/link") {
+      if (method === "POST" && routePath === "/api/identity/link") {
         const rawBody = await readRawBody(request);
         const body = parseJsonBody<Record<string, unknown>>(rawBody);
         const source = parseSource(body.source);
@@ -251,7 +258,7 @@ const start = async (): Promise<void> => {
         return sendJson(response, 200, snapshot);
       }
 
-      if (method === "POST" && pathname === "/api/run/generate") {
+      if (method === "POST" && routePath === "/api/run/generate") {
         const rawBody = await readRawBody(request);
         const body = parseJsonBody<Record<string, unknown>>(rawBody);
         const source = parseSource(body.source);
@@ -269,7 +276,7 @@ const start = async (): Promise<void> => {
         return sendJson(response, 200, snapshot);
       }
 
-      if (method === "POST" && pathname === "/api/session/record") {
+      if (method === "POST" && routePath === "/api/session/record") {
         const rawBody = await readRawBody(request);
         const body = parseJsonBody<Record<string, unknown>>(rawBody);
         const source = parseSource(body.source);
@@ -287,7 +294,7 @@ const start = async (): Promise<void> => {
         return sendJson(response, 200, receipt);
       }
 
-      if (method === "POST" && pathname === "/api/mycoai/coach") {
+      if (method === "POST" && routePath === "/api/mycoai/coach") {
         const rawBody = await readRawBody(request);
         const body = parseJsonBody<Record<string, unknown>>(rawBody);
         const source = parseSource(body.source);
@@ -303,7 +310,7 @@ const start = async (): Promise<void> => {
         return sendJson(response, 200, coaching);
       }
 
-      if (method === "POST" && pathname === "/api/solana/challenge") {
+      if (method === "POST" && routePath === "/api/solana/challenge") {
         const rawBody = await readRawBody(request);
         const body = parseJsonBody<Record<string, unknown>>(rawBody);
         const source = parseSource(body.source);
@@ -319,7 +326,7 @@ const start = async (): Promise<void> => {
         return sendJson(response, 200, challenge);
       }
 
-      if (method === "POST" && pathname === "/api/solana/verify-link") {
+      if (method === "POST" && routePath === "/api/solana/verify-link") {
         const rawBody = await readRawBody(request);
         const body = parseJsonBody<Record<string, unknown>>(rawBody);
         const source = parseSource(body.source);
@@ -337,14 +344,14 @@ const start = async (): Promise<void> => {
         return sendJson(response, 200, result);
       }
 
-      const solanaWalletMatch = pathname.match(/^\/api\/solana\/wallet\/([^/]+)$/);
+      const solanaWalletMatch = routePath.match(/^\/api\/solana\/wallet\/([^/]+)$/);
       if (method === "GET" && solanaWalletMatch) {
         const walletAddress = decodeURIComponent(solanaWalletMatch[1]);
         const snapshot = await hub.getSolanaWalletSnapshot(walletAddress);
         return sendJson(response, 200, snapshot);
       }
 
-      if (method === "GET" && pathname === "/api/solana/rewards/intents") {
+      if (method === "GET" && routePath === "/api/solana/rewards/intents") {
         assertAdminKey(request, adminKey);
 
         const statusRaw = parsedUrl.searchParams.get("status");
@@ -370,7 +377,7 @@ const start = async (): Promise<void> => {
         return sendJson(response, 200, { intents });
       }
 
-      if (method === "POST" && pathname === "/api/solana/rewards/claim") {
+      if (method === "POST" && routePath === "/api/solana/rewards/claim") {
         const rawBody = await readRawBody(request);
         const body = parseJsonBody<Record<string, unknown>>(rawBody);
         const source = parseSource(body.source);
@@ -400,7 +407,7 @@ const start = async (): Promise<void> => {
         return sendJson(response, 200, receipt);
       }
 
-      if (method === "POST" && pathname === "/api/solana/rewards/prepare") {
+      if (method === "POST" && routePath === "/api/solana/rewards/prepare") {
         assertAdminKey(request, adminKey);
 
         const rawBody = await readRawBody(request);
@@ -430,7 +437,7 @@ const start = async (): Promise<void> => {
         return sendJson(response, 200, intent);
       }
 
-      if (method === "POST" && pathname === "/api/solana/rewards/process") {
+      if (method === "POST" && routePath === "/api/solana/rewards/process") {
         assertAdminKey(request, adminKey);
 
         const rawBody = await readRawBody(request);
@@ -446,7 +453,7 @@ const start = async (): Promise<void> => {
         return sendJson(response, 200, summary);
       }
 
-      if (method === "POST" && pathname === "/api/solana/rewards/status") {
+      if (method === "POST" && routePath === "/api/solana/rewards/status") {
         assertAdminKey(request, adminKey);
 
         const rawBody = await readRawBody(request);
@@ -466,7 +473,7 @@ const start = async (): Promise<void> => {
         return sendJson(response, 200, receipt);
       }
 
-      if (method === "POST" && pathname === "/webhooks/mycokingdom_bot") {
+      if (method === "POST" && routePath === "/webhooks/mycokingdom_bot") {
         const rawBody = await readRawBody(request);
 
         if (
@@ -491,7 +498,7 @@ const start = async (): Promise<void> => {
         return sendJson(response, 200, receipt);
       }
 
-      if (method === "POST" && pathname === "/webhooks/mycoai_bot") {
+      if (method === "POST" && routePath === "/webhooks/mycoai_bot") {
         const rawBody = await readRawBody(request);
 
         if (
@@ -516,7 +523,7 @@ const start = async (): Promise<void> => {
         return sendJson(response, 200, receipt);
       }
 
-      if (method === "POST" && pathname === "/webhooks/openclaw") {
+      if (method === "POST" && routePath === "/webhooks/openclaw") {
         const rawBody = await readRawBody(request);
 
         if (
@@ -548,11 +555,11 @@ const start = async (): Promise<void> => {
         return sendJson(response, 200, receipt);
       }
 
-      if (method === "GET" && pathname === "/api/liveops") {
+      if (method === "GET" && routePath === "/api/liveops") {
         return sendJson(response, 200, hub.getLiveOps());
       }
 
-      if (method === "POST" && pathname === "/api/liveops") {
+      if (method === "POST" && routePath === "/api/liveops") {
         assertAdminKey(request, adminKey);
 
         const rawBody = await readRawBody(request);
@@ -561,7 +568,7 @@ const start = async (): Promise<void> => {
         return sendJson(response, 200, config);
       }
 
-      if (method === "GET" && pathname === "/api/analytics/summary") {
+      if (method === "GET" && routePath === "/api/analytics/summary") {
         assertAdminKey(request, adminKey);
         const limitRaw = parsedUrl.searchParams.get("limit");
         const limit = limitRaw ? Number(limitRaw) : 300;
@@ -571,7 +578,7 @@ const start = async (): Promise<void> => {
         return sendJson(response, 200, summary);
       }
 
-      if (method === "GET" && pathname === "/api/ecosystem/communication") {
+      if (method === "GET" && routePath === "/api/ecosystem/communication") {
         assertAdminKey(request, adminKey);
         const windowMinutesRaw = parsedUrl.searchParams.get("windowMinutes");
         const minEventsPerSourceRaw = parsedUrl.searchParams.get("minEventsPerSource");
@@ -595,7 +602,7 @@ const start = async (): Promise<void> => {
         return sendJson(response, 200, status);
       }
 
-      if (method === "POST" && pathname === "/api/ecosystem/heartbeat/pulse") {
+      if (method === "POST" && routePath === "/api/ecosystem/heartbeat/pulse") {
         assertAdminKey(request, adminKey);
 
         const rawBody = await readRawBody(request);
@@ -624,7 +631,7 @@ const start = async (): Promise<void> => {
         return sendJson(response, 200, receipt);
       }
 
-      const devHudMatch = pathname.match(/^\/api\/dev\/hud\/([^/]+)$/);
+      const devHudMatch = routePath.match(/^\/api\/dev\/hud\/([^/]+)$/);
       if (method === "GET" && devHudMatch) {
         assertAdminKey(request, adminKey);
         const playerId = decodeURIComponent(devHudMatch[1]);
@@ -652,13 +659,13 @@ const start = async (): Promise<void> => {
         return sendJson(response, 200, bundle);
       }
 
-      const playerMatch = pathname.match(/^\/api\/player\/([^/]+)$/);
+      const playerMatch = routePath.match(/^\/api\/player\/([^/]+)$/);
       if (method === "GET" && playerMatch) {
         const playerId = decodeURIComponent(playerMatch[1]);
         return sendJson(response, 200, hub.getPlayerSnapshot(playerId));
       }
 
-      const leaderboardMatch = pathname.match(/^\/api\/leaderboard\/([^/]+)$/);
+      const leaderboardMatch = routePath.match(/^\/api\/leaderboard\/([^/]+)$/);
       if (method === "GET" && leaderboardMatch) {
         const mode = decodeURIComponent(leaderboardMatch[1]);
         const includeQuarantined =

@@ -74,6 +74,9 @@ Myco Quest adaptive AI game-core + ecosystem backend for King Myco.
 - `POST /webhooks/mycoai_bot`
 - `POST /webhooks/openclaw`
 
+
+Proxy compatibility: if an upstream reverse proxy strips the `/api` prefix, the backend also accepts stripped gameplay/admin paths (for example `/run/generate`, `/session/record`, `/dev/hud/:playerId`) so deployments remain functional while proxy rules are being corrected.
+
 ### Solana (Web3)
 - `POST /api/solana/challenge`
 - `POST /api/solana/verify-link`
