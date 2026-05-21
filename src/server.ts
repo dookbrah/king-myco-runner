@@ -510,6 +510,35 @@ const start = async (): Promise<void> => {
         return sendJson(response, 200, status);
       }
 
+      if (method === "POST" && pathname === "/api/ecosystem/heartbeat/pulse") {
+        assertAdminKey(request, adminKey);
+
+        const rawBody = await readRawBody(request);
+        const body = parseJsonBody<Record<string, unknown>>(rawBody);
+        const sourcesRaw = Array.isArray(body.sources)
+          ? body.sources
+          : undefined;
+
+        const sources = sourcesRaw
+          ? sourcesRaw
+              .map((source) => parseSource(source))
+          : undefined;
+
+        const receipt = await hub.emitEcosystemHeartbeat({
+          sources,
+          eventName:
+            typeof body.eventName === "string" ? body.eventName : undefined,
+          payload:
+            body.payload &&
+            typeof body.payload === "object" &&
+            !Array.isArray(body.payload)
+              ? (body.payload as Record<string, unknown>)
+              : undefined,
+        });
+
+        return sendJson(response, 200, receipt);
+      }
+
       const playerMatch = pathname.match(/^\/api\/player\/([^/]+)$/);
       if (method === "GET" && playerMatch) {
         const playerId = decodeURIComponent(playerMatch[1]);

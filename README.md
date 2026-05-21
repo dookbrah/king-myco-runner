@@ -62,6 +62,7 @@ Myco Quest adaptive AI game-core + ecosystem backend for King Myco.
 ### Analytics
 - `GET /api/analytics/summary` (admin key)
 - `GET /api/ecosystem/communication` (admin key)
+- `POST /api/ecosystem/heartbeat/pulse` (admin key)
 
 ### Webhooks
 - `POST /webhooks/mycokingdom_bot`
@@ -110,6 +111,9 @@ Optional query params:
 - `limit` (default `1000`, max `2000`)
 
 The response includes per-source event counts, last-seen timestamps, observed event types, and a global `allSourcesActive` boolean.
+
+Manual heartbeat pulse example:
+- `POST /api/ecosystem/heartbeat/pulse` with optional `{ "sources": ["kingmyco.io", "openclaw"], "eventName": "ecosystem_heartbeat" }`
 
 ## Security model
 
@@ -203,6 +207,17 @@ Claim request metadata (optional):
 - `clientIp` in body (otherwise inferred from proxy headers/remote address)
 - `x-client-fingerprint` header or `clientFingerprint` body field
 
+## Heartbeat worker
+
+Run `npm run start:heartbeat-worker` to continuously emit ecosystem heartbeat events for communication health.
+
+Heartbeat worker env vars:
+- `KINGMYCO_HEARTBEAT_POLL_MS` (default `60000`)
+- `KINGMYCO_HEARTBEAT_SOURCES` (comma-separated source list, defaults to all ecosystem sources)
+- `KINGMYCO_HEARTBEAT_EVENT_NAME` (default `ecosystem_heartbeat`)
+- `KINGMYCO_HEARTBEAT_INSTANCE` (default `default`)
+- `KINGMYCO_HEARTBEAT_DRY_RUN` (`true`/`false`, default `false`)
+
 ## Persistence options
 
 By default, state is persisted to local JSON via `KINGMYCO_STATE_PATH`.
@@ -220,3 +235,4 @@ When configured, snapshots and events are mirrored to Postgres/Redis.
 - `npm run build` - TypeScript compile
 - `npm run start:api` - launch API server
 - `npm run start:settlement-worker` - run automated Solana settlement loop
+- `npm run start:heartbeat-worker` - run ecosystem heartbeat loop

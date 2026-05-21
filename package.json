@@ -10,7 +10,8 @@
     "test:watch": "vitest",
     "demo": "tsx src/demo.ts",
     "start:api": "tsx src/server.ts",
-    "start:settlement-worker": "tsx src/workers/solanaSettlementWorker.ts"
+    "start:settlement-worker": "tsx src/workers/solanaSettlementWorker.ts",
+    "start:heartbeat-worker": "tsx src/workers/ecosystemHeartbeatWorker.ts"
   },
   "repository": {
     "type": "git",

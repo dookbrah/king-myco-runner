@@ -646,6 +646,33 @@ describe("King Myco ecosystem integration", () => {
     ).rejects.toThrow(/IP wallet diversity limit exceeded/);
   });
 
+
+  it("emits ecosystem heartbeat pulses for configured sources", async () => {
+    const pulse = await hub.emitEcosystemHeartbeat({
+      sources: ["kingmyco.io", "openclaw"],
+      eventName: "worker_heartbeat",
+      payload: {
+        origin: "test-suite",
+      },
+    });
+
+    expect(pulse.emittedCount).toBe(2);
+    expect(pulse.sources).toEqual(["kingmyco.io", "openclaw"]);
+    expect(pulse.eventName).toBe("worker_heartbeat");
+
+    const status = await hub.getEcosystemCommunicationStatus({
+      windowMinutes: 60,
+      minEventsPerSource: 1,
+      limit: 300,
+    });
+
+    expect(status.sourceStatuses["kingmyco.io"].healthy).toBe(true);
+    expect(status.sourceStatuses.openclaw.healthy).toBe(true);
+    expect(status.sourceStatuses.mycoai_bot.healthy).toBe(false);
+    expect(status.allSourcesActive).toBe(false);
+  });
+
+
   it("reports all ecosystem sources as active when communicating", async () => {
     await hub.linkIdentity({
       source: "mycokingdom_bot",

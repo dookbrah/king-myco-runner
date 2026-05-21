@@ -17,9 +17,11 @@ import { RewardEconomy } from "./rewardEconomy";
 import { SolanaService } from "./solanaService";
 import {
   AnalyticsSummary,
+  ECOSYSTEM_SOURCES,
   CoachingRequest,
   CoachingResponse,
   EcosystemCommunicationStatus,
+  EcosystemHeartbeatPulseReceipt,
   EcosystemSource,
   IdentityLinkRequest,
   PlatformEventType,
@@ -1011,6 +1013,55 @@ export class KingMycoEcosystemHub {
       accepted: true,
       source,
       eventId,
+    };
+  }
+
+  async emitEcosystemHeartbeat(input: {
+    sources?: EcosystemSource[];
+    eventName?: string;
+    payload?: Record<string, unknown>;
+  } = {}): Promise<EcosystemHeartbeatPulseReceipt> {
+    const requestedSources = input.sources ?? ECOSYSTEM_SOURCES;
+    const sourceSet = new Set(
+      requestedSources.filter((source): source is EcosystemSource =>
+        ECOSYSTEM_SOURCES.includes(source),
+      ),
+    );
+    const sources =
+      sourceSet.size > 0 ? Array.from(sourceSet) : [...ECOSYSTEM_SOURCES];
+
+    const eventName =
+      typeof input.eventName === "string" && input.eventName.trim().length > 0
+        ? input.eventName.trim()
+        : "ecosystem_heartbeat";
+    const emittedAt = new Date().toISOString();
+    const eventIdsBySource: Partial<Record<EcosystemSource, string>> = {};
+
+    for (const source of sources) {
+      const eventId = randomUUID();
+      eventIdsBySource[source] = eventId;
+
+      await this.repository.appendEvent({
+        id: eventId,
+        type: "webhook_ingested",
+        timestamp: emittedAt,
+        source,
+        payload: {
+          eventName,
+          heartbeat: true,
+          ...(input.payload ?? {}),
+        },
+      });
+    }
+
+    await this.repository.save();
+
+    return {
+      emittedAt,
+      eventName,
+      emittedCount: sources.length,
+      sources,
+      eventIdsBySource,
     };
   }
 

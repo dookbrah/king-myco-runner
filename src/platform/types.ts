@@ -326,6 +326,14 @@ export interface SolanaTransferQueueProcessSummary {
   processedIntentIds: string[];
 }
 
+export interface EcosystemHeartbeatPulseReceipt {
+  emittedAt: string;
+  eventName: string;
+  emittedCount: number;
+  sources: EcosystemSource[];
+  eventIdsBySource: Partial<Record<EcosystemSource, string>>;
+}
+
 export interface WebhookReceipt {
   accepted: boolean;
   source: EcosystemSource;
