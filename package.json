@@ -1,0 +1,34 @@
+{
+  "name": "king-myco-runner",
+  "version": "0.1.0",
+  "description": "Myco Quest adaptive AI game-core prototype",
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "demo": "tsx src/demo.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dookbrah/king-myco-runner.git"
+  },
+  "keywords": [
+    "myco",
+    "game-ai",
+    "procedural-generation",
+    "personalization"
+  ],
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dookbrah/king-myco-runner/issues"
+  },
+  "homepage": "https://github.com/dookbrah/king-myco-runner#readme",
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "tsx": "^4.22.3",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.7"
+  }
+}
