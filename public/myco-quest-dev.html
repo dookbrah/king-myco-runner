@@ -694,7 +694,10 @@
           : [];
 
         const encounterLines = run.encounters.map((encounter) => {
-          return `#${encounter.encounterNumber} ${encounter.lane} | ${encounter.title} | difficulty ${encounter.targetDifficulty}`;
+          const branchDirective = encounter.branchDirective
+            ? ` | ${encounter.branchDirective}`
+            : "";
+          return `#${encounter.encounterNumber} ${encounter.lane} | ${encounter.title} | difficulty ${encounter.targetDifficulty}${branchDirective}`;
         });
 
         get("runOutput").textContent = [...objectiveLines, ...encounterLines].join("\n");

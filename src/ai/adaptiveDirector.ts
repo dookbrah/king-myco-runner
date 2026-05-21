@@ -7,6 +7,7 @@ import {
   PlannedRun,
   PlayerProfile,
   RunObjective,
+  RunObjectiveBranch,
   RunObjectiveResult,
   SessionTelemetry,
 } from "../types";
@@ -129,6 +130,75 @@ interface ObjectiveChainContext {
   rewardMultiplier: number;
 }
 
+interface BranchEncounterTuning {
+  speedMultiplier: number;
+  densityMultiplier: number;
+  projectileMultiplier: number;
+  rewardMultiplier: number;
+  difficultyDelta: number;
+  directive: string;
+}
+
+const BRANCH_ENCOUNTER_TUNING: Record<
+  RunObjectiveBranch,
+  { focused: BranchEncounterTuning; offLane: BranchEncounterTuning }
+> = {
+  origin: {
+    focused: {
+      speedMultiplier: 1,
+      densityMultiplier: 1,
+      projectileMultiplier: 1,
+      rewardMultiplier: 1,
+      difficultyDelta: 0,
+      directive: "Origin pacing: scout lane patterns and stabilize.",
+    },
+    offLane: {
+      speedMultiplier: 1,
+      densityMultiplier: 1,
+      projectileMultiplier: 1,
+      rewardMultiplier: 1,
+      difficultyDelta: 0,
+      directive: "Origin pacing: maintain balanced route control.",
+    },
+  },
+  ascend: {
+    focused: {
+      speedMultiplier: 1.12,
+      densityMultiplier: 1.16,
+      projectileMultiplier: 1.14,
+      rewardMultiplier: 1.2,
+      difficultyDelta: 0.6,
+      directive: "Ascend pressure: elite surge in objective lane.",
+    },
+    offLane: {
+      speedMultiplier: 1.05,
+      densityMultiplier: 1.07,
+      projectileMultiplier: 1.06,
+      rewardMultiplier: 1.08,
+      difficultyDelta: 0.25,
+      directive: "Ascend pressure: tempo rising across flanks.",
+    },
+  },
+  recover: {
+    focused: {
+      speedMultiplier: 0.9,
+      densityMultiplier: 0.86,
+      projectileMultiplier: 0.88,
+      rewardMultiplier: 1.14,
+      difficultyDelta: -0.6,
+      directive: "Recover route: reduced pressure in objective lane.",
+    },
+    offLane: {
+      speedMultiplier: 0.96,
+      densityMultiplier: 0.94,
+      projectileMultiplier: 0.95,
+      rewardMultiplier: 1.07,
+      difficultyDelta: -0.25,
+      directive: "Recover route: controlled tempo for reset.",
+    },
+  },
+};
+
 export class AdaptiveDirector {
   private readonly banditByPlayer = new Map<string, PlayerBanditState>();
 
@@ -237,18 +307,34 @@ export class AdaptiveDirector {
       });
     }
 
+    const objective = this.createRunObjective({
+      profile,
+      laneUsage,
+      seed,
+      rng,
+      previousObjective,
+      previousObjectiveResult,
+    });
+
+    const encountersWithObjectiveLane = this.ensureObjectiveLaneCoverage({
+      encounters,
+      objective,
+      blueprintPool,
+      profile,
+      encounterCount,
+      rng,
+    });
+
+    const encountersWithBranchTuning = this.applyObjectiveBranchTuning(
+      encountersWithObjectiveLane,
+      objective,
+    );
+
     return {
       playerId: profile.playerId,
       seed,
-      encounters,
-      objective: this.createRunObjective({
-        profile,
-        laneUsage,
-        seed,
-        rng,
-        previousObjective,
-        previousObjectiveResult,
-      }),
+      encounters: encountersWithBranchTuning,
+      objective,
     };
   }
 
@@ -385,6 +471,163 @@ export class AdaptiveDirector {
       requirementDelta: -1,
       rewardMultiplier: 0.9,
     };
+  }
+
+  private ensureObjectiveLaneCoverage(input: {
+    encounters: PlannedEncounter[];
+    objective: RunObjective;
+    blueprintPool: EncounterBlueprint[];
+    profile: PlayerProfile;
+    encounterCount: number;
+    rng: () => number;
+  }): PlannedEncounter[] {
+    const {
+      encounters,
+      objective,
+      blueprintPool,
+      profile,
+      encounterCount,
+      rng,
+    } = input;
+
+    if (encounters.some((encounter) => encounter.lane === objective.targetLane)) {
+      return encounters;
+    }
+
+    const candidates = blueprintPool.filter(
+      (blueprint) => blueprint.lane === objective.targetLane,
+    );
+    if (candidates.length === 0 || encounters.length === 0) {
+      return encounters;
+    }
+
+    const replacementIndex = encounters.length - 1;
+    const replacementBlueprint = this.chooseBlueprint(
+      candidates,
+      profile,
+      replacementIndex,
+      encounterCount,
+      rng,
+    );
+    const targetDifficulty = this.computeTargetDifficulty(
+      profile,
+      replacementIndex,
+      encounterCount,
+      rng,
+    );
+
+    const suggestedLearningObjective = replacementBlueprint.teaches.find(
+      (element) => !profile.masteredElements.includes(element),
+    );
+    const suggestedMagicToPractice = this.getSuggestedMagicToPractice(
+      profile,
+      replacementBlueprint.requiredElements,
+    );
+    const narrativeTone = this.resolveNarrativeTone(profile.morality, rng);
+
+    const replacementEncounter: PlannedEncounter = {
+      encounterNumber: encounters[replacementIndex].encounterNumber,
+      lane: objective.targetLane,
+      blueprintId: replacementBlueprint.id,
+      title: replacementBlueprint.title,
+      description: replacementBlueprint.description,
+      requiredElements: replacementBlueprint.requiredElements,
+      suggestedLearningObjective: suggestedLearningObjective
+        ? `Practice ${suggestedLearningObjective.toUpperCase()} mechanics in combat.`
+        : undefined,
+      narrativeTone,
+      suggestedMagicToPractice,
+      targetDifficulty,
+      tuning: {
+        enemySpeedMultiplier: roundTo(
+          clamp(
+            0.86 +
+              targetDifficulty * 0.085 +
+              profile.playstyle.aggression * 0.11,
+            0.7,
+            1.9,
+          ),
+        ),
+        enemyDensityMultiplier: roundTo(
+          clamp(
+            0.84 + targetDifficulty * 0.1 + profile.playstyle.risk * 0.18,
+            0.7,
+            2.2,
+          ),
+        ),
+        projectileRateMultiplier: roundTo(
+          clamp(
+            0.82 +
+              targetDifficulty * 0.09 +
+              profile.playstyle.precision * 0.16,
+            0.7,
+            2,
+          ),
+        ),
+        rewardMultiplier: roundTo(
+          clamp(
+            0.9 + profile.novelty * 0.32 + (1 - profile.skill) * 0.2,
+            0.95,
+            1.85,
+          ),
+        ),
+      },
+    };
+
+    const nextEncounters = [...encounters];
+    nextEncounters[replacementIndex] = replacementEncounter;
+    return nextEncounters;
+  }
+
+  private applyObjectiveBranchTuning(
+    encounters: PlannedEncounter[],
+    objective: RunObjective,
+  ): PlannedEncounter[] {
+    const profile = BRANCH_ENCOUNTER_TUNING[objective.branch];
+
+    return encounters.map((encounter) => {
+      const tuningProfile =
+        encounter.lane === objective.targetLane ? profile.focused : profile.offLane;
+
+      return {
+        ...encounter,
+        branchDirective: tuningProfile.directive,
+        targetDifficulty: roundTo(
+          clamp(encounter.targetDifficulty + tuningProfile.difficultyDelta, 1, 10),
+        ),
+        tuning: {
+          enemySpeedMultiplier: roundTo(
+            clamp(
+              encounter.tuning.enemySpeedMultiplier * tuningProfile.speedMultiplier,
+              0.65,
+              2.5,
+            ),
+          ),
+          enemyDensityMultiplier: roundTo(
+            clamp(
+              encounter.tuning.enemyDensityMultiplier * tuningProfile.densityMultiplier,
+              0.65,
+              2.7,
+            ),
+          ),
+          projectileRateMultiplier: roundTo(
+            clamp(
+              encounter.tuning.projectileRateMultiplier *
+                tuningProfile.projectileMultiplier,
+              0.65,
+              2.6,
+            ),
+          ),
+          rewardMultiplier: roundTo(
+            clamp(
+              encounter.tuning.rewardMultiplier * tuningProfile.rewardMultiplier,
+              0.85,
+              2.4,
+            ),
+          ),
+        },
+      };
+    });
   }
 
   private chooseObjectiveLane(

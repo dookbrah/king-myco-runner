@@ -290,6 +290,12 @@ describe("King Myco ecosystem integration", () => {
     expect(secondObjective.branch).toBe("ascend");
     expect(secondObjective.prerequisiteObjectiveId).toBe(firstObjective.id);
     expect(secondObjective.targetLane).toBe(firstObjective.targetLane);
+
+    const ascendFocusedEncounter = nextRun.lastRun?.encounters.find(
+      (encounter) => encounter.lane === secondObjective.targetLane,
+    );
+    expect(ascendFocusedEncounter?.branchDirective).toMatch(/Ascend pressure/);
+    expect(ascendFocusedEncounter?.tuning.rewardMultiplier ?? 0).toBeGreaterThan(1);
   });
 
   it("creates recovery branch when objective is missed", async () => {
@@ -356,6 +362,11 @@ describe("King Myco ecosystem integration", () => {
     expect(secondObjective.branch).toBe("recover");
     expect(secondObjective.prerequisiteObjectiveId).toBe(firstObjective.id);
     expect(secondObjective.targetLane).toBe(firstObjective.targetLane);
+
+    const recoverFocusedEncounter = nextRun.lastRun?.encounters.find(
+      (encounter) => encounter.lane === secondObjective.targetLane,
+    );
+    expect(recoverFocusedEncounter?.branchDirective).toMatch(/Recover route/);
   });
 
   it("requires fresh wallet challenge for solana verification", async () => {

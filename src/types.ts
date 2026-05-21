@@ -92,6 +92,7 @@ export interface PlannedEncounter {
   suggestedLearningObjective?: string;
   narrativeTone?: NarrativeTone;
   suggestedMagicToPractice?: string;
+  branchDirective?: string;
   targetDifficulty: number;
   tuning: EncounterTuning;
 }
