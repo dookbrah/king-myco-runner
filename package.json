@@ -14,7 +14,8 @@
     "start:settlement-worker": "tsx src/workers/solanaSettlementWorker.ts",
     "start:settlement-worker:prod": "node dist/workers/solanaSettlementWorker.js",
     "start:heartbeat-worker": "tsx src/workers/ecosystemHeartbeatWorker.ts",
-    "start:heartbeat-worker:prod": "node dist/workers/ecosystemHeartbeatWorker.js"
+    "start:heartbeat-worker:prod": "node dist/workers/ecosystemHeartbeatWorker.js",
+    "playground": "bash scripts/dev-playground.sh"
   },
   "repository": {
     "type": "git",

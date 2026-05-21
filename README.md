@@ -245,6 +245,24 @@ When configured, snapshots and events are mirrored to Postgres/Redis.
 - `npm run start:settlement-worker:prod` - run compiled settlement worker
 - `npm run start:heartbeat-worker` - run ecosystem heartbeat loop
 - `npm run start:heartbeat-worker:prod` - run compiled heartbeat worker
+- `npm run playground` - start a live local dev playground loop (API + heartbeat + sample game sessions)
+
+### Local dev playground (single command)
+
+Use this to immediately generate adaptive runs and session telemetry while you tune game systems:
+
+```bash
+npm run playground
+```
+
+Useful playground env overrides:
+- `PLAYGROUND_PLAYER_ID` (default `dev-playground-player`)
+- `PLAYGROUND_SOURCE` (default `kingmyco.io`)
+- `PLAYGROUND_INTERVAL_SEC` (default `12`)
+- `PLAYGROUND_TICKS` (default `0`, infinite loop when `0`)
+- `PLAYGROUND_REUSE_EXISTING_API` (default `true`)
+- `PLAYGROUND_REUSE_EXISTING_HEARTBEAT` (default `true`)
+- `PLAYGROUND_SOURCE_TOKEN` (optional, if source auth is enabled for the selected source)
 
 
 ## Production deployment (kingmyco.io)
