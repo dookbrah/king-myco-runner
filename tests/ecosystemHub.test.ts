@@ -338,4 +338,76 @@ describe("King Myco ecosystem integration", () => {
     expect(prepared.find((intent) => intent.id === claim.intent.id)).toBeUndefined();
   });
 
+  it("reuses same intent for idempotent reward claim retries", async () => {
+    const signer = Keypair.generate();
+
+    await hub.generateRun({
+      source: "kingmyco.io",
+      externalId: "player-idempotent",
+      claims: { walletAddress: signer.publicKey.toBase58() },
+    });
+
+    await hub.recordSession({
+      source: "kingmyco.io",
+      externalId: "player-idempotent",
+      claims: { walletAddress: signer.publicKey.toBase58() },
+      telemetry: {
+        playerId: "player-idempotent",
+        completedEncounters: 14,
+        failedEncounters: 0,
+        damageTaken: 22,
+        perfectActions: 7,
+        discoveryActions: 5,
+        riskyActions: 4,
+        sessionLengthSec: 890,
+        usedElements: ["fire", "water", "ice"],
+        abandoned: false,
+      },
+      score: 24400,
+    });
+
+    const challenge = await hub.createSolanaWalletChallenge({
+      source: "kingmyco.io",
+      externalId: "player-idempotent",
+      claims: { walletAddress: signer.publicKey.toBase58() },
+      walletAddress: signer.publicKey.toBase58(),
+    });
+
+    const signature = nacl.sign.detached(
+      new TextEncoder().encode(challenge.message),
+      signer.secretKey,
+    );
+
+    await hub.verifySolanaWalletLink({
+      source: "kingmyco.io",
+      externalId: "player-idempotent",
+      claims: { walletAddress: signer.publicKey.toBase58() },
+      walletAddress: signer.publicKey.toBase58(),
+      message: challenge.message,
+      signature: Buffer.from(signature).toString("base64"),
+    });
+
+    const first = await hub.claimSolanaRewards({
+      source: "kingmyco.io",
+      externalId: "player-idempotent",
+      claims: { walletAddress: signer.publicKey.toBase58() },
+      destinationWallet: signer.publicKey.toBase58(),
+      sporesToRedeem: 200,
+      idempotencyKey: "claim-key-1",
+    });
+
+    const second = await hub.claimSolanaRewards({
+      source: "kingmyco.io",
+      externalId: "player-idempotent",
+      claims: { walletAddress: signer.publicKey.toBase58() },
+      destinationWallet: signer.publicKey.toBase58(),
+      sporesToRedeem: 200,
+      idempotencyKey: "claim-key-1",
+    });
+
+    expect(second.reused).toBe(true);
+    expect(second.intent.id).toBe(first.intent.id);
+    expect(second.wallet.spores).toBe(first.wallet.spores);
+  });
+
 });

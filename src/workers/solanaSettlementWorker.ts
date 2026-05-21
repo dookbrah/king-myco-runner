@@ -62,43 +62,16 @@ const start = async (): Promise<void> => {
 
   while (!shouldStop) {
     try {
-      const prepared = hub.getTransferIntents({
-        status: "prepared",
-        limit: preparedBatch,
-      });
-      const submitted = hub.getTransferIntents({
-        status: "submitted",
-        limit: submittedBatch,
+      const summary = await hub.processTransferQueues({
+        preparedLimit: preparedBatch,
+        submittedLimit: submittedBatch,
+        dryRun,
       });
 
-      if (prepared.length === 0 && submitted.length === 0) {
-        await sleep(pollMs);
-        continue;
-      }
-
-      // eslint-disable-next-line no-console
-      console.log(
-        `Settlement tick: prepared=${prepared.length}, submitted=${submitted.length}`,
-      );
-
-      if (!dryRun) {
-        for (const intent of prepared) {
-          const receipt = await hub.processPreparedTransferIntent(intent.id);
-          // eslint-disable-next-line no-console
-          console.log(
-            `Processed prepared intent ${intent.id}: ${intent.status} -> ${receipt.intent.status}`,
-          );
-        }
-
-        for (const intent of submitted) {
-          const receipt = await hub.reconcileSubmittedTransferIntent(intent.id);
-          if (receipt.intent.status !== intent.status) {
-            // eslint-disable-next-line no-console
-            console.log(
-              `Reconciled submitted intent ${intent.id}: ${intent.status} -> ${receipt.intent.status}`,
-            );
-          }
-        }
+      const hasWork = summary.preparedChecked > 0 || summary.submittedChecked > 0;
+      if (hasWork) {
+        // eslint-disable-next-line no-console
+        console.log(`Settlement tick summary: ${JSON.stringify(summary)}`);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "unknown error";

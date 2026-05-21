@@ -30,6 +30,8 @@ import {
   SessionReceipt,
   SolanaRewardClaimReceipt,
   SolanaRewardClaimRequest,
+  SolanaTransferQueueProcessRequest,
+  SolanaTransferQueueProcessSummary,
   SolanaRewardTransferIntent,
   SolanaRewardTransferRequest,
   SolanaRewardTransferStatusReceipt,
@@ -414,6 +416,34 @@ export class KingMycoEcosystemHub {
       },
     );
 
+    const idempotencyKey = request.idempotencyKey?.trim();
+    if (idempotencyKey) {
+      const existing = this.repository.getClaimIdempotencyRecord(
+        playerId,
+        request.source,
+        idempotencyKey,
+      );
+
+      if (existing) {
+        const existingIntent = this.repository.getTransferIntent(existing.intentId);
+        if (!existingIntent) {
+          throw new Error(
+            `Idempotency record references missing transfer intent: ${existing.intentId}`,
+          );
+        }
+
+        return {
+          playerId,
+          sporesDebited: existing.sporesDebited,
+          lamports: existing.lamports,
+          wallet: this.repository.getWallet(playerId),
+          intent: existingIntent,
+          idempotencyKey,
+          reused: true,
+        };
+      }
+    }
+
     const proof = this.repository.getWalletProof(request.destinationWallet);
     if (!proof || proof.playerId !== playerId || !proof.verified) {
       throw new Error(
@@ -468,6 +498,18 @@ export class KingMycoEcosystemHub {
     this.repository.setWallet(playerId, updatedWallet);
     this.repository.setTransferIntent(intent);
 
+    if (idempotencyKey) {
+      this.repository.setClaimIdempotencyRecord({
+        key: idempotencyKey,
+        playerId,
+        source: request.source,
+        intentId: intent.id,
+        sporesDebited: sporesToRedeem,
+        lamports,
+        createdAt: new Date().toISOString(),
+      });
+    }
+
     await this.emitEvent("reward_intent_prepared", {
       playerId,
       source: request.source,
@@ -487,6 +529,8 @@ export class KingMycoEcosystemHub {
       lamports,
       wallet: updatedWallet,
       intent,
+      idempotencyKey,
+      reused: false,
     };
   }
 
@@ -681,6 +725,64 @@ export class KingMycoEcosystemHub {
           ? "on-chain transfer failed"
           : undefined,
     });
+  }
+
+  async processTransferQueues(
+    request: SolanaTransferQueueProcessRequest = {},
+  ): Promise<SolanaTransferQueueProcessSummary> {
+    const preparedLimit = request.preparedLimit ?? 15;
+    const submittedLimit = request.submittedLimit ?? 30;
+    const dryRun = request.dryRun ?? false;
+
+    const prepared = this.getTransferIntents({
+      status: "prepared",
+      limit: preparedLimit,
+    });
+    const submitted = this.getTransferIntents({
+      status: "submitted",
+      limit: submittedLimit,
+    });
+
+    const summary: SolanaTransferQueueProcessSummary = {
+      preparedChecked: prepared.length,
+      preparedSubmitted: 0,
+      preparedFailed: 0,
+      submittedChecked: submitted.length,
+      submittedSettled: 0,
+      submittedFailed: 0,
+      submittedPending: 0,
+      processedIntentIds: [],
+    };
+
+    if (dryRun) {
+      return summary;
+    }
+
+    for (const intent of prepared) {
+      const receipt = await this.processPreparedTransferIntent(intent.id);
+      summary.processedIntentIds.push(intent.id);
+
+      if (receipt.intent.status === "submitted") {
+        summary.preparedSubmitted += 1;
+      } else if (receipt.intent.status === "failed") {
+        summary.preparedFailed += 1;
+      }
+    }
+
+    for (const intent of submitted) {
+      const receipt = await this.reconcileSubmittedTransferIntent(intent.id);
+      summary.processedIntentIds.push(intent.id);
+
+      if (receipt.intent.status === "settled") {
+        summary.submittedSettled += 1;
+      } else if (receipt.intent.status === "failed") {
+        summary.submittedFailed += 1;
+      } else {
+        summary.submittedPending += 1;
+      }
+    }
+
+    return summary;
   }
 
   async getSolanaWalletSnapshot(walletAddress: string) {

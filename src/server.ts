@@ -9,6 +9,7 @@ import {
   SolanaRewardClaimRequest,
   SolanaRewardTransferRequest,
   SolanaRewardTransferStatusRequest,
+  SolanaTransferQueueProcessRequest,
   SolanaWalletChallengeRequest,
   SolanaWalletVerificationRequest,
   SourceScope,
@@ -236,6 +237,32 @@ const start = async (): Promise<void> => {
         return sendJson(response, 200, snapshot);
       }
 
+      if (method === "GET" && pathname === "/api/solana/rewards/intents") {
+        assertAdminKey(request, adminKey);
+
+        const statusRaw = parsedUrl.searchParams.get("status");
+        const status =
+          statusRaw === "prepared" ||
+          statusRaw === "submitted" ||
+          statusRaw === "settled" ||
+          statusRaw === "failed"
+            ? statusRaw
+            : undefined;
+        const playerId = parsedUrl.searchParams.get("playerId") ?? undefined;
+        const limitRaw = parsedUrl.searchParams.get("limit");
+        const limit =
+          limitRaw && Number.isFinite(Number(limitRaw))
+            ? Number(limitRaw)
+            : undefined;
+
+        const intents = hub.getTransferIntents({
+          status,
+          playerId,
+          limit,
+        });
+        return sendJson(response, 200, { intents });
+      }
+
       if (method === "POST" && pathname === "/api/solana/rewards/claim") {
         const rawBody = await readRawBody(request);
         const body = parseJsonBody<Record<string, unknown>>(rawBody);
@@ -249,6 +276,10 @@ const start = async (): Promise<void> => {
           destinationWallet: requiredString(body.destinationWallet, "destinationWallet"),
           sporesToRedeem: requiredNumber(body.sporesToRedeem, "sporesToRedeem"),
           memo: typeof body.memo === "string" ? body.memo : undefined,
+          idempotencyKey:
+            typeof body.idempotencyKey === "string"
+              ? body.idempotencyKey
+              : getHeader(request, "x-idempotency-key"),
         } satisfies SolanaRewardClaimRequest);
 
         return sendJson(response, 200, receipt);
@@ -278,6 +309,22 @@ const start = async (): Promise<void> => {
         } satisfies SolanaRewardTransferRequest);
 
         return sendJson(response, 200, intent);
+      }
+
+      if (method === "POST" && pathname === "/api/solana/rewards/process") {
+        assertAdminKey(request, adminKey);
+
+        const rawBody = await readRawBody(request);
+        const body = parseJsonBody<Record<string, unknown>>(rawBody);
+        const summary = await hub.processTransferQueues({
+          preparedLimit:
+            typeof body.preparedLimit === "number" ? body.preparedLimit : undefined,
+          submittedLimit:
+            typeof body.submittedLimit === "number" ? body.submittedLimit : undefined,
+          dryRun: typeof body.dryRun === "boolean" ? body.dryRun : undefined,
+        } satisfies SolanaTransferQueueProcessRequest);
+
+        return sendJson(response, 200, summary);
       }
 
       if (method === "POST" && pathname === "/api/solana/rewards/status") {

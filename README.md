@@ -72,6 +72,8 @@ Myco Quest adaptive AI game-core + ecosystem backend for King Myco.
 - `POST /api/solana/verify-link`
 - `GET /api/solana/wallet/:walletAddress`
 - `POST /api/solana/rewards/claim`
+- `GET /api/solana/rewards/intents` (admin key)
+- `POST /api/solana/rewards/process` (admin key)
 - `POST /api/solana/rewards/prepare` (admin key)
 - `POST /api/solana/rewards/status` (admin key)
 
@@ -87,10 +89,11 @@ Challenges are one-time and expire automatically.
 ## Solana reward claim flow
 
 1. Verified player calls `POST /api/solana/rewards/claim` with `sporesToRedeem`.
-2. Backend converts spores to lamports via `sporeToLamportsRate` in live ops.
-3. Backend creates unsigned transfer intent and debits spores immediately.
-4. Settlement service updates result using `POST /api/solana/rewards/status`.
-5. If status becomes `failed`, spores are automatically refunded.
+2. Optional idempotency protection: send `idempotencyKey` (or `x-idempotency-key`) to prevent duplicate debit on retries.
+3. Backend converts spores to lamports via `sporeToLamportsRate` in live ops.
+4. Backend creates unsigned transfer intent and debits spores immediately.
+5. Settlement service updates result using `POST /api/solana/rewards/status` or `POST /api/solana/rewards/process`.
+6. If status becomes `failed`, spores are automatically refunded.
 
 ## Security model
 
@@ -141,6 +144,10 @@ Worker tuning env vars:
 - `KINGMYCO_SETTLEMENT_PREPARED_BATCH`
 - `KINGMYCO_SETTLEMENT_SUBMITTED_BATCH`
 - `KINGMYCO_SETTLEMENT_DRY_RUN`
+
+Operator helper endpoints:
+- `GET /api/solana/rewards/intents?status=prepared&limit=20`
+- `POST /api/solana/rewards/process`
 
 ## Persistence options
 

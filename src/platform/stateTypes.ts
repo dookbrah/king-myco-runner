@@ -4,6 +4,7 @@ import {
   LinkedIdentity,
   PlatformEvent,
   PlayerWallet,
+  SolanaClaimIdempotencyRecord,
   SolanaRewardTransferIntent,
   SolanaWalletChallenge,
   SolanaWalletProof,
@@ -23,6 +24,7 @@ export interface PersistentState {
   walletProofs: Record<string, SolanaWalletProof>;
   walletChallenges: Record<string, SolanaWalletChallenge>;
   transferIntents: Record<string, SolanaRewardTransferIntent>;
+  claimIdempotency: Record<string, SolanaClaimIdempotencyRecord>;
 }
 
 export const createDefaultWallet = (): PlayerWallet => ({
@@ -52,4 +54,5 @@ export const normalizePersistentState = (
   walletProofs: raw?.walletProofs ?? {},
   walletChallenges: raw?.walletChallenges ?? {},
   transferIntents: raw?.transferIntents ?? {},
+  claimIdempotency: raw?.claimIdempotency ?? {},
 });

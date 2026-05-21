@@ -247,6 +247,7 @@ export interface SolanaRewardClaimRequest extends IdentityLinkRequest {
   destinationWallet: string;
   sporesToRedeem: number;
   memo?: string;
+  idempotencyKey?: string;
 }
 
 export interface SolanaRewardClaimReceipt {
@@ -255,6 +256,18 @@ export interface SolanaRewardClaimReceipt {
   lamports: number;
   wallet: PlayerWallet;
   intent: SolanaRewardTransferIntent;
+  idempotencyKey?: string;
+  reused?: boolean;
+}
+
+export interface SolanaClaimIdempotencyRecord {
+  key: string;
+  playerId: string;
+  source: EcosystemSource;
+  intentId: string;
+  sporesDebited: number;
+  lamports: number;
+  createdAt: string;
 }
 
 export interface SolanaRewardTransferStatusRequest {
@@ -267,6 +280,23 @@ export interface SolanaRewardTransferStatusRequest {
 export interface SolanaRewardTransferStatusReceipt {
   intent: SolanaRewardTransferIntent;
   wallet: PlayerWallet;
+}
+
+export interface SolanaTransferQueueProcessRequest {
+  preparedLimit?: number;
+  submittedLimit?: number;
+  dryRun?: boolean;
+}
+
+export interface SolanaTransferQueueProcessSummary {
+  preparedChecked: number;
+  preparedSubmitted: number;
+  preparedFailed: number;
+  submittedChecked: number;
+  submittedSettled: number;
+  submittedFailed: number;
+  submittedPending: number;
+  processedIntentIds: string[];
 }
 
 export interface WebhookReceipt {

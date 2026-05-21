@@ -18,6 +18,7 @@ import {
   LinkedIdentity,
   PlatformEvent,
   PlayerWallet,
+  SolanaClaimIdempotencyRecord,
   SolanaRewardTransferIntent,
   SolanaWalletChallenge,
   SolanaWalletProof,
@@ -306,6 +307,23 @@ export class KingMycoRepository {
     return intents.filter((intent) => intent.playerId === playerId);
   }
 
+
+  setClaimIdempotencyRecord(record: SolanaClaimIdempotencyRecord): void {
+    this.state.claimIdempotency[
+      this.createClaimIdempotencyKey(record.playerId, record.source, record.key)
+    ] = record;
+  }
+
+  getClaimIdempotencyRecord(
+    playerId: string,
+    source: EcosystemSource,
+    key: string,
+  ): SolanaClaimIdempotencyRecord | undefined {
+    return this.state.claimIdempotency[
+      this.createClaimIdempotencyKey(playerId, source, key)
+    ];
+  }
+
   async appendEvent(event: PlatformEvent): Promise<void> {
     this.state.events.push(event);
     this.state.events = this.state.events.slice(-5000);
@@ -425,10 +443,32 @@ export class KingMycoRepository {
       }
     }
 
+
+    for (const [key, record] of Object.entries(this.state.claimIdempotency)) {
+      if (record.playerId === fromId) {
+        delete this.state.claimIdempotency[key];
+        this.state.claimIdempotency[
+          this.createClaimIdempotencyKey(targetId, record.source, record.key)
+        ] = {
+          ...record,
+          playerId: targetId,
+        };
+      }
+    }
+
     delete this.state.profiles[fromId];
     delete this.state.wallets[fromId];
     delete this.state.identitiesByPlayer[fromId];
     delete this.state.recentFingerprints[fromId];
+
     delete this.state.lastRunByPlayer[fromId];
+  }
+
+  private createClaimIdempotencyKey(
+    playerId: string,
+    source: EcosystemSource,
+    key: string,
+  ): string {
+    return `${playerId}:${source}:${key.trim().toLowerCase()}`;
   }
 }
