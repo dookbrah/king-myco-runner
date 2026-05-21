@@ -1,0 +1,16 @@
+[Unit]
+Description=KingMyco Docker Compose Stack
+Requires=docker.service
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/kingmyco
+RemainAfterExit=yes
+ExecStart=/usr/bin/docker compose --env-file /opt/kingmyco/.env up -d --build api heartbeat-worker
+ExecStartPost=/usr/bin/docker compose --env-file /opt/kingmyco/.env --profile settlement up -d settlement-worker
+ExecStop=/usr/bin/docker compose --env-file /opt/kingmyco/.env down
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target

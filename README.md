@@ -285,3 +285,56 @@ A starter GitHub Actions workflow is provided at:
 - `.github/workflows/ci-deploy-stub.yml`
 
 It runs tests/build/docker build on PRs and main pushes, then optionally calls a deploy webhook if `KINGMYCO_DEPLOY_WEBHOOK_URL` secret is set.
+
+
+## Provider-specific deployment blueprints (all included)
+
+### Railway
+
+- Config file: `railway.json`
+- Deploy target: Dockerfile-based service
+- Suggested service split:
+  - API service command: `npm run start:api:prod`
+  - Heartbeat worker command: `npm run start:heartbeat-worker:prod`
+  - Settlement worker command: `npm run start:settlement-worker:prod`
+- One-click from `main` (optional): set GitHub secret `RAILWAY_DEPLOY_HOOK` for `.github/workflows/deploy-providers-stub.yml`
+
+### Render
+
+- Config file: `render.yaml`
+- Defines:
+  - `kingmyco-api` web service
+  - `kingmyco-heartbeat-worker` worker
+  - `kingmyco-settlement-worker` worker
+- One-click from `main` (optional): set GitHub secret `RENDER_DEPLOY_HOOK`
+
+### Fly.io
+
+- Config file: `fly.toml`
+- Process groups included:
+  - `app`
+  - `heartbeat`
+  - `settlement`
+- One-click from `main` (optional):
+  - GitHub secret: `FLY_API_TOKEN`
+  - GitHub variable: `FLY_APP_NAME`
+
+### EC2 + Nginx
+
+- Config folder: `deploy/ec2/`
+- Includes:
+  - `deploy/ec2/deploy.sh`
+  - `deploy/ec2/nginx.kingmyco.io.conf`
+  - `deploy/ec2/systemd/kingmyco-stack.service`
+  - `deploy/ec2/README.md`
+- One-click from `main` (optional):
+  - GitHub secrets: `EC2_SSH_HOST`, `EC2_SSH_USER`, `EC2_SSH_KEY`
+
+### Unified provider deploy workflow
+
+Workflow file: `.github/workflows/deploy-providers-stub.yml`
+
+Behavior:
+- Triggers on pushes to `main` and manual dispatch.
+- Runs provider-specific deploy jobs only when the required secrets/vars are present.
+- Safely no-ops for providers not yet configured.

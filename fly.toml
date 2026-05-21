@@ -1,0 +1,27 @@
+app = "kingmyco-api"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  KINGMYCO_STATE_PATH = "data/kingmyco-state.json"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+[processes]
+  app = "npm run start:api:prod"
+  heartbeat = "npm run start:heartbeat-worker:prod"
+  settlement = "npm run start:settlement-worker:prod"
+
+[[vm]]
+  memory_mb = 512
+  cpu_kind = "shared"
+  cpus = 1
