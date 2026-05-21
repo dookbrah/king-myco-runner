@@ -1,4 +1,5 @@
 export type Element = "fire" | "water" | "ice" | "nature" | "void";
+export type NarrativeTone = "light" | "neutral" | "shadow";
 
 export type ChallengeLane =
   | "mobility"
@@ -88,14 +89,29 @@ export interface PlannedEncounter {
   description: string;
   requiredElements: Element[];
   suggestedLearningObjective?: string;
-  narrativeTone?: "light" | "neutral" | "shadow";
+  narrativeTone?: NarrativeTone;
   suggestedMagicToPractice?: string;
   targetDifficulty: number;
   tuning: EncounterTuning;
+}
+
+export interface RunObjective {
+  id: string;
+  title: string;
+  description: string;
+  completionHint: string;
+  targetLane: ChallengeLane;
+  targetElement?: Element;
+  minimumLaneWins: number;
+  minimumPerfectActions: number;
+  rewardBonusSpores: number;
+  moralityShift: number;
+  narrativeTone: NarrativeTone;
 }
 
 export interface PlannedRun {
   playerId: string;
   seed: string;
   encounters: PlannedEncounter[];
+  objective?: RunObjective;
 }

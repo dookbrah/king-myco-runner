@@ -139,6 +139,9 @@ export class RewardEconomy {
         laneMultiplier,
         noveltyMultiplier,
         antiGrindPenalty,
+        objectiveBonusSpores: 0,
+        objectiveCompleted: false,
+        objectiveProgress: 0,
         awardedSpores,
       },
     };

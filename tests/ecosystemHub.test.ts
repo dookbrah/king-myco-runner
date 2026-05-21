@@ -160,6 +160,64 @@ describe("King Myco ecosystem integration", () => {
     expect(coaching.recommendations.length).toBeGreaterThan(0);
   });
 
+  it("grants objective bonus spores when run objective is completed", async () => {
+    const generated = await hub.generateRun({
+      source: "kingmyco.io",
+      externalId: "objective-player-1",
+      claims: {
+        walletAddress: "0xobjectivewallet",
+      },
+      encounters: 6,
+      seed: "objective-seed",
+    });
+
+    const objective = generated.lastRun?.objective;
+    expect(objective).toBeTruthy();
+    if (!objective) {
+      throw new Error("Expected generated objective");
+    }
+
+    const usedElements: Array<"fire" | "water" | "ice" | "nature" | "void"> = [
+      "fire",
+      "water",
+    ];
+    if (objective.targetElement && !usedElements.includes(objective.targetElement)) {
+      usedElements.push(objective.targetElement);
+    }
+
+    const receipt = await hub.recordSession({
+      source: "kingmyco.io",
+      externalId: "objective-player-1",
+      claims: {
+        walletAddress: "0xobjectivewallet",
+      },
+      telemetry: {
+        playerId: generated.playerId,
+        completedEncounters: objective.minimumLaneWins + 3,
+        failedEncounters: 0,
+        damageTaken: 20,
+        perfectActions: objective.minimumPerfectActions + 1,
+        discoveryActions: 3,
+        riskyActions: 2,
+        sessionLengthSec: 640,
+        usedElements,
+        abandoned: false,
+        laneOutcomes: {
+          [objective.targetLane]: {
+            wins: objective.minimumLaneWins,
+            losses: 0,
+          },
+        },
+      },
+      score: 17600,
+    });
+
+    expect(receipt.rewards.objectiveCompleted).toBe(true);
+    expect(receipt.rewards.objectiveBonusSpores).toBe(objective.rewardBonusSpores);
+    expect(receipt.rewards.objectiveProgress).toBe(1);
+    expect(receipt.wallet.spores).toBe(receipt.rewards.awardedSpores);
+  });
+
   it("requires fresh wallet challenge for solana verification", async () => {
     const signer = Keypair.generate();
 

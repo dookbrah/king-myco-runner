@@ -62,6 +62,9 @@ export interface RewardBreakdown {
   laneMultiplier: number;
   noveltyMultiplier: number;
   antiGrindPenalty: number;
+  objectiveBonusSpores: number;
+  objectiveCompleted: boolean;
+  objectiveProgress: number;
   awardedSpores: number;
 }
 

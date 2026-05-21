@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { AdaptiveDirector } from "../ai/adaptiveDirector";
 import { applySessionTelemetry } from "../ai/playerModel";
-import { PlannedRun, SessionTelemetry } from "../types";
+import { PlannedRun, RunObjective, SessionTelemetry } from "../types";
 import { average, clamp, roundTo } from "../utils/math";
 import { AnalyticsService } from "./analytics";
 import { FraudGuard } from "./fraudGuard";
@@ -89,6 +89,9 @@ const zeroRewards = (): RewardBreakdown => ({
   laneMultiplier: 1,
   noveltyMultiplier: 1,
   antiGrindPenalty: 1,
+  objectiveBonusSpores: 0,
+  objectiveCompleted: false,
+  objectiveProgress: 0,
   awardedSpores: 0,
 });
 
@@ -102,6 +105,58 @@ const estimateScoreFromTelemetry = (telemetry: SessionTelemetry): number => {
         telemetry.failedEncounters * 250,
     ),
   );
+};
+
+interface ObjectiveEvaluation {
+  completed: boolean;
+  progress: number;
+  bonusSpores: number;
+  moralityShift: number;
+}
+
+const evaluateRunObjective = (
+  objective: RunObjective | undefined,
+  telemetry: SessionTelemetry,
+): ObjectiveEvaluation => {
+  if (!objective) {
+    return {
+      completed: false,
+      progress: 0,
+      bonusSpores: 0,
+      moralityShift: 0,
+    };
+  }
+
+  const laneWins = telemetry.laneOutcomes?.[objective.targetLane]?.wins ?? 0;
+  const laneProgress = clamp(laneWins / Math.max(1, objective.minimumLaneWins));
+  const perfectProgress = clamp(
+    telemetry.perfectActions / Math.max(1, objective.minimumPerfectActions),
+  );
+  const castCount = objective.targetElement
+    ? telemetry.magic?.castsByElement?.[objective.targetElement] ?? 0
+    : 0;
+  const elementSatisfied = objective.targetElement
+    ? telemetry.usedElements.includes(objective.targetElement) || castCount > 0
+    : true;
+  const elementProgress = elementSatisfied ? 1 : 0;
+
+  const progress = roundTo(
+    laneProgress * 0.45 + perfectProgress * 0.35 + elementProgress * 0.2,
+    3,
+  );
+
+  const completed =
+    !telemetry.abandoned &&
+    laneWins >= objective.minimumLaneWins &&
+    telemetry.perfectActions >= objective.minimumPerfectActions &&
+    elementSatisfied;
+
+  return {
+    completed,
+    progress,
+    bonusSpores: completed ? objective.rewardBonusSpores : 0,
+    moralityShift: completed ? objective.moralityShift : 0,
+  };
 };
 
 const tuneRunByLiveOps = (
@@ -190,6 +245,8 @@ export class KingMycoEcosystemHub {
             ? average(tuned.encounters.map((encounter) => encounter.targetDifficulty))
             : 0,
         seed: tuned.seed,
+        objectiveId: tuned.objective?.id,
+        objectiveLane: tuned.objective?.targetLane,
       },
     });
 
@@ -259,13 +316,32 @@ export class KingMycoEcosystemHub {
         recentRunDifficulties: difficulties,
       });
 
-      rewards = rewarded.breakdown;
+      const objectiveEvaluation = evaluateRunObjective(
+        lastRun?.objective,
+        request.telemetry,
+      );
+
+      rewards = {
+        ...rewarded.breakdown,
+        objectiveBonusSpores: objectiveEvaluation.bonusSpores,
+        objectiveCompleted: objectiveEvaluation.completed,
+        objectiveProgress: objectiveEvaluation.progress,
+        awardedSpores: rewarded.breakdown.awardedSpores + objectiveEvaluation.bonusSpores,
+      };
+
+      nextWallet = {
+        ...rewarded.wallet,
+        spores: rewarded.wallet.spores + objectiveEvaluation.bonusSpores,
+        lifetimeSpores: rewarded.wallet.lifetimeSpores + objectiveEvaluation.bonusSpores,
+      };
+
       nextProfile = {
         ...nextProfile,
+        morality: clamp(nextProfile.morality + objectiveEvaluation.moralityShift, -1, 1),
         sporesCollected: nextProfile.sporesCollected + rewards.awardedSpores,
       };
+
       this.repository.setProfile(nextProfile);
-      nextWallet = rewarded.wallet;
       this.repository.setWallet(playerId, nextWallet);
     }
 
@@ -297,6 +373,9 @@ export class KingMycoEcosystemHub {
         fraudFlagged: fraud.flagged,
         suspiciousScore: fraud.riskScore,
         awardedSpores: rewards.awardedSpores,
+        objectiveCompleted: rewards.objectiveCompleted,
+        objectiveBonusSpores: rewards.objectiveBonusSpores,
+        objectiveProgress: rewards.objectiveProgress,
         adaptiveRiskScore: riskSnapshot.playerRisk,
         morality: nextProfile.morality,
         learnedMagicCount: nextProfile.learnedMagic.length,
@@ -329,9 +408,11 @@ export class KingMycoEcosystemHub {
       (left, right) => left[1] - right[1],
     )[0]?.[0] ?? "tactics";
     const latestRun = this.repository.getLastRun(playerId);
-    const nextObjective = latestRun?.encounters.find(
-      (encounter) => encounter.suggestedLearningObjective,
-    )?.suggestedLearningObjective;
+    const nextObjective = latestRun?.objective
+      ? `${latestRun.objective.title}: ${latestRun.objective.completionHint}`
+      : latestRun?.encounters.find(
+          (encounter) => encounter.suggestedLearningObjective,
+        )?.suggestedLearningObjective;
 
     const recommendations = [
       `Focus one rotation on ${weakestLane} lane consistency.`,

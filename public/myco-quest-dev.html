@@ -674,10 +674,25 @@
           get("runOutput").textContent = "No run available.";
           return;
         }
-        const lines = run.encounters.map((encounter) => {
+
+        const objective = run.objective;
+        const objectiveLines = objective
+          ? [
+              `Objective: ${objective.title}`,
+              `Lane ${objective.targetLane} | wins ${objective.minimumLaneWins}+ | perfect ${objective.minimumPerfectActions}+ | bonus ${objective.rewardBonusSpores} spores`,
+              objective.targetElement
+                ? `Element attunement: ${objective.targetElement}`
+                : "Element attunement: optional",
+              `Hint: ${objective.completionHint}`,
+              "",
+            ]
+          : [];
+
+        const encounterLines = run.encounters.map((encounter) => {
           return `#${encounter.encounterNumber} ${encounter.lane} | ${encounter.title} | difficulty ${encounter.targetDifficulty}`;
         });
-        get("runOutput").textContent = lines.join("\n");
+
+        get("runOutput").textContent = [...objectiveLines, ...encounterLines].join("\n");
       };
 
       const renderMetrics = (player, communication) => {
@@ -792,7 +807,10 @@
         state.playerId = data.playerId;
         get("playerId").value = data.playerId;
         renderMetrics({ profile: data.profile, wallet: data.wallet }, null);
-        setStatus(`Session recorded. Awarded ${data.rewards?.awardedSpores ?? 0} spores.`);
+        const objectiveSummary = data.rewards?.objectiveCompleted
+          ? ` Objective complete (+${data.rewards?.objectiveBonusSpores ?? 0} spores).`
+          : ` Objective progress ${(Math.round((data.rewards?.objectiveProgress ?? 0) * 1000) / 10).toFixed(1)}%.`;
+        setStatus(`Session recorded. Awarded ${data.rewards?.awardedSpores ?? 0} spores.${objectiveSummary}`);
       };
 
       const refreshHud = async () => {

@@ -1,9 +1,12 @@
 import {
   ChallengeLane,
+  Element,
   EncounterBlueprint,
+  NarrativeTone,
   PlannedEncounter,
   PlannedRun,
   PlayerProfile,
+  RunObjective,
   SessionTelemetry,
 } from "../types";
 import { createSeededRng, pickOne } from "../engine/random";
@@ -25,7 +28,7 @@ const ALL_LANES: ChallengeLane[] = [
   "puzzle",
 ];
 
-const laneElementMatrix: Record<ChallengeLane, string[]> = {
+const laneElementMatrix: Record<ChallengeLane, Element[]> = {
   mobility: ["water", "ice"],
   swarm: ["fire", "water"],
   tactics: ["ice", "void"],
@@ -47,6 +50,58 @@ const SHADOW_MORALITY_LANE_AFFINITY: Record<ChallengeLane, number> = {
   tactics: 0.7,
   boss: 0.95,
   puzzle: 0.4,
+};
+
+interface ObjectiveTemplate {
+  title: string;
+  description: string;
+  completionHint: string;
+  moralityShift: number;
+}
+
+const OBJECTIVE_TEMPLATES: Record<NarrativeTone, ObjectiveTemplate[]> = {
+  light: [
+    {
+      title: "Lanterns of Mercy",
+      description: "Protect living spores from collapse while clearing pressure in the target lane.",
+      completionHint: "Chain clean clears and avoid reckless losses to keep sanctuary momentum.",
+      moralityShift: 0.08,
+    },
+    {
+      title: "Sanctum Shepherd",
+      description: "Stabilize the grove routes before the hive breach cascade begins.",
+      completionHint: "Prioritize precise actions and lane wins over risky aggression spikes.",
+      moralityShift: 0.06,
+    },
+  ],
+  neutral: [
+    {
+      title: "Sporeline Calibration",
+      description: "Map the target lane and tune your combat rhythm for efficient clears.",
+      completionHint: "Balance lane control with technical execution to complete calibration.",
+      moralityShift: 0,
+    },
+    {
+      title: "Archive Circuit",
+      description: "Complete a controlled trial run to archive stable combat signatures.",
+      completionHint: "Keep a steady pace and convert precision into measurable lane control.",
+      moralityShift: 0,
+    },
+  ],
+  shadow: [
+    {
+      title: "Abyssal Tribute",
+      description: "Overwhelm resistance in the target lane and harvest unstable spores.",
+      completionHint: "Commit to fast eliminations with decisive pressure in every exchange.",
+      moralityShift: -0.06,
+    },
+    {
+      title: "Rift Dominance",
+      description: "Break enemy morale by forcing repeated victories through a single lane.",
+      completionHint: "Maintain aggressive tempo and execute cleanly under escalating threat.",
+      moralityShift: -0.08,
+    },
+  ],
 };
 
 const createBanditState = (): PlayerBanditState => ({
@@ -171,7 +226,104 @@ export class AdaptiveDirector {
       playerId: profile.playerId,
       seed,
       encounters,
+      objective: this.createRunObjective({
+        profile,
+        laneUsage,
+        seed,
+        rng,
+      }),
     };
+  }
+
+  private createRunObjective(input: {
+    profile: PlayerProfile;
+    laneUsage: Record<ChallengeLane, number>;
+    seed: string;
+    rng: () => number;
+  }): RunObjective {
+    const { profile, laneUsage, seed, rng } = input;
+    const targetLane = this.chooseObjectiveLane(profile, laneUsage, rng);
+    const narrativeTone = this.resolveNarrativeTone(profile.morality, rng);
+    const template = pickOne(OBJECTIVE_TEMPLATES[narrativeTone], rng);
+    const targetElement = this.resolveObjectiveElement(profile, targetLane);
+    const minimumLaneWins = Math.max(
+      1,
+      Math.min(3, Math.round(1 + (1 - profile.laneMastery[targetLane]) * 2)),
+    );
+    const minimumPerfectActions = Math.max(
+      2,
+      Math.min(
+        8,
+        Math.round(2 + profile.skill * 3 + profile.playstyle.precision * 2),
+      ),
+    );
+    const rewardBonusSpores = Math.round(
+      60 +
+        (1 - profile.laneMastery[targetLane]) * 85 +
+        profile.novelty * 45 +
+        minimumLaneWins * 12,
+    );
+
+    return {
+      id: `${seed}:objective:${targetLane}:${narrativeTone}`,
+      title: template.title,
+      description: `${template.description} Secure ${minimumLaneWins} lane wins in ${targetLane}${
+        targetElement ? ` while attuning ${targetElement}.` : "."
+      }`,
+      completionHint: template.completionHint,
+      targetLane,
+      targetElement,
+      minimumLaneWins,
+      minimumPerfectActions,
+      rewardBonusSpores,
+      moralityShift: clamp(template.moralityShift, -0.12, 0.12),
+      narrativeTone,
+    };
+  }
+
+  private chooseObjectiveLane(
+    profile: PlayerProfile,
+    laneUsage: Record<ChallengeLane, number>,
+    rng: () => number,
+  ): ChallengeLane {
+    let bestLane: ChallengeLane = "mobility";
+    let bestScore = Number.NEGATIVE_INFINITY;
+
+    for (const lane of ALL_LANES) {
+      const masteryGap = 1 - profile.laneMastery[lane];
+      const styleAffinity = this.getStyleAffinity(profile, lane);
+      const moralityAffinity = this.getMoralityLaneAffinity(profile.morality, lane);
+      const antiRepeatPenalty = laneUsage[lane] * 0.08;
+      const jitter = (rng() - 0.5) * 0.05;
+
+      const score =
+        masteryGap * 0.5 +
+        styleAffinity * 0.22 +
+        moralityAffinity * 0.28 -
+        antiRepeatPenalty +
+        jitter;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestLane = lane;
+      }
+    }
+
+    return bestLane;
+  }
+
+  private resolveObjectiveElement(
+    profile: PlayerProfile,
+    lane: ChallengeLane,
+  ): Element | undefined {
+    const laneElements = laneElementMatrix[lane]
+      .filter((element) => profile.unlockedElements.includes(element))
+      .sort(
+        (left, right) =>
+          (profile.magicMastery[left] ?? 0) - (profile.magicMastery[right] ?? 0),
+      );
+
+    return laneElements[0];
   }
 
   recordSessionOutcome(playerId: string, telemetry: SessionTelemetry): void {
@@ -219,7 +371,7 @@ export class AdaptiveDirector {
     profile: PlayerProfile;
     state: PlayerBanditState;
     laneUsage: Record<ChallengeLane, number>;
-    unmasteredElements: string[];
+    unmasteredElements: Element[];
     rng: () => number;
   }): ChallengeLane {
     const { profile, state, laneUsage, unmasteredElements, rng } = input;
@@ -244,7 +396,7 @@ export class AdaptiveDirector {
       const styleAffinity = this.getStyleAffinity(profile, lane);
       const moralityAffinity = this.getMoralityLaneAffinity(profile.morality, lane);
       const learningBoost = laneElementMatrix[lane].some((element) =>
-        unmasteredElements.includes(element as never),
+        unmasteredElements.includes(element),
       )
         ? 0.12
         : 0;
@@ -356,7 +508,7 @@ export class AdaptiveDirector {
   private resolveNarrativeTone(
     morality: number,
     rng: () => number,
-  ): "light" | "neutral" | "shadow" {
+  ): NarrativeTone {
     const jitteredMorality = morality + (rng() - 0.5) * 0.18;
     if (jitteredMorality >= 0.25) {
       return "light";
@@ -369,13 +521,13 @@ export class AdaptiveDirector {
 
   private getSuggestedMagicToPractice(
     profile: PlayerProfile,
-    requiredElements: string[],
+    requiredElements: Element[],
   ): string | undefined {
     const sortable = requiredElements
-      .filter((element) => profile.unlockedElements.includes(element as never))
+      .filter((element) => profile.unlockedElements.includes(element))
       .map((element) => ({
         element,
-        mastery: profile.magicMastery[element as keyof typeof profile.magicMastery] ?? 0,
+        mastery: profile.magicMastery[element] ?? 0,
       }))
       .sort((left, right) => left.mastery - right.mastery);
 
