@@ -1,4 +1,12 @@
-import { PlannedRun, PlayerProfile, SessionTelemetry } from "../types";
+import {
+  PlannedRun,
+  PlayerCampaignState,
+  PlayerProfile,
+  RegionDefinition,
+  TurnActionInput,
+  TurnBattleState,
+  SessionTelemetry,
+} from "../types";
 
 export type EcosystemSource =
   | "mycokingdom_bot"
@@ -23,7 +31,8 @@ export type SourceScope =
   | "solana:verify"
   | "solana:reward:prepare"
   | "solana:reward:update"
-  | "webhook:ingest";
+  | "webhook:ingest"
+  | "rpg:play";
 
 export interface SourceAuthConfig {
   token: string;
@@ -122,6 +131,7 @@ export interface PlayerSnapshot {
   profile: PlayerProfile;
   wallet: PlayerWallet;
   lastRun?: PlannedRun;
+  campaign?: PlayerCampaignState;
 }
 
 export interface CoachingRequest extends IdentityLinkRequest {
@@ -144,7 +154,10 @@ export type PlatformEventType =
   | "webhook_ingested"
   | "solana_wallet_verified"
   | "reward_intent_prepared"
-  | "reward_intent_status_updated";
+  | "reward_intent_status_updated"
+  | "rpg_region_traveled"
+  | "rpg_battle_started"
+  | "rpg_turn_resolved";
 
 export interface PlatformEvent {
   id: string;
@@ -198,6 +211,38 @@ export interface DevHudBundle {
   generatedAt: string;
   player: PlayerSnapshot;
   communication: EcosystemCommunicationStatus;
+}
+
+export interface RpgMapRequest extends IdentityLinkRequest {}
+
+export interface RpgTravelRequest extends IdentityLinkRequest {
+  destinationRegionId: string;
+}
+
+export interface RpgBattleStartRequest extends IdentityLinkRequest {
+  preferredLane?: string;
+}
+
+export interface RpgTurnActionRequest extends IdentityLinkRequest {
+  action: TurnActionInput;
+}
+
+export interface RpgMapSnapshot {
+  generatedAt: string;
+  playerId: string;
+  world: PlayerCampaignState["world"];
+  currentRegion: RegionDefinition;
+  connectedRegions: RegionDefinition[];
+  discoveredRegions: RegionDefinition[];
+  activeBattle?: TurnBattleState;
+  victories: number;
+  defeats: number;
+}
+
+export interface RpgBattleReceipt {
+  playerId: string;
+  campaign: PlayerCampaignState;
+  battle: TurnBattleState;
 }
 
 export interface SolanaWalletProof {

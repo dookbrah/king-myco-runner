@@ -132,3 +132,70 @@ export interface PlannedRun {
   objective?: RunObjective;
   objectiveResult?: RunObjectiveResult;
 }
+
+
+export type RegionBiome =
+  | "grove"
+  | "cavern"
+  | "ruins"
+  | "wetlands"
+  | "void";
+
+export interface RegionDefinition {
+  id: string;
+  name: string;
+  biome: RegionBiome;
+  threatLevel: number;
+  description: string;
+  recommendedElements: Element[];
+  connectedRegionIds: string[];
+}
+
+export interface PlayerWorldState {
+  currentRegionId: string;
+  discoveredRegionIds: string[];
+  conqueredRegionIds: string[];
+  travelHistory: string[];
+}
+
+export type TurnActionKind = "strike" | "guard" | "skill";
+
+export interface TurnActionInput {
+  kind: TurnActionKind;
+  element?: Element;
+}
+
+export interface TurnCombatant {
+  id: string;
+  name: string;
+  hp: number;
+  maxHp: number;
+  guard: number;
+  elementAffinity?: Element;
+  intentHint?: string;
+}
+
+export interface TurnBattleState {
+  battleId: string;
+  playerId: string;
+  regionId: string;
+  encounterLane: ChallengeLane;
+  status: "active" | "won" | "lost";
+  turnNumber: number;
+  player: TurnCombatant;
+  enemy: TurnCombatant;
+  lastAction?: TurnActionInput;
+  battleLog: string[];
+  startedAt: string;
+  updatedAt: string;
+  rewardSpores: number;
+}
+
+export interface PlayerCampaignState {
+  playerId: string;
+  world: PlayerWorldState;
+  activeBattle?: TurnBattleState;
+  victories: number;
+  defeats: number;
+  lastTravelAt?: string;
+}

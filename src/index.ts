@@ -6,6 +6,8 @@ export { SourceAuthService } from "./platform/auth";
 export { WebhookVerifier } from "./platform/webhookVerifier";
 export { SolanaService } from "./platform/solanaService";
 export { createTreasurySignerFromEnv, resolveTreasuryPublicKeyFromEnv } from "./platform/treasurySigner";
+export * from "./rpg/worldMap";
+export * from "./rpg/turnEngine";
 export * from "./platform/liveOps";
 export * from "./platform/types";
 export * from "./types";

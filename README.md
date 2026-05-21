@@ -56,6 +56,10 @@ Myco Quest adaptive AI game-core + ecosystem backend for King Myco.
 - `POST /api/run/generate`
 - `POST /api/session/record`
 - `POST /api/mycoai/coach`
+- `POST /api/rpg/map`
+- `POST /api/rpg/travel`
+- `POST /api/rpg/battle/start`
+- `POST /api/rpg/battle/turn`
 - `GET /api/player/:playerId`
 
 ### Leaderboard and live ops
@@ -139,8 +143,8 @@ Example:
 {
   "mycokingdom_bot": { "token": "token-a", "scopes": ["identity:write", "session:write", "webhook:ingest"] },
   "mycoai_bot": { "token": "token-b", "scopes": ["coach:read", "identity:write", "webhook:ingest"] },
-  "kingmyco.io": { "token": "token-c", "scopes": ["identity:write", "run:generate", "session:write", "solana:verify", "solana:reward:prepare"] },
-  "kingdom.kingmyco.com": { "token": "token-d", "scopes": ["identity:write", "run:generate", "session:write"] },
+  "kingmyco.io": { "token": "token-c", "scopes": ["identity:write", "run:generate", "session:write", "rpg:play", "solana:verify", "solana:reward:prepare"] },
+  "kingdom.kingmyco.com": { "token": "token-d", "scopes": ["identity:write", "run:generate", "session:write", "rpg:play"] },
   "openclaw": { "token": "token-e", "scopes": ["session:write", "run:generate", "solana:reward:prepare", "solana:reward:update", "webhook:ingest"] }
 }
 ```
@@ -262,7 +266,7 @@ Use this to immediately generate adaptive runs and session telemetry while you t
 npm run playground
 ```
 
-Then open `http://127.0.0.1:3000/dev/myco-quest` locally (or `https://<your-domain>/api/dev/myco-quest` when behind an `/api` reverse proxy) to drive gameplay calls and inspect morality/magic/spores progression with communication health in one screen.
+Then open `http://127.0.0.1:3000/dev/myco-quest` locally (or `https://<your-domain>/api/dev/myco-quest` when behind an `/api` reverse proxy) to drive gameplay calls, RPG map travel, and turn-based battle actions while inspecting morality/magic/spores progression with communication health in one screen.
 
 The dev UI includes built-in archetype presets (balanced, ruthless, compassionate, speedrunner) plus custom preset save/load/delete in browser localStorage. You can also export presets as JSON, import JSON by paste/upload, and download a shared preset pack for teammates.
 

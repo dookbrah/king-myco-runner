@@ -19,6 +19,9 @@ const initBreakdown = (): Record<PlatformEventType, number> => ({
   solana_wallet_verified: 0,
   reward_intent_prepared: 0,
   reward_intent_status_updated: 0,
+  rpg_region_traveled: 0,
+  rpg_battle_started: 0,
+  rpg_turn_resolved: 0,
 });
 
 const createSourceStatus = (

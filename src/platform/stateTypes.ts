@@ -9,7 +9,7 @@ import {
   SolanaWalletChallenge,
   SolanaWalletProof,
 } from "./types";
-import { PlannedRun, PlayerProfile } from "../types";
+import { PlannedRun, PlayerCampaignState, PlayerProfile } from "../types";
 
 export interface SporeClaimLedger {
   lastClaimAt?: string;
@@ -34,6 +34,7 @@ export interface AdaptiveRiskState {
 
 export interface PersistentState {
   profiles: Record<string, PlayerProfile>;
+  campaigns: Record<string, PlayerCampaignState>;
   wallets: Record<string, PlayerWallet>;
   identityByKey: Record<string, string>;
   identitiesByPlayer: Record<string, LinkedIdentity[]>;
@@ -67,6 +68,7 @@ export const normalizePersistentState = (
   raw: Partial<PersistentState> | null | undefined,
 ): PersistentState => ({
   profiles: raw?.profiles ?? {},
+  campaigns: raw?.campaigns ?? {},
   wallets: raw?.wallets ?? {},
   identityByKey: raw?.identityByKey ?? {},
   identitiesByPlayer: raw?.identitiesByPlayer ?? {},

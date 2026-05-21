@@ -369,6 +369,83 @@ describe("King Myco ecosystem integration", () => {
     expect(recoverFocusedEncounter?.branchDirective).toMatch(/Recover route/);
   });
 
+  it("supports RPG map discovery and region travel", async () => {
+    const map = await hub.getRpgMap({
+      source: "kingmyco.io",
+      externalId: "rpg-map-player-1",
+      claims: {
+        walletAddress: "0xrpgmapwallet",
+      },
+    });
+
+    expect(map.currentRegion.id).toBe("mycelial-hollow");
+    expect(map.connectedRegions.length).toBeGreaterThan(0);
+
+    const destination = map.connectedRegions[0];
+    const traveled = await hub.travelRpgRegion({
+      source: "kingmyco.io",
+      externalId: "rpg-map-player-1",
+      claims: {
+        walletAddress: "0xrpgmapwallet",
+      },
+      destinationRegionId: destination.id,
+    });
+
+    expect(traveled.currentRegion.id).toBe(destination.id);
+    expect(traveled.world.discoveredRegionIds).toContain(destination.id);
+    expect(traveled.world.travelHistory.length).toBeGreaterThan(0);
+  });
+
+  it("runs turn-based RPG battles and updates campaign progress", async () => {
+    const initialMap = await hub.getRpgMap({
+      source: "kingmyco.io",
+      externalId: "rpg-battle-player-1",
+      claims: {
+        walletAddress: "0xrpgbattlewallet",
+      },
+    });
+
+    const start = await hub.startRpgBattle({
+      source: "kingmyco.io",
+      externalId: "rpg-battle-player-1",
+      claims: {
+        walletAddress: "0xrpgbattlewallet",
+      },
+    });
+
+    expect(start.battle.status).toBe("active");
+    expect(start.battle.turnNumber).toBe(1);
+
+    let battle = start.battle;
+    let receipt = start;
+
+    for (let turn = 0; turn < 40 && battle.status === "active"; turn += 1) {
+      receipt = await hub.playRpgTurn({
+        source: "kingmyco.io",
+        externalId: "rpg-battle-player-1",
+        claims: {
+          walletAddress: "0xrpgbattlewallet",
+        },
+        action: {
+          kind: turn % 3 === 0 ? "skill" : "strike",
+          element: turn % 2 === 0 ? "fire" : "water",
+        },
+      });
+      battle = receipt.battle;
+    }
+
+    expect(["won", "lost"]).toContain(battle.status);
+    expect(receipt.campaign.victories + receipt.campaign.defeats).toBeGreaterThan(0);
+
+    const snapshot = hub.getPlayerSnapshot(start.playerId);
+    if (battle.status === "won") {
+      expect(snapshot.wallet.spores).toBeGreaterThan(0);
+      expect(receipt.campaign.world.conqueredRegionIds).toContain(initialMap.currentRegion.id);
+    } else {
+      expect(receipt.campaign.defeats).toBeGreaterThan(0);
+    }
+  });
+
   it("requires fresh wallet challenge for solana verification", async () => {
     const signer = Keypair.generate();
 

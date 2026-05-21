@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { createInitialProfile, normalizeProfile } from "../ai/playerModel";
-import { PlannedRun, PlayerProfile } from "../types";
+import { createInitialWorldState, normalizeWorldState } from "../rpg/worldMap";
+import { PlannedRun, PlayerCampaignState, PlayerProfile, TurnBattleState } from "../types";
 import { clamp } from "../utils/math";
 import { LiveOpsConfig } from "./liveOps";
 import { PostgresRedisAdapter } from "./postgresRedisAdapter";
@@ -306,6 +307,59 @@ export class KingMycoRepository {
 
   setLastRun(playerId: string, run: PlannedRun): void {
     this.state.lastRunByPlayer[playerId] = run;
+  }
+
+  getOrCreateCampaign(playerId: string): PlayerCampaignState {
+    const existing = this.state.campaigns[playerId];
+    if (existing) {
+      const normalized: PlayerCampaignState = {
+        ...existing,
+        playerId,
+        world: normalizeWorldState(existing.world),
+        victories: Math.max(0, Math.floor(existing.victories ?? 0)),
+        defeats: Math.max(0, Math.floor(existing.defeats ?? 0)),
+      };
+      this.state.campaigns[playerId] = normalized;
+      return normalized;
+    }
+
+    const created: PlayerCampaignState = {
+      playerId,
+      world: createInitialWorldState(),
+      victories: 0,
+      defeats: 0,
+    };
+    this.state.campaigns[playerId] = created;
+    return created;
+  }
+
+  setCampaign(campaign: PlayerCampaignState): void {
+    this.state.campaigns[campaign.playerId] = {
+      ...campaign,
+      world: normalizeWorldState(campaign.world),
+      victories: Math.max(0, Math.floor(campaign.victories ?? 0)),
+      defeats: Math.max(0, Math.floor(campaign.defeats ?? 0)),
+    };
+  }
+
+  getActiveBattle(playerId: string): TurnBattleState | undefined {
+    return this.getOrCreateCampaign(playerId).activeBattle;
+  }
+
+  setActiveBattle(playerId: string, battle: TurnBattleState): void {
+    const campaign = this.getOrCreateCampaign(playerId);
+    this.state.campaigns[playerId] = {
+      ...campaign,
+      activeBattle: battle,
+    };
+  }
+
+  clearActiveBattle(playerId: string): void {
+    const campaign = this.getOrCreateCampaign(playerId);
+    this.state.campaigns[playerId] = {
+      ...campaign,
+      activeBattle: undefined,
+    };
   }
 
   setWalletProof(proof: SolanaWalletProof): void {
@@ -627,6 +681,43 @@ export class KingMycoRepository {
       this.state.lastRunByPlayer[targetId] = this.state.lastRunByPlayer[fromId];
     }
 
+    const targetCampaign =
+      this.state.campaigns[targetId] ??
+      ({
+        playerId: targetId,
+        world: createInitialWorldState(),
+        victories: 0,
+        defeats: 0,
+      } as PlayerCampaignState);
+    const fromCampaign = this.state.campaigns[fromId];
+    if (fromCampaign) {
+      targetCampaign.world = normalizeWorldState({
+        currentRegionId: fromCampaign.world.currentRegionId,
+        discoveredRegionIds: [
+          ...targetCampaign.world.discoveredRegionIds,
+          ...fromCampaign.world.discoveredRegionIds,
+        ],
+        conqueredRegionIds: [
+          ...targetCampaign.world.conqueredRegionIds,
+          ...fromCampaign.world.conqueredRegionIds,
+        ],
+        travelHistory: [
+          ...targetCampaign.world.travelHistory,
+          ...fromCampaign.world.travelHistory,
+        ],
+      });
+      targetCampaign.victories += fromCampaign.victories;
+      targetCampaign.defeats += fromCampaign.defeats;
+      targetCampaign.activeBattle = targetCampaign.activeBattle ?? fromCampaign.activeBattle;
+      targetCampaign.lastTravelAt =
+        targetCampaign.lastTravelAt && fromCampaign.lastTravelAt
+          ? targetCampaign.lastTravelAt > fromCampaign.lastTravelAt
+            ? targetCampaign.lastTravelAt
+            : fromCampaign.lastTravelAt
+          : targetCampaign.lastTravelAt ?? fromCampaign.lastTravelAt;
+    }
+    this.state.campaigns[targetId] = targetCampaign;
+
     for (const [identityKey, mappedPlayerId] of Object.entries(
       this.state.identityByKey,
     )) {
@@ -712,6 +803,7 @@ export class KingMycoRepository {
     delete this.state.recentFingerprints[fromId];
 
     delete this.state.lastRunByPlayer[fromId];
+    delete this.state.campaigns[fromId];
     delete this.state.claimLedgers[fromId];
     delete this.state.adaptiveRisk.playerScores[fromId];
   }

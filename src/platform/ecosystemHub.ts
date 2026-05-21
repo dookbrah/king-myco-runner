@@ -1,7 +1,20 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { AdaptiveDirector } from "../ai/adaptiveDirector";
 import { applySessionTelemetry } from "../ai/playerModel";
-import { PlannedRun, RunObjective, RunObjectiveResult, SessionTelemetry } from "../types";
+import {
+  PlannedRun,
+  PlayerCampaignState,
+  RunObjective,
+  RunObjectiveResult,
+  SessionTelemetry,
+} from "../types";
+import { startTurnBattle, resolveTurnAction } from "../rpg/turnEngine";
+import {
+  REGION_CATALOG,
+  START_REGION_ID,
+  getRegionById,
+  travelToRegion,
+} from "../rpg/worldMap";
 import { average, clamp, roundTo } from "../utils/math";
 import { AnalyticsService } from "./analytics";
 import { FraudGuard } from "./fraudGuard";
@@ -29,6 +42,12 @@ import {
   PlatformEventType,
   PlayerSnapshot,
   RewardBreakdown,
+  RpgBattleReceipt,
+  RpgBattleStartRequest,
+  RpgMapRequest,
+  RpgMapSnapshot,
+  RpgTravelRequest,
+  RpgTurnActionRequest,
   RewardTransferStatus,
   RunGenerationRequest,
   SessionIngestRequest,
@@ -475,6 +494,185 @@ export class KingMycoEcosystemHub {
       focusLane: weakestLane,
       recommendations,
       response,
+    };
+  }
+
+  async getRpgMap(request: RpgMapRequest): Promise<RpgMapSnapshot> {
+    const playerId = this.repository.resolveOrCreatePlayer(
+      request.source,
+      request.externalId,
+      request.claims,
+    );
+
+    const campaign = this.repository.getOrCreateCampaign(playerId);
+    this.repository.setCampaign(campaign);
+    await this.repository.save();
+    return this.buildRpgMapSnapshot(playerId, campaign);
+  }
+
+  async travelRpgRegion(request: RpgTravelRequest): Promise<RpgMapSnapshot> {
+    const playerId = this.repository.resolveOrCreatePlayer(
+      request.source,
+      request.externalId,
+      request.claims,
+    );
+
+    const campaign = this.repository.getOrCreateCampaign(playerId);
+    const nextWorld = travelToRegion(campaign.world, request.destinationRegionId);
+    const nextCampaign: PlayerCampaignState = {
+      ...campaign,
+      world: nextWorld,
+      activeBattle: undefined,
+      lastTravelAt: new Date().toISOString(),
+    };
+
+    this.repository.setCampaign(nextCampaign);
+
+    await this.emitEvent("rpg_region_traveled", {
+      playerId,
+      source: request.source,
+      payload: {
+        fromRegionId: campaign.world.currentRegionId,
+        toRegionId: nextWorld.currentRegionId,
+        discoveredRegions: nextWorld.discoveredRegionIds.length,
+      },
+    });
+
+    await this.repository.save();
+    return this.buildRpgMapSnapshot(playerId, nextCampaign);
+  }
+
+  async startRpgBattle(request: RpgBattleStartRequest): Promise<RpgBattleReceipt> {
+    const playerId = this.repository.resolveOrCreatePlayer(
+      request.source,
+      request.externalId,
+      request.claims,
+    );
+
+    const profile = this.repository.getOrCreateProfile(playerId);
+    const campaign = this.repository.getOrCreateCampaign(playerId);
+
+    if (campaign.activeBattle?.status === "active") {
+      return {
+        playerId,
+        campaign,
+        battle: campaign.activeBattle,
+      };
+    }
+
+    const battle = startTurnBattle({
+      playerId,
+      profile,
+      campaign,
+      run: this.repository.getLastRun(playerId),
+      preferredLane: request.preferredLane,
+    });
+
+    const nextCampaign: PlayerCampaignState = {
+      ...campaign,
+      activeBattle: battle,
+    };
+
+    this.repository.setCampaign(nextCampaign);
+
+    await this.emitEvent("rpg_battle_started", {
+      playerId,
+      source: request.source,
+      payload: {
+        battleId: battle.battleId,
+        regionId: battle.regionId,
+        lane: battle.encounterLane,
+      },
+    });
+
+    await this.repository.save();
+
+    return {
+      playerId,
+      campaign: nextCampaign,
+      battle,
+    };
+  }
+
+  async playRpgTurn(request: RpgTurnActionRequest): Promise<RpgBattleReceipt> {
+    const playerId = this.repository.resolveOrCreatePlayer(
+      request.source,
+      request.externalId,
+      request.claims,
+    );
+
+    const profile = this.repository.getOrCreateProfile(playerId);
+    const campaign = this.repository.getOrCreateCampaign(playerId);
+    const activeBattle = campaign.activeBattle;
+
+    if (!activeBattle) {
+      throw new Error("No active RPG battle. Start one with /api/rpg/battle/start");
+    }
+
+    const battle = resolveTurnAction({
+      battle: activeBattle,
+      profile,
+      action: request.action,
+    });
+
+    let nextCampaign: PlayerCampaignState = {
+      ...campaign,
+      activeBattle: battle.status === "active" ? battle : undefined,
+    };
+
+    if (battle.status === "won") {
+      const wallet = this.repository.getWallet(playerId);
+      const nextWallet = {
+        ...wallet,
+        spores: wallet.spores + battle.rewardSpores,
+        lifetimeSpores: wallet.lifetimeSpores + battle.rewardSpores,
+      };
+      this.repository.setWallet(playerId, nextWallet);
+
+      const profileSnapshot = this.repository.getOrCreateProfile(playerId);
+      this.repository.setProfile({
+        ...profileSnapshot,
+        sporesCollected: profileSnapshot.sporesCollected + battle.rewardSpores,
+      });
+
+      nextCampaign = {
+        ...nextCampaign,
+        victories: nextCampaign.victories + 1,
+        world: {
+          ...nextCampaign.world,
+          conqueredRegionIds: Array.from(
+            new Set([...nextCampaign.world.conqueredRegionIds, battle.regionId]),
+          ),
+        },
+      };
+    }
+
+    if (battle.status === "lost") {
+      nextCampaign = {
+        ...nextCampaign,
+        defeats: nextCampaign.defeats + 1,
+      };
+    }
+
+    this.repository.setCampaign(nextCampaign);
+
+    await this.emitEvent("rpg_turn_resolved", {
+      playerId,
+      source: request.source,
+      payload: {
+        battleId: battle.battleId,
+        status: battle.status,
+        turnNumber: battle.turnNumber,
+        rewardSpores: battle.status === "won" ? battle.rewardSpores : 0,
+      },
+    });
+
+    await this.repository.save();
+
+    return {
+      playerId,
+      campaign: nextCampaign,
+      battle,
     };
   }
 
@@ -1194,6 +1392,7 @@ export class KingMycoEcosystemHub {
       profile: this.repository.getOrCreateProfile(playerId),
       wallet: this.repository.getWallet(playerId),
       lastRun: this.repository.getLastRun(playerId),
+      campaign: this.repository.getOrCreateCampaign(playerId),
     };
   }
 
@@ -1272,6 +1471,44 @@ export class KingMycoEcosystemHub {
       generatedAt: new Date().toISOString(),
       player: this.getPlayerSnapshot(input.playerId),
       communication,
+    };
+  }
+
+  private buildRpgMapSnapshot(
+    playerId: string,
+    campaign: PlayerCampaignState,
+  ): RpgMapSnapshot {
+    const currentRegion =
+      getRegionById(campaign.world.currentRegionId) ?? getRegionById(START_REGION_ID);
+
+    if (!currentRegion) {
+      throw new Error("RPG map catalog missing start region");
+    }
+
+    const connectedRegions = currentRegion.connectedRegionIds
+      .map((regionId) => getRegionById(regionId))
+      .filter((region): region is NonNullable<typeof region> => Boolean(region));
+
+    const discovered = new Set(campaign.world.discoveredRegionIds);
+    discovered.add(currentRegion.id);
+
+    const discoveredRegions = REGION_CATALOG.filter((region) =>
+      discovered.has(region.id),
+    );
+
+    return {
+      generatedAt: new Date().toISOString(),
+      playerId,
+      world: {
+        ...campaign.world,
+        discoveredRegionIds: Array.from(discovered),
+      },
+      currentRegion,
+      connectedRegions,
+      discoveredRegions,
+      activeBattle: campaign.activeBattle,
+      victories: campaign.victories,
+      defeats: campaign.defeats,
     };
   }
 

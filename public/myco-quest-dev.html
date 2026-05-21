@@ -255,6 +255,43 @@
       </section>
 
       <section class="card">
+        <h2>RPG Map + Turn Battle</h2>
+        <div class="grid">
+          <label
+            >Travel Destination
+            <select id="rpgDestination"></select>
+          </label>
+          <label
+            >Turn Action
+            <select id="rpgActionKind">
+              <option value="strike">strike</option>
+              <option value="guard">guard</option>
+              <option value="skill">skill</option>
+            </select>
+          </label>
+          <label
+            >Action Element
+            <select id="rpgActionElement">
+              <option value="">(none)</option>
+              <option value="fire">fire</option>
+              <option value="water">water</option>
+              <option value="ice">ice</option>
+              <option value="nature">nature</option>
+              <option value="void">void</option>
+            </select>
+          </label>
+        </div>
+        <div class="actions">
+          <button class="secondary" id="loadRpgMap">Load RPG Map</button>
+          <button class="secondary" id="travelRpgRegion">Travel Region</button>
+          <button class="secondary" id="startRpgBattle">Start Battle</button>
+          <button class="secondary" id="playRpgTurn">Play Turn</button>
+        </div>
+        <pre id="rpgMapOutput">No RPG map loaded yet.</pre>
+        <pre id="rpgBattleOutput">No battle started yet.</pre>
+      </section>
+
+      <section class="card">
         <h2>HUD Payload</h2>
         <pre id="hudOutput">No HUD loaded yet.</pre>
       </section>
@@ -266,7 +303,7 @@
         return Number.isFinite(value) ? value : fallback;
       };
 
-      const state = { playerId: "" };
+      const state = { playerId: "", rpgMap: null, rpgBattle: null };
       const PRESET_STORAGE_KEY = "mycoQuestDevPresets.v1";
       const PRESET_EXPORT_VERSION = 1;
       const BUILTIN_PRESETS = [
@@ -716,6 +753,152 @@
         get("activeSourceCount").textContent = String(communication?.activeSourceCount ?? "-");
       };
 
+      const renderRpgMap = (map) => {
+        state.rpgMap = map || null;
+        if (!map) {
+          get("rpgMapOutput").textContent = "No RPG map loaded yet.";
+          get("rpgDestination").innerHTML = "";
+          return;
+        }
+
+        const destinations = Array.isArray(map.connectedRegions)
+          ? map.connectedRegions
+          : [];
+        get("rpgDestination").innerHTML = destinations
+          .map((region) => `<option value="${region.id}">${region.name} (${region.biome})</option>`)
+          .join("");
+
+        get("rpgMapOutput").textContent = JSON.stringify(map, null, 2);
+      };
+
+      const renderRpgBattle = (receipt) => {
+        if (!receipt || !receipt.battle) {
+          state.rpgBattle = null;
+          get("rpgBattleOutput").textContent = "No battle started yet.";
+          return;
+        }
+
+        state.rpgBattle = receipt.battle;
+        get("rpgBattleOutput").textContent = JSON.stringify(receipt, null, 2);
+      };
+
+      const loadRpgMap = async () => {
+        setStatus("Loading RPG map...");
+        const payload = {
+          source: get("source").value,
+          externalId: get("externalId").value.trim(),
+        };
+
+        const response = await fetch(apiUrl("/api/rpg/map"), {
+          method: "POST",
+          headers: headers(),
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+
+        const map = await response.json();
+        state.playerId = map.playerId;
+        get("playerId").value = map.playerId;
+        renderRpgMap(map);
+        setStatus(`RPG map loaded in ${map.currentRegion?.name ?? map.world?.currentRegionId}.`);
+      };
+
+      const travelRpgRegion = async () => {
+        setStatus("Traveling to selected region...");
+        const destinationRegionId = get("rpgDestination").value;
+        if (!destinationRegionId) {
+          throw new Error("Load RPG map first so a destination is available.");
+        }
+
+        const payload = {
+          source: get("source").value,
+          externalId: get("externalId").value.trim(),
+          destinationRegionId,
+        };
+
+        const response = await fetch(apiUrl("/api/rpg/travel"), {
+          method: "POST",
+          headers: headers(),
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+
+        const map = await response.json();
+        state.playerId = map.playerId;
+        get("playerId").value = map.playerId;
+        renderRpgMap(map);
+        if (map.activeBattle) {
+          renderRpgBattle({ playerId: map.playerId, campaign: { world: map.world }, battle: map.activeBattle });
+        }
+        setStatus(`Traveled to ${map.currentRegion?.name ?? map.world?.currentRegionId}.`);
+      };
+
+      const startRpgBattle = async () => {
+        setStatus("Starting RPG battle...");
+        const payload = {
+          source: get("source").value,
+          externalId: get("externalId").value.trim(),
+        };
+
+        const response = await fetch(apiUrl("/api/rpg/battle/start"), {
+          method: "POST",
+          headers: headers(),
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+
+        const receipt = await response.json();
+        state.playerId = receipt.playerId;
+        get("playerId").value = receipt.playerId;
+        renderRpgBattle(receipt);
+        setStatus(`Battle started in lane ${receipt.battle?.encounterLane}.`);
+      };
+
+      const playRpgTurn = async () => {
+        setStatus("Resolving RPG turn...");
+        const actionKind = get("rpgActionKind").value;
+        const actionElementRaw = get("rpgActionElement").value;
+
+        const payload = {
+          source: get("source").value,
+          externalId: get("externalId").value.trim(),
+          action: {
+            kind: actionKind,
+            ...(actionElementRaw ? { element: actionElementRaw } : {}),
+          },
+        };
+
+        const response = await fetch(apiUrl("/api/rpg/battle/turn"), {
+          method: "POST",
+          headers: headers(),
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+
+        const receipt = await response.json();
+        state.playerId = receipt.playerId;
+        get("playerId").value = receipt.playerId;
+        renderRpgBattle(receipt);
+
+        if (receipt.battle?.status !== "active") {
+          await loadRpgMap();
+          setStatus(`Battle ${receipt.battle?.status}. Map refreshed.`);
+          return;
+        }
+
+        setStatus(
+          `Turn ${receipt.battle?.turnNumber} resolved. Enemy HP ${receipt.battle?.enemy?.hp}/${receipt.battle?.enemy?.maxHp}.`,
+        );
+      };
+
       const getTelemetryPayload = () => {
         const castsByElement = {
           fire: parseNumber("fireCasts"),
@@ -875,6 +1058,10 @@
       get("recordSession").addEventListener("click", withErrorHandling(recordSession));
       get("refreshHud").addEventListener("click", withErrorHandling(refreshHud));
       get("randomizeTelemetry").addEventListener("click", randomizeTelemetry);
+      get("loadRpgMap").addEventListener("click", withErrorHandling(loadRpgMap));
+      get("travelRpgRegion").addEventListener("click", withErrorHandling(travelRpgRegion));
+      get("startRpgBattle").addEventListener("click", withErrorHandling(startRpgBattle));
+      get("playRpgTurn").addEventListener("click", withErrorHandling(playRpgTurn));
       get("applyPreset").addEventListener("click", withErrorHandling(() => {
         applySelectedPreset();
       }));

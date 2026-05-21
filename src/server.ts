@@ -7,6 +7,10 @@ import { DeepPartial, LiveOpsConfig } from "./platform/liveOps";
 import {
   ECOSYSTEM_SOURCES,
   EcosystemSource,
+  RpgBattleStartRequest,
+  RpgMapRequest,
+  RpgTravelRequest,
+  RpgTurnActionRequest,
   SolanaRewardClaimRequest,
   SolanaRewardTransferRequest,
   SolanaRewardTransferStatusRequest,
@@ -16,6 +20,7 @@ import {
   SourceScope,
 } from "./platform/types";
 import { WebhookVerifier } from "./platform/webhookVerifier";
+import { Element, TurnActionInput } from "./types";
 
 const sendJson = (
   response: ServerResponse,
@@ -97,6 +102,33 @@ const parseSource = (value: unknown): EcosystemSource => {
   }
 
   return source as EcosystemSource;
+};
+
+const parseTurnAction = (value: unknown): TurnActionInput => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("Expected object field: action");
+  }
+
+  const shape = value as Record<string, unknown>;
+  const kind = requiredString(shape.kind, "action.kind");
+  if (kind !== "strike" && kind !== "guard" && kind !== "skill") {
+    throw new Error(`Unsupported turn action kind: ${kind}`);
+  }
+
+  let element: Element | undefined;
+  if (typeof shape.element === "string" && shape.element.trim().length > 0) {
+    const candidate = shape.element.trim().toLowerCase();
+    const allowedElements: Element[] = ["fire", "water", "ice", "nature", "void"];
+    if (!allowedElements.includes(candidate as Element)) {
+      throw new Error(`Unsupported action element: ${shape.element}`);
+    }
+    element = candidate as Element;
+  }
+
+  return {
+    kind,
+    element,
+  };
 };
 
 const extractClientIp = (request: IncomingMessage): string | undefined => {
@@ -308,6 +340,70 @@ const start = async (): Promise<void> => {
         });
 
         return sendJson(response, 200, coaching);
+      }
+
+      if (method === "POST" && routePath === "/api/rpg/map") {
+        const rawBody = await readRawBody(request);
+        const body = parseJsonBody<Record<string, unknown>>(rawBody);
+        const source = parseSource(body.source);
+        authorizeSource(request, source, "rpg:play");
+
+        const snapshot = await hub.getRpgMap({
+          source,
+          externalId: requiredString(body.externalId, "externalId"),
+          claims: (body.claims ?? {}) as never,
+        } satisfies RpgMapRequest);
+
+        return sendJson(response, 200, snapshot);
+      }
+
+      if (method === "POST" && routePath === "/api/rpg/travel") {
+        const rawBody = await readRawBody(request);
+        const body = parseJsonBody<Record<string, unknown>>(rawBody);
+        const source = parseSource(body.source);
+        authorizeSource(request, source, "rpg:play");
+
+        const snapshot = await hub.travelRpgRegion({
+          source,
+          externalId: requiredString(body.externalId, "externalId"),
+          claims: (body.claims ?? {}) as never,
+          destinationRegionId: requiredString(body.destinationRegionId, "destinationRegionId"),
+        } satisfies RpgTravelRequest);
+
+        return sendJson(response, 200, snapshot);
+      }
+
+      if (method === "POST" && routePath === "/api/rpg/battle/start") {
+        const rawBody = await readRawBody(request);
+        const body = parseJsonBody<Record<string, unknown>>(rawBody);
+        const source = parseSource(body.source);
+        authorizeSource(request, source, "rpg:play");
+
+        const receipt = await hub.startRpgBattle({
+          source,
+          externalId: requiredString(body.externalId, "externalId"),
+          claims: (body.claims ?? {}) as never,
+          preferredLane:
+            typeof body.preferredLane === "string" ? body.preferredLane : undefined,
+        } satisfies RpgBattleStartRequest);
+
+        return sendJson(response, 200, receipt);
+      }
+
+      if (method === "POST" && routePath === "/api/rpg/battle/turn") {
+        const rawBody = await readRawBody(request);
+        const body = parseJsonBody<Record<string, unknown>>(rawBody);
+        const source = parseSource(body.source);
+        authorizeSource(request, source, "rpg:play");
+
+        const receipt = await hub.playRpgTurn({
+          source,
+          externalId: requiredString(body.externalId, "externalId"),
+          claims: (body.claims ?? {}) as never,
+          action: parseTurnAction(body.action),
+        } satisfies RpgTurnActionRequest);
+
+        return sendJson(response, 200, receipt);
       }
 
       if (method === "POST" && routePath === "/api/solana/challenge") {
