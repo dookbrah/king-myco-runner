@@ -156,6 +156,15 @@
         flex-wrap: wrap;
         gap: 6px;
       }
+      .shop-grid {
+        margin-top: 8px;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+      .shop-grid button {
+        text-align: left;
+      }
       .chip {
         font-size: 11px;
         border: 1px solid #355489;
@@ -176,7 +185,7 @@
       .battle-controls {
         margin-top: 8px;
         display: grid;
-        grid-template-columns: 1fr auto auto auto;
+        grid-template-columns: 1fr auto auto auto auto;
         gap: 6px;
       }
       @media (max-width: 520px) {
@@ -211,6 +220,10 @@
       }
       .dialogue.active {
         display: block;
+      }
+      .cutscene {
+        border-color: #6d28d9;
+        background: rgba(18, 8, 34, 0.95);
       }
       .dialogue h3 {
         margin-bottom: 6px;
@@ -334,6 +347,18 @@
           </section>
 
           <section class="panel">
+            <h2>Inventory + Shop</h2>
+            <p class="subtle">Spend spores to prep for battles and puzzle routes.</p>
+            <div id="inventoryList" class="chips" style="margin-top: 8px"></div>
+            <div class="shop-grid">
+              <button id="buyPotionBtn">Buy Myco Potion (15 spores)</button>
+              <button id="buyManaBtn">Buy Mana Dew (22 spores)</button>
+              <button id="buyBombBtn">Buy Smoke Bomb (28 spores)</button>
+            </div>
+            <p class="subtle" style="margin-top: 6px">Potion heals HP, Mana Dew boosts magic turns, Smoke Bomb can escape battle.</p>
+          </section>
+
+          <section class="panel">
             <h2>Turn Battle</h2>
             <div class="canvas-shell" style="margin-top: 8px">
               <canvas id="battleCanvas" width="460" height="230"></canvas>
@@ -350,6 +375,7 @@
               <button id="strikeBtn">Strike</button>
               <button id="guardBtn">Guard</button>
               <button id="skillBtn" class="primary">Skill</button>
+              <button id="itemBtn">Use Potion</button>
             </div>
             <div id="battleLog" class="log">No combat logs yet.</div>
           </section>
@@ -360,6 +386,7 @@
               Move: WASD / Arrow keys<br />
               Interact: E<br />
               Sprint: Hold Shift<br />
+              Cutscene Next: Space<br />
               Contact an enemy to enter turn battle.
             </p>
           </section>
@@ -374,6 +401,16 @@
         <button id="choiceMycoBtn" class="primary">Mycoside Choice</button>
         <button id="choiceDarkBtn" class="warn">Darkside Choice</button>
         <button id="closeDialogueBtn">Close</button>
+      </div>
+    </section>
+
+    <section id="cutscenePanel" class="dialogue cutscene">
+      <h3 id="cutsceneTitle">Cutscene</h3>
+      <p id="cutsceneBody">...</p>
+      <p id="cutsceneMeta" class="subtle"></p>
+      <div class="dialogue-actions">
+        <button id="cutsceneNextBtn" class="primary">Next</button>
+        <button id="cutsceneSkipBtn">Skip</button>
       </div>
     </section>
 
@@ -415,21 +452,32 @@
         magicStat: document.getElementById("magicStat"),
         clueList: document.getElementById("clueList"),
         questList: document.getElementById("questList"),
+        inventoryList: document.getElementById("inventoryList"),
         battleSummary: document.getElementById("battleSummary"),
         battleLog: document.getElementById("battleLog"),
         elementSelect: document.getElementById("elementSelect"),
         strikeBtn: document.getElementById("strikeBtn"),
         guardBtn: document.getElementById("guardBtn"),
         skillBtn: document.getElementById("skillBtn"),
+        itemBtn: document.getElementById("itemBtn"),
         upgradeAttackBtn: document.getElementById("upgradeAttackBtn"),
         upgradeDefenseBtn: document.getElementById("upgradeDefenseBtn"),
         upgradeMagicBtn: document.getElementById("upgradeMagicBtn"),
+        buyPotionBtn: document.getElementById("buyPotionBtn"),
+        buyManaBtn: document.getElementById("buyManaBtn"),
+        buyBombBtn: document.getElementById("buyBombBtn"),
         dialoguePanel: document.getElementById("dialoguePanel"),
         dialogueTitle: document.getElementById("dialogueTitle"),
         dialogueBody: document.getElementById("dialogueBody"),
         choiceMycoBtn: document.getElementById("choiceMycoBtn"),
         choiceDarkBtn: document.getElementById("choiceDarkBtn"),
         closeDialogueBtn: document.getElementById("closeDialogueBtn"),
+        cutscenePanel: document.getElementById("cutscenePanel"),
+        cutsceneTitle: document.getElementById("cutsceneTitle"),
+        cutsceneBody: document.getElementById("cutsceneBody"),
+        cutsceneMeta: document.getElementById("cutsceneMeta"),
+        cutsceneNextBtn: document.getElementById("cutsceneNextBtn"),
+        cutsceneSkipBtn: document.getElementById("cutsceneSkipBtn"),
       };
 
       const REGIONS = [
@@ -622,25 +670,72 @@
         { id: "gold-3", x: 2660, y: 1830, value: 1, golden: true },
       ];
 
+      const CUTSCENES = {
+        prologue: {
+          title: "The Crown Falls",
+          pages: [
+            "Dark Mycelius corrupted the kingdom roots. King Myco's sorcery shattered into scattered clues.",
+            "Villages now hide from Rougarou, the Three-Headed Dragon, and the Evil Crab warbands.",
+            "Restore your powers, gather allies, and push into the Solana Chainlands for the final confrontation.",
+          ],
+        },
+        fenUnlocked: {
+          title: "Fen Route Open",
+          pages: [
+            "The Fen gate weakens as clues align. Marsh paths now adapt to your morality choices.",
+            "Compassion route: safer support NPCs. Dark route: harder enemies with richer drops.",
+          ],
+        },
+        solanaReady: {
+          title: "Chainlands Threshold",
+          pages: [
+            "Dragon and crab lieutenants are down. Your magic resonates with the Abyss Pearl cipher.",
+            "A final gate opens into corrupted blocks where Dark Mycelius forges his rot protocols.",
+          ],
+        },
+        epilogue: {
+          title: "Kingdom Rewritten",
+          pages: [
+            "The final battle is done, but your morality now defines the kingdom's future simulation.",
+            "Your AI-backed path remains unique: villages, encounters, and clue routes continue to diverge.",
+          ],
+        },
+      };
+
       const state = {
         mode: "explore",
         pendingBattle: false,
+        worldTime: 0,
         camera: { x: 0, y: 0 },
         keys: new Set(),
         aiDirective: "The kingdom listens to your choices.",
         aiDirectiveAt: 0,
+        aiRemoteDirectiveAt: 0,
         activeDialogue: null,
+        cutscene: {
+          active: false,
+          id: null,
+          page: 0,
+          pages: [],
+          title: "",
+        },
         encounterEnemyId: null,
         battleMode: "none",
         battle: null,
         campaignSnapshot: null,
         enemies: [],
+        inventory: {
+          mycoPotion: 2,
+          manaDew: 1,
+          smokeBomb: 0,
+        },
         progress: {
           clues: new Set(),
           defeatedBosses: new Set(),
           interactedNpcs: new Set(),
           solvedStructures: new Set(),
           collectedPickups: new Set(),
+          cutscenesSeen: new Set(),
         },
         hero: {
           x: 280,
@@ -656,6 +751,7 @@
           morality: 0,
           spores: 0,
           goldenSpores: 0,
+          magicBoostTurns: 0,
         },
       };
 
@@ -708,6 +804,8 @@
           interactedNpcs: Array.from(state.progress.interactedNpcs),
           solvedStructures: Array.from(state.progress.solvedStructures),
           collectedPickups: Array.from(state.progress.collectedPickups),
+          cutscenesSeen: Array.from(state.progress.cutscenesSeen),
+          inventory: state.inventory,
           enemyStates: state.enemies.map((enemy) => ({
             id: enemy.id,
             active: enemy.active,
@@ -746,6 +844,15 @@
             }
             for (const id of parsed.collectedPickups ?? []) {
               if (typeof id === "string") state.progress.collectedPickups.add(id);
+            }
+            for (const id of parsed.cutscenesSeen ?? []) {
+              if (typeof id === "string") state.progress.cutscenesSeen.add(id);
+            }
+            if (parsed.inventory && typeof parsed.inventory === "object") {
+              state.inventory = {
+                ...state.inventory,
+                ...parsed.inventory,
+              };
             }
             for (const enemyState of parsed.enemyStates ?? []) {
               if (!enemyState || typeof enemyState !== "object") continue;
@@ -915,8 +1022,211 @@
         state.hero.spores = Math.max(0, state.hero.spores + amount);
       };
 
+      const openCutscene = (cutsceneId) => {
+        if (state.progress.cutscenesSeen.has(cutsceneId)) return;
+        const scene = CUTSCENES[cutsceneId];
+        if (!scene) return;
+        state.progress.cutscenesSeen.add(cutsceneId);
+        state.cutscene = {
+          active: true,
+          id: cutsceneId,
+          page: 0,
+          pages: [...scene.pages],
+          title: scene.title,
+        };
+        state.mode = "cutscene";
+        dom.cutscenePanel.classList.add("active");
+        renderCutscene();
+      };
+
+      const closeCutscene = () => {
+        state.cutscene.active = false;
+        state.cutscene.id = null;
+        state.cutscene.page = 0;
+        state.cutscene.pages = [];
+        state.cutscene.title = "";
+        dom.cutscenePanel.classList.remove("active");
+        if (state.mode === "cutscene") {
+          state.mode = "explore";
+        }
+      };
+
+      const renderCutscene = () => {
+        if (!state.cutscene.active) return;
+        dom.cutsceneTitle.textContent = state.cutscene.title;
+        dom.cutsceneBody.textContent = state.cutscene.pages[state.cutscene.page] ?? "...";
+        dom.cutsceneMeta.textContent = `Scene ${state.cutscene.page + 1} / ${state.cutscene.pages.length}`;
+      };
+
+      const advanceCutscene = () => {
+        if (!state.cutscene.active) return;
+        if (state.cutscene.page < state.cutscene.pages.length - 1) {
+          state.cutscene.page += 1;
+          renderCutscene();
+          return;
+        }
+        closeCutscene();
+      };
+
+      const checkCutsceneTriggers = () => {
+        if (state.cutscene.active || state.activeDialogue || state.mode === "battle") return;
+        if (!state.progress.cutscenesSeen.has("prologue")) {
+          openCutscene("prologue");
+          return;
+        }
+        if (
+          state.progress.defeatedBosses.has("rougarou") &&
+          !state.progress.cutscenesSeen.has("fenUnlocked")
+        ) {
+          openCutscene("fenUnlocked");
+          return;
+        }
+        if (
+          state.progress.defeatedBosses.has("tri-drake") &&
+          state.progress.defeatedBosses.has("evil-crab") &&
+          state.progress.clues.has("abyss-pearl") &&
+          !state.progress.cutscenesSeen.has("solanaReady")
+        ) {
+          openCutscene("solanaReady");
+          return;
+        }
+        if (
+          state.progress.defeatedBosses.has("dark-mycelius") &&
+          !state.progress.cutscenesSeen.has("epilogue")
+        ) {
+          openCutscene("epilogue");
+        }
+      };
+
+      const tryBuyItem = (itemType) => {
+        const prices = {
+          mycoPotion: 15,
+          manaDew: 22,
+          smokeBomb: 28,
+        };
+        const labels = {
+          mycoPotion: "Myco Potion",
+          manaDew: "Mana Dew",
+          smokeBomb: "Smoke Bomb",
+        };
+        const price = prices[itemType];
+        if (!price) return;
+        if (state.hero.spores < price) {
+          setStatus(`Need ${price} spores for ${labels[itemType]}.`, true);
+          return;
+        }
+        state.hero.spores -= price;
+        state.inventory[itemType] += 1;
+        setStatus(`Purchased ${labels[itemType]}.`);
+      };
+
+      const useInventoryItem = (itemType) => {
+        if (state.inventory[itemType] <= 0) {
+          setStatus("Item unavailable in inventory.", true);
+          return;
+        }
+        if (itemType === "mycoPotion") {
+          state.inventory.mycoPotion -= 1;
+          const heal = 28 + state.hero.magic * 2;
+          state.hero.hp = Math.min(state.hero.maxHp, state.hero.hp + heal);
+          if (state.battle?.player) {
+            state.battle.player.hp = Math.min(state.battle.player.maxHp, state.battle.player.hp + heal);
+            state.battle.battleLog.push(`King Myco used a potion for +${heal} HP.`);
+          }
+          setStatus(`Myco Potion used (+${heal} HP).`);
+          return;
+        }
+        if (itemType === "manaDew") {
+          state.inventory.manaDew -= 1;
+          state.hero.magicBoostTurns = Math.max(state.hero.magicBoostTurns, 3);
+          setStatus("Mana Dew activated: skill power boosted for 3 turns.");
+          return;
+        }
+        if (itemType === "smokeBomb") {
+          state.inventory.smokeBomb -= 1;
+          if (state.mode !== "battle" || !state.battle || state.battle.status !== "active") {
+            setStatus("Smoke Bomb can only be used in battle.", true);
+            return;
+          }
+          const escaped = Math.random() < 0.7;
+          if (escaped) {
+            state.mode = "explore";
+            state.battle = null;
+            state.encounterEnemyId = null;
+            setStatus("Smoke Bomb success: escaped battle.");
+            appendBattleLog("Escape succeeded.");
+          } else {
+            setStatus("Smoke Bomb failed! Enemy kept pressure.", true);
+            appendBattleLog("Escape failed.");
+          }
+          return;
+        }
+      };
+
+      const requestAiCoaching = async () => {
+        const now = Date.now();
+        if (now - state.aiRemoteDirectiveAt < 45000) return;
+        state.aiRemoteDirectiveAt = now;
+        try {
+          const profilePulse = `morality=${state.hero.morality}, clues=${state.progress.clues.size}, bosses=${state.progress.defeatedBosses.size}, spores=${state.hero.spores}`;
+          const coaching = await callApi("/api/mycoai/coach", {
+            ...requestBase(),
+            prompt: `Myco Quest overworld directive (${profilePulse}). Give one concise narrative gameplay directive for next 60 seconds.`,
+          });
+          const recommendation = Array.isArray(coaching?.recommendations)
+            ? coaching.recommendations.find((entry) => typeof entry === "string")
+            : null;
+          if (recommendation) {
+            state.aiDirective = `AI Coach: ${recommendation}`;
+          }
+        } catch (_error) {
+          // Optional enhancement; local loop continues when auth/scope is unavailable.
+        }
+      };
+
+      const buildNpcEncounter = (npc, alreadySpoken) => {
+        const alignment = state.hero.morality >= 20 ? "myco" : state.hero.morality <= -20 ? "dark" : "balanced";
+        const bossCount = state.progress.defeatedBosses.size;
+        const clueCount = state.progress.clues.size;
+        let body = npc.intro;
+        if (alreadySpoken) {
+          body = `${npc.name}: The world seed shifted. Your ${alignment} alignment is rewriting local events.`;
+        } else if (bossCount >= 2) {
+          body = `${npc.intro} You already crushed ${bossCount} lieutenants; strategy now matters more than raw power.`;
+        } else if (clueCount >= 3) {
+          body = `${npc.intro} Clue density is high — puzzle routes now open if you read the signs.`;
+        }
+
+        return {
+          title: npc.name,
+          body,
+          mycoLabel: alignment === "dark" ? "Resist Darkness (+morality)" : "Mycoside Path (+morality)",
+          darkLabel: alignment === "myco" ? "Risk Corruption (-morality)" : "Darkside Path (-morality)",
+          onMyco: () => {
+            applyMorality(8 + Math.floor(clueCount / 2));
+            grantSpores(16 + bossCount * 2);
+            if (Math.random() < 0.35) {
+              state.inventory.mycoPotion += 1;
+            }
+            addClue(npc.clueId, npc.clueLabel);
+            state.progress.interactedNpcs.add(npc.id);
+            setStatus(npc.mycoText);
+          },
+          onDark: () => {
+            applyMorality(-10 - Math.floor(bossCount / 2));
+            state.hero.attack += 1;
+            if (Math.random() < 0.45) {
+              state.inventory.smokeBomb += 1;
+            }
+            addClue(npc.clueId, npc.clueLabel);
+            state.progress.interactedNpcs.add(npc.id);
+            setStatus(npc.darkText);
+          },
+        };
+      };
+
       const interact = () => {
-        if (state.activeDialogue) {
+        if (state.activeDialogue || state.cutscene.active || state.mode === "cutscene") {
           return;
         }
         if (state.mode === "battle") {
@@ -927,29 +1237,7 @@
         const nearbyNpc = NPCS.find((npc) => dist(state.hero.x, state.hero.y, npc.x, npc.y) < 78);
         if (nearbyNpc) {
           const alreadySpoken = state.progress.interactedNpcs.has(nearbyNpc.id);
-          openDialogue({
-            title: nearbyNpc.name,
-            body: alreadySpoken
-              ? `${nearbyNpc.name}: Keep moving, king. Every choice changes your world seed.`
-              : nearbyNpc.intro,
-            mycoLabel: "Choose Mycoside (+morality)",
-            darkLabel: "Choose Darkside (-morality, +power)",
-            onMyco: () => {
-              applyMorality(8);
-              grantSpores(18);
-              addClue(nearbyNpc.clueId, nearbyNpc.clueLabel);
-              state.progress.interactedNpcs.add(nearbyNpc.id);
-              setStatus(nearbyNpc.mycoText);
-            },
-            onDark: () => {
-              applyMorality(-10);
-              state.hero.attack += 1;
-              state.hero.hp = Math.min(state.hero.maxHp, state.hero.hp + 8);
-              addClue(nearbyNpc.clueId, nearbyNpc.clueLabel);
-              state.progress.interactedNpcs.add(nearbyNpc.id);
-              setStatus(nearbyNpc.darkText);
-            },
-          });
+          openDialogue(buildNpcEncounter(nearbyNpc, alreadySpoken));
           return;
         }
 
@@ -1014,6 +1302,7 @@
         const options = [];
         options.push(`Region pulse: ${region?.name ?? "Unknown lands"} reshapes around your actions.`);
         options.push(`AI director: ${state.progress.clues.size} clues gathered; new enemy paths are mutating.`);
+        options.push(`Inventory pulse: potion ${state.inventory.mycoPotion}, dew ${state.inventory.manaDew}, bomb ${state.inventory.smokeBomb}.`);
         if (state.hero.morality >= 35) {
           options.push("Mycoside influence surges. Villagers reveal safer routes.");
         } else if (state.hero.morality <= -35) {
@@ -1204,6 +1493,9 @@
         }
         state.mode = "explore";
         state.encounterEnemyId = null;
+        if (battle.status !== "active") {
+          state.battle = null;
+        }
       };
 
       const resolveLocalTurn = (kind, element) => {
@@ -1218,7 +1510,8 @@
           battle.player.guard = Math.min(24, battle.player.guard + 12 + state.hero.defense * 2);
         } else if (kind === "skill") {
           const elementBonus = element === "void" ? 1.15 : element === "nature" ? 1.1 : 1;
-          playerDamage = Math.round((12 + state.hero.magic * 5) * elementBonus * randomRoll());
+          const boost = state.hero.magicBoostTurns > 0 ? 1.28 : 1;
+          playerDamage = Math.round((12 + state.hero.magic * 5) * elementBonus * boost * randomRoll());
         }
 
         if (playerDamage > 0) {
@@ -1245,6 +1538,10 @@
 
         if (battle.player.hp <= 0) {
           battle.status = "lost";
+        }
+
+        if (state.hero.magicBoostTurns > 0) {
+          state.hero.magicBoostTurns -= 1;
         }
 
         battle.turnNumber += 1;
@@ -1329,7 +1626,9 @@
       };
 
       const update = async (dt) => {
+        state.worldTime += dt;
         if (state.activeDialogue) return;
+        if (state.cutscene.active || state.mode === "cutscene") return;
         if (state.mode === "battle") return;
         moveHero(dt);
         updateEnemies(dt);
@@ -1337,11 +1636,12 @@
         updateDirective();
         await checkEnemyContact();
         updateCamera();
+        checkCutsceneTriggers();
       };
 
       const drawPixelCharacter = (ctx, screenX, screenY) => {
         const x = Math.round(screenX);
-        const y = Math.round(screenY);
+        const y = Math.round(screenY + Math.sin(state.worldTime * 8) * 1.2);
         // Crown
         ctx.fillStyle = "#facc15";
         ctx.fillRect(x - 6, y - 22, 12, 4);
@@ -1421,9 +1721,17 @@
       const drawWorld = () => {
         worldCtx.fillStyle = "#040913";
         worldCtx.fillRect(0, 0, worldCanvas.width, worldCanvas.height);
+        const tilePhase = Math.floor(state.worldTime * 4) % 4;
 
-        // Regions
+        const visible = (x, y, w, h) =>
+          x + w >= state.camera.x &&
+          y + h >= state.camera.y &&
+          x <= state.camera.x + worldCanvas.width &&
+          y <= state.camera.y + worldCanvas.height;
+
+        // Regions with animated 16-bit tile shimmer
         for (const region of REGIONS) {
+          if (!visible(region.x, region.y, region.w, region.h)) continue;
           const rx = region.x - state.camera.x;
           const ry = region.y - state.camera.y;
           worldCtx.fillStyle = region.colorA;
@@ -1431,11 +1739,33 @@
           worldCtx.fillStyle = region.colorB;
           for (let y = 0; y < region.h; y += TILE) {
             for (let x = 0; x < region.w; x += TILE) {
-              if (((x / TILE) + (y / TILE)) % 3 === 0) {
+              if (((x / TILE) + (y / TILE) + tilePhase) % 4 === 0) {
                 worldCtx.fillRect(rx + x, ry + y, TILE, TILE);
               }
             }
           }
+
+          // Water and chainland effects for richer ambience
+          if (region.id === "crimson-tide") {
+            worldCtx.globalAlpha = 0.2 + Math.sin(state.worldTime * 5) * 0.05;
+            worldCtx.fillStyle = "#67e8f9";
+            for (let i = 0; i < 11; i += 1) {
+              const waveY = ry + 30 + i * 100 + Math.sin(state.worldTime * 3 + i) * 8;
+              worldCtx.fillRect(rx + 10, waveY, region.w - 20, 4);
+            }
+            worldCtx.globalAlpha = 1;
+          }
+          if (region.id === "solana-chainlands") {
+            worldCtx.globalAlpha = 0.18;
+            worldCtx.fillStyle = "#a78bfa";
+            for (let i = 0; i < 16; i += 1) {
+              const sparkX = rx + ((i * 67 + Math.floor(state.worldTime * 120)) % Math.max(60, region.w - 20));
+              const sparkY = ry + ((i * 49 + Math.floor(state.worldTime * 90)) % Math.max(60, region.h - 20));
+              worldCtx.fillRect(sparkX, sparkY, 6, 6);
+            }
+            worldCtx.globalAlpha = 1;
+          }
+
           worldCtx.strokeStyle = "#0b1224";
           worldCtx.lineWidth = 3;
           worldCtx.strokeRect(rx, ry, region.w, region.h);
@@ -1461,11 +1791,13 @@
         // Static obstacles
         worldCtx.fillStyle = "#243b63";
         for (const obstacle of staticObstacles) {
+          if (!visible(obstacle.x, obstacle.y, obstacle.w, obstacle.h)) continue;
           worldCtx.fillRect(obstacle.x - state.camera.x, obstacle.y - state.camera.y, obstacle.w, obstacle.h);
         }
 
         // Gate barriers
         for (const gate of GATES) {
+          if (!visible(gate.x, gate.y, gate.w, gate.h)) continue;
           const unlocked = gate.isUnlocked(state);
           worldCtx.fillStyle = unlocked ? "#16a34a" : "#991b1b";
           worldCtx.fillRect(gate.x - state.camera.x, gate.y - state.camera.y, gate.w, gate.h);
@@ -1474,25 +1806,34 @@
         // Pickups
         for (const pickup of PICKUPS) {
           if (state.progress.collectedPickups.has(pickup.id)) continue;
+          if (!visible(pickup.x - 10, pickup.y - 10, 20, 20)) continue;
           const sx = pickup.x - state.camera.x;
           const sy = pickup.y - state.camera.y;
+          const twinkle = Math.sin(state.worldTime * 9 + pickup.x * 0.01 + pickup.y * 0.01);
           worldCtx.fillStyle = pickup.golden ? "#fbbf24" : "#22d3ee";
           worldCtx.fillRect(Math.round(sx - 6), Math.round(sy - 6), 12, 12);
+          worldCtx.globalAlpha = 0.35 + (twinkle + 1) * 0.2;
+          worldCtx.fillStyle = "#ffffff";
+          worldCtx.fillRect(Math.round(sx - 2), Math.round(sy - 2), 4, 4);
+          worldCtx.globalAlpha = 1;
         }
 
         // Structures
         for (const structure of STRUCTURES) {
+          if (!visible(structure.x, structure.y, structure.w, structure.h)) continue;
           drawStructure(worldCtx, structure, Math.round(structure.x - state.camera.x), Math.round(structure.y - state.camera.y));
         }
 
         // NPCs
         for (const npc of NPCS) {
+          if (!visible(npc.x - 14, npc.y - 16, 28, 30)) continue;
           drawNpc(worldCtx, npc, npc.x - state.camera.x, npc.y - state.camera.y);
         }
 
         // Enemies
         for (const enemy of state.enemies) {
           if (!enemy.active) continue;
+          if (!visible(enemy.x - 18, enemy.y - 18, 36, 36)) continue;
           drawEnemy(worldCtx, enemy, enemy.x - state.camera.x, enemy.y - state.camera.y);
         }
 
@@ -1593,7 +1934,14 @@
 
         dom.attackStat.value = String(state.hero.attack);
         dom.defenseStat.value = String(state.hero.defense);
-        dom.magicStat.value = String(state.hero.magic);
+        dom.magicStat.value = String(state.hero.magic + (state.hero.magicBoostTurns > 0 ? 1 : 0));
+
+        dom.inventoryList.innerHTML = [
+          `<span class="chip">Myco Potion x${state.inventory.mycoPotion}</span>`,
+          `<span class="chip">Mana Dew x${state.inventory.manaDew}</span>`,
+          `<span class="chip">Smoke Bomb x${state.inventory.smokeBomb}</span>`,
+          `<span class="chip">Magic Boost Turns: ${state.hero.magicBoostTurns}</span>`,
+        ].join("");
 
         const clueLabels = [];
         for (const npc of NPCS) {
@@ -1638,6 +1986,7 @@
         dom.strikeBtn.disabled = !battleActive;
         dom.guardBtn.disabled = !battleActive;
         dom.skillBtn.disabled = !battleActive;
+        dom.itemBtn.disabled = !battleActive || state.inventory.mycoPotion <= 0;
 
         if (state.battle) {
           const lastAction = state.battle.lastAction
@@ -1661,6 +2010,8 @@
         } catch (error) {
           setStatus(`Campaign sync failed: ${String(error)} (local play still works)`, true);
         }
+        checkCutsceneTriggers();
+        requestAiCoaching();
       };
 
       const frameLoop = async (timestamp) => {
@@ -1697,6 +2048,10 @@
           interact();
           event.preventDefault();
         }
+        if (key === " " && state.cutscene.active) {
+          advanceCutscene();
+          event.preventDefault();
+        }
       });
 
       document.addEventListener("keyup", (event) => {
@@ -1706,6 +2061,8 @@
       dom.choiceMycoBtn.addEventListener("click", () => handleChoice("myco"));
       dom.choiceDarkBtn.addEventListener("click", () => handleChoice("dark"));
       dom.closeDialogueBtn.addEventListener("click", closeDialogue);
+      dom.cutsceneNextBtn.addEventListener("click", advanceCutscene);
+      dom.cutsceneSkipBtn.addEventListener("click", closeCutscene);
 
       dom.syncBtn.addEventListener("click", syncCampaign);
       dom.saveBtn.addEventListener("click", () => {
@@ -1720,6 +2077,11 @@
       dom.strikeBtn.addEventListener("click", () => playTurn("strike"));
       dom.guardBtn.addEventListener("click", () => playTurn("guard"));
       dom.skillBtn.addEventListener("click", () => playTurn("skill"));
+      dom.itemBtn.addEventListener("click", () => useInventoryItem("mycoPotion"));
+
+      dom.buyPotionBtn.addEventListener("click", () => tryBuyItem("mycoPotion"));
+      dom.buyManaBtn.addEventListener("click", () => tryBuyItem("manaDew"));
+      dom.buyBombBtn.addEventListener("click", () => tryBuyItem("smokeBomb"));
 
       dom.upgradeAttackBtn.addEventListener("click", () => tryUpgrade("attack"));
       dom.upgradeDefenseBtn.addEventListener("click", () => tryUpgrade("defense"));
@@ -1739,6 +2101,10 @@
       drawBattleScene();
       requestAnimationFrame(frameLoop);
       syncCampaign();
+      checkCutsceneTriggers();
+      setInterval(() => {
+        requestAiCoaching();
+      }, 50000);
       setStatus("Prototype loaded. Explore the world and touch enemies to start turn battles.");
     </script>
   </body>
