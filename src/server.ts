@@ -248,7 +248,8 @@ const start = async (): Promise<void> => {
         pathname.startsWith("/api/") ||
         pathname.startsWith("/webhooks/") ||
         pathname === "/health" ||
-        pathname === "/dev/myco-quest"
+        pathname === "/dev/myco-quest" ||
+        pathname === "/game/myco-quest"
           ? pathname
           : `/api${pathname}`;
 
@@ -272,6 +273,14 @@ const start = async (): Promise<void> => {
         (routePath === "/dev/myco-quest" || routePath === "/api/dev/myco-quest")
       ) {
         const html = await readFile("public/myco-quest-dev.html", "utf8");
+        return sendHtml(response, 200, html);
+      }
+
+      if (
+        method === "GET" &&
+        (routePath === "/game/myco-quest" || routePath === "/api/game/myco-quest")
+      ) {
+        const html = await readFile("public/myco-quest-game.html", "utf8");
         return sendHtml(response, 200, html);
       }
 

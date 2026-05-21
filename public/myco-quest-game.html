@@ -1,0 +1,633 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Myco Quest - Playable Preview</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: radial-gradient(circle at top, #15203f, #080d1b 60%);
+        color: #dbeafe;
+      }
+      main {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 18px;
+        display: grid;
+        gap: 14px;
+      }
+      h1,
+      h2,
+      p {
+        margin: 0;
+      }
+      .panel {
+        background: rgba(14, 24, 50, 0.88);
+        border: 1px solid #2a3c66;
+        border-radius: 12px;
+        padding: 12px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 10px;
+      }
+      .split {
+        display: grid;
+        grid-template-columns: 1.35fr 1fr;
+        gap: 14px;
+      }
+      @media (max-width: 980px) {
+        .split {
+          grid-template-columns: 1fr;
+        }
+      }
+      label {
+        display: grid;
+        gap: 4px;
+        font-size: 12px;
+        color: #bfd8ff;
+      }
+      input,
+      select,
+      button {
+        border: 1px solid #3a4f80;
+        border-radius: 8px;
+        background: #101b35;
+        color: #f1f5f9;
+        padding: 8px 10px;
+      }
+      button {
+        cursor: pointer;
+        font-weight: 600;
+      }
+      button.primary {
+        background: #1d4ed8;
+        border-color: #1e40af;
+      }
+      button.warn {
+        background: #7c2d12;
+        border-color: #b45309;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .canvas-wrap {
+        border-radius: 10px;
+        border: 1px solid #304978;
+        overflow: hidden;
+        background: #090f21;
+      }
+      canvas {
+        display: block;
+        width: 100%;
+      }
+      .region-meta {
+        margin-top: 10px;
+        font-size: 13px;
+        line-height: 1.45;
+        color: #cbd5e1;
+      }
+      .status {
+        min-height: 18px;
+        margin-top: 8px;
+        color: #93c5fd;
+      }
+      .status.error {
+        color: #fda4af;
+      }
+      .battle-controls {
+        display: grid;
+        grid-template-columns: 1fr auto auto auto;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      @media (max-width: 640px) {
+        .battle-controls {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      .log {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        white-space: pre-wrap;
+        background: #0a1328;
+        border: 1px solid #2b3f66;
+        border-radius: 10px;
+        padding: 10px;
+        max-height: 240px;
+        overflow: auto;
+        font-size: 12px;
+      }
+      .tiny {
+        font-size: 12px;
+        color: #9eb6df;
+      }
+      a {
+        color: #93c5fd;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="panel">
+        <h1>Myco Quest - Playable Game Preview</h1>
+        <p class="tiny">
+          This is the visual game view for map travel and turn-based combat. Use your real player id to continue a live campaign.
+          <a href="/dev/myco-quest" target="_blank" rel="noreferrer">Open Dev HUD</a>
+        </p>
+        <div class="grid" style="margin-top: 10px">
+          <label>
+            API Base (optional)
+            <input id="apiBase" placeholder="https://api.kingmyco.io" />
+          </label>
+          <label>
+            Source
+            <input id="source" value="kingmyco.io" />
+          </label>
+          <label>
+            Player External ID
+            <input id="externalId" value="myco-player-01" />
+          </label>
+          <label>
+            X-Source-Token (optional)
+            <input id="sourceToken" placeholder="only if source auth enabled" />
+          </label>
+        </div>
+        <div class="actions">
+          <button id="syncMapBtn" class="primary">Sync Map</button>
+          <button id="startBattleBtn" class="warn">Start Battle</button>
+        </div>
+        <div id="status" class="status"></div>
+      </section>
+
+      <section class="split">
+        <article class="panel">
+          <h2>World Map</h2>
+          <p class="tiny">Click a connected region node to travel.</p>
+          <div class="canvas-wrap" style="margin-top: 10px">
+            <canvas id="mapCanvas" width="760" height="420"></canvas>
+          </div>
+          <div id="regionMeta" class="region-meta">Sync map to begin.</div>
+        </article>
+
+        <article class="panel">
+          <h2>Turn Battle</h2>
+          <p class="tiny">Strike is stable damage, guard reduces incoming damage, skill uses your selected element.</p>
+          <div class="canvas-wrap" style="margin-top: 10px">
+            <canvas id="battleCanvas" width="520" height="320"></canvas>
+          </div>
+
+          <div class="battle-controls">
+            <select id="elementSelect">
+              <option value="fire">Fire</option>
+              <option value="water">Water</option>
+              <option value="nature">Nature</option>
+              <option value="ice">Ice</option>
+              <option value="void">Void</option>
+            </select>
+            <button id="strikeBtn">Strike</button>
+            <button id="guardBtn">Guard</button>
+            <button id="skillBtn" class="primary">Skill</button>
+          </div>
+          <div id="battleSummary" class="region-meta" style="margin-top: 8px">No active battle.</div>
+        </article>
+      </section>
+
+      <section class="panel">
+        <h2>Battle Log</h2>
+        <div id="log" class="log">No events yet.</div>
+      </section>
+    </main>
+
+    <script>
+      const STORAGE_KEY = "mycoQuestPlayableConfig";
+      const mapCanvas = document.getElementById("mapCanvas");
+      const mapCtx = mapCanvas.getContext("2d");
+      const battleCanvas = document.getElementById("battleCanvas");
+      const battleCtx = battleCanvas.getContext("2d");
+
+      const inputApiBase = document.getElementById("apiBase");
+      const inputSource = document.getElementById("source");
+      const inputExternalId = document.getElementById("externalId");
+      const inputToken = document.getElementById("sourceToken");
+      const inputElement = document.getElementById("elementSelect");
+
+      const statusEl = document.getElementById("status");
+      const regionMetaEl = document.getElementById("regionMeta");
+      const battleSummaryEl = document.getElementById("battleSummary");
+      const logEl = document.getElementById("log");
+
+      const state = {
+        map: null,
+        battle: null,
+        nodeHits: [],
+        loading: false,
+      };
+
+      const layout = {
+        "mycelial-hollow": { x: 150, y: 210 },
+        "sporefall-wetlands": { x: 320, y: 120 },
+        "ember-ruins": { x: 320, y: 300 },
+        "icebound-caverns": { x: 540, y: 120 },
+        "voidglass-sanctum": { x: 560, y: 300 },
+      };
+
+      const biomeColors = {
+        grove: "#22c55e",
+        wetlands: "#38bdf8",
+        ruins: "#f97316",
+        cavern: "#a78bfa",
+        void: "#f43f5e",
+      };
+
+      const laneColors = {
+        speed: "#38bdf8",
+        precision: "#22d3ee",
+        survival: "#f97316",
+        puzzle: "#a78bfa",
+        tactical: "#f59e0b",
+      };
+
+      const saveConfig = () => {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({
+            apiBase: inputApiBase.value.trim(),
+            source: inputSource.value.trim(),
+            externalId: inputExternalId.value.trim(),
+            sourceToken: inputToken.value,
+          }),
+        );
+      };
+
+      const loadConfig = () => {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return;
+          const parsed = JSON.parse(raw);
+          if (typeof parsed.apiBase === "string") inputApiBase.value = parsed.apiBase;
+          if (typeof parsed.source === "string") inputSource.value = parsed.source;
+          if (typeof parsed.externalId === "string") inputExternalId.value = parsed.externalId;
+          if (typeof parsed.sourceToken === "string") inputToken.value = parsed.sourceToken;
+        } catch (error) {
+          console.warn("Failed to load playable config:", error);
+        }
+      };
+
+      const setStatus = (message, isError = false) => {
+        statusEl.textContent = message;
+        statusEl.className = isError ? "status error" : "status";
+      };
+
+      const getApiBase = () => {
+        const trimmed = inputApiBase.value.trim().replace(/\/$/, "");
+        return trimmed;
+      };
+
+      const withApiBase = (path) => `${getApiBase()}${path}`;
+
+      const requestBodyBase = () => ({
+        source: inputSource.value.trim() || "kingmyco.io",
+        externalId: inputExternalId.value.trim() || "myco-player-01",
+      });
+
+      const callApi = async (path, body) => {
+        saveConfig();
+        const headers = { "content-type": "application/json" };
+        const sourceToken = inputToken.value.trim();
+        if (sourceToken.length > 0) {
+          headers["x-source-token"] = sourceToken;
+        }
+        const response = await fetch(withApiBase(path), {
+          method: "POST",
+          headers,
+          body: JSON.stringify(body),
+        });
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(`${response.status} ${response.statusText}: ${text}`);
+        }
+        return response.json();
+      };
+
+      const hpRatio = (value, max) => {
+        if (!max || max <= 0) return 0;
+        return Math.max(0, Math.min(1, value / max));
+      };
+
+      const drawMap = () => {
+        mapCtx.clearRect(0, 0, mapCanvas.width, mapCanvas.height);
+        mapCtx.fillStyle = "#070d1b";
+        mapCtx.fillRect(0, 0, mapCanvas.width, mapCanvas.height);
+        mapCtx.strokeStyle = "#1e2d4f";
+        mapCtx.lineWidth = 1;
+        for (let i = 0; i < 36; i += 1) {
+          mapCtx.beginPath();
+          mapCtx.moveTo(0, i * 14);
+          mapCtx.lineTo(mapCanvas.width, i * 14);
+          mapCtx.stroke();
+        }
+
+        const map = state.map;
+        if (!map) {
+          mapCtx.fillStyle = "#94a3b8";
+          mapCtx.font = "18px Inter, sans-serif";
+          mapCtx.fillText("Press Sync Map to load your world.", 24, 44);
+          state.nodeHits = [];
+          return;
+        }
+
+        const regions = [map.currentRegion, ...map.discoveredRegions.filter((item) => item.id !== map.currentRegion.id)];
+        const regionById = new Map();
+        for (const region of regions) {
+          regionById.set(region.id, region);
+        }
+        for (const region of map.connectedRegions) {
+          regionById.set(region.id, region);
+        }
+
+        const allRegions = Array.from(regionById.values());
+        state.nodeHits = [];
+
+        mapCtx.lineWidth = 3;
+        for (const region of allRegions) {
+          const from = layout[region.id];
+          if (!from) continue;
+          for (const nextId of region.connectedRegionIds) {
+            const to = layout[nextId];
+            if (!to) continue;
+            mapCtx.strokeStyle = "#233558";
+            mapCtx.beginPath();
+            mapCtx.moveTo(from.x, from.y);
+            mapCtx.lineTo(to.x, to.y);
+            mapCtx.stroke();
+          }
+        }
+
+        for (const region of allRegions) {
+          const pos = layout[region.id];
+          if (!pos) continue;
+          const isCurrent = map.world.currentRegionId === region.id;
+          const isDiscovered = map.world.discoveredRegionIds.includes(region.id);
+          const isConquered = map.world.conqueredRegionIds.includes(region.id);
+          const isConnected = map.currentRegion.connectedRegionIds.includes(region.id);
+          const radius = isCurrent ? 24 : 19;
+
+          mapCtx.fillStyle = isDiscovered ? biomeColors[region.biome] ?? "#64748b" : "#334155";
+          mapCtx.globalAlpha = isDiscovered ? 0.9 : 0.45;
+          mapCtx.beginPath();
+          mapCtx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+          mapCtx.fill();
+          mapCtx.globalAlpha = 1;
+
+          mapCtx.lineWidth = isCurrent ? 4 : 2;
+          mapCtx.strokeStyle = isCurrent ? "#f8fafc" : isConnected ? "#60a5fa" : "#2c3b61";
+          mapCtx.beginPath();
+          mapCtx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+          mapCtx.stroke();
+
+          if (isConquered) {
+            mapCtx.strokeStyle = "#fde047";
+            mapCtx.lineWidth = 2;
+            mapCtx.beginPath();
+            mapCtx.arc(pos.x, pos.y, radius + 7, 0, Math.PI * 2);
+            mapCtx.stroke();
+          }
+
+          mapCtx.fillStyle = "#e2e8f0";
+          mapCtx.font = "12px Inter, sans-serif";
+          mapCtx.fillText(region.name, pos.x - 58, pos.y + radius + 16);
+
+          state.nodeHits.push({
+            id: region.id,
+            x: pos.x,
+            y: pos.y,
+            radius,
+            canTravel: isConnected && !isCurrent,
+          });
+        }
+      };
+
+      const drawBar = (ctx, x, y, width, ratio, color) => {
+        ctx.fillStyle = "#0f172a";
+        ctx.fillRect(x, y, width, 16);
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, Math.max(0, Math.floor(width * ratio)), 16);
+        ctx.strokeStyle = "#1e293b";
+        ctx.strokeRect(x, y, width, 16);
+      };
+
+      const drawBattle = () => {
+        battleCtx.clearRect(0, 0, battleCanvas.width, battleCanvas.height);
+        battleCtx.fillStyle = "#050b18";
+        battleCtx.fillRect(0, 0, battleCanvas.width, battleCanvas.height);
+        battleCtx.fillStyle = "#2c3f63";
+        battleCtx.fillRect(0, 210, battleCanvas.width, 110);
+
+        const battle = state.battle;
+        if (!battle) {
+          battleCtx.fillStyle = "#93c5fd";
+          battleCtx.font = "19px Inter, sans-serif";
+          battleCtx.fillText("No active battle. Start one to play.", 24, 48);
+          return;
+        }
+
+        const laneColor = laneColors[battle.encounterLane] ?? "#93c5fd";
+        battleCtx.fillStyle = laneColor;
+        battleCtx.fillRect(0, 0, battleCanvas.width, 10);
+
+        battleCtx.fillStyle = "#f8fafc";
+        battleCtx.font = "16px Inter, sans-serif";
+        battleCtx.fillText(`Lane: ${battle.encounterLane}  |  Turn: ${battle.turnNumber}`, 16, 32);
+
+        battleCtx.fillStyle = "#1d4ed8";
+        battleCtx.beginPath();
+        battleCtx.arc(130, 150, 44, 0, Math.PI * 2);
+        battleCtx.fill();
+        battleCtx.fillStyle = "#ef4444";
+        battleCtx.beginPath();
+        battleCtx.arc(390, 150, 44, 0, Math.PI * 2);
+        battleCtx.fill();
+
+        battleCtx.fillStyle = "#dbeafe";
+        battleCtx.font = "14px Inter, sans-serif";
+        battleCtx.fillText(battle.player.name, 70, 92);
+        battleCtx.fillText(battle.enemy.name, 334, 92);
+
+        drawBar(battleCtx, 36, 100, 180, hpRatio(battle.player.hp, battle.player.maxHp), "#22c55e");
+        drawBar(battleCtx, 304, 100, 180, hpRatio(battle.enemy.hp, battle.enemy.maxHp), "#22c55e");
+
+        battleCtx.fillStyle = "#cbd5e1";
+        battleCtx.font = "12px Inter, sans-serif";
+        battleCtx.fillText(`HP ${battle.player.hp}/${battle.player.maxHp}  Guard ${battle.player.guard}`, 36, 134);
+        battleCtx.fillText(`HP ${battle.enemy.hp}/${battle.enemy.maxHp}  Guard ${battle.enemy.guard}`, 304, 134);
+
+        battleCtx.fillStyle = battle.status === "won" ? "#4ade80" : battle.status === "lost" ? "#fb7185" : "#cbd5e1";
+        battleCtx.font = "18px Inter, sans-serif";
+        battleCtx.fillText(`Status: ${battle.status.toUpperCase()}`, 16, 250);
+
+        if (battle.status === "won") {
+          battleCtx.fillText(`Reward: +${battle.rewardSpores} spores`, 16, 278);
+        }
+      };
+
+      const updateMapMeta = () => {
+        if (!state.map) {
+          regionMetaEl.textContent = "Sync map to begin.";
+          return;
+        }
+        const map = state.map;
+        const lines = [
+          `Current Region: ${map.currentRegion.name} (${map.currentRegion.biome}, threat ${map.currentRegion.threatLevel})`,
+          `Discovered: ${map.world.discoveredRegionIds.length} | Conquered: ${map.world.conqueredRegionIds.length}`,
+          `Campaign W/L: ${map.victories}/${map.defeats}`,
+          `Connected: ${map.connectedRegions.map((region) => region.name).join(", ") || "None"}`,
+        ];
+        regionMetaEl.textContent = lines.join("\n");
+      };
+
+      const updateBattleMeta = () => {
+        if (!state.battle) {
+          battleSummaryEl.textContent = "No active battle.";
+          return;
+        }
+        const battle = state.battle;
+        const action = battle.lastAction
+          ? `Last action: ${battle.lastAction.kind}${battle.lastAction.element ? ` (${battle.lastAction.element})` : ""}`
+          : "No actions yet.";
+        battleSummaryEl.textContent = `${action}\nRegion: ${battle.regionId} | Lane: ${battle.encounterLane}`;
+        const recent = battle.battleLog.slice(-12);
+        logEl.textContent = recent.length > 0 ? recent.join("\n") : "No events yet.";
+      };
+
+      const renderAll = () => {
+        drawMap();
+        drawBattle();
+        updateMapMeta();
+        updateBattleMeta();
+      };
+
+      const syncMap = async () => {
+        setStatus("Loading world map...");
+        try {
+          const map = await callApi("/api/rpg/map", requestBodyBase());
+          state.map = map;
+          state.battle = map.activeBattle ?? state.battle;
+          renderAll();
+          setStatus(`Map synced for ${requestBodyBase().externalId}.`);
+        } catch (error) {
+          setStatus(String(error), true);
+        }
+      };
+
+      const travelTo = async (regionId) => {
+        if (state.loading) return;
+        state.loading = true;
+        setStatus(`Traveling to ${regionId}...`);
+        try {
+          const map = await callApi("/api/rpg/travel", {
+            ...requestBodyBase(),
+            destinationRegionId: regionId,
+          });
+          state.map = map;
+          state.battle = map.activeBattle ?? null;
+          renderAll();
+          setStatus(`Arrived in ${map.currentRegion.name}.`);
+        } catch (error) {
+          setStatus(String(error), true);
+        } finally {
+          state.loading = false;
+        }
+      };
+
+      const startBattle = async () => {
+        setStatus("Starting battle...");
+        try {
+          const receipt = await callApi("/api/rpg/battle/start", requestBodyBase());
+          state.battle = receipt.battle;
+          await syncMap();
+          renderAll();
+          setStatus(`Battle started in ${receipt.battle.regionId}.`);
+        } catch (error) {
+          setStatus(String(error), true);
+        }
+      };
+
+      const playTurn = async (kind) => {
+        if (!state.battle || state.battle.status !== "active") {
+          setStatus("No active battle. Start one first.", true);
+          return;
+        }
+        const action = { kind };
+        if (kind === "skill") {
+          action.element = inputElement.value;
+        }
+
+        setStatus(`Resolving ${kind}...`);
+        try {
+          const receipt = await callApi("/api/rpg/battle/turn", {
+            ...requestBodyBase(),
+            action,
+          });
+          state.battle = receipt.battle;
+          state.map = {
+            ...(state.map ?? {}),
+            world: receipt.campaign.world,
+            activeBattle: receipt.campaign.activeBattle,
+            victories: receipt.campaign.victories,
+            defeats: receipt.campaign.defeats,
+          };
+          renderAll();
+          if (receipt.battle.status === "active") {
+            setStatus(`Turn ${receipt.battle.turnNumber} complete.`);
+          } else if (receipt.battle.status === "won") {
+            setStatus(`Victory! +${receipt.battle.rewardSpores} spores earned.`);
+          } else {
+            setStatus("Defeat. Regroup and try another battle.", true);
+          }
+        } catch (error) {
+          setStatus(String(error), true);
+        }
+      };
+
+      mapCanvas.addEventListener("click", (event) => {
+        if (!state.map) return;
+        const rect = mapCanvas.getBoundingClientRect();
+        const x = ((event.clientX - rect.left) / rect.width) * mapCanvas.width;
+        const y = ((event.clientY - rect.top) / rect.height) * mapCanvas.height;
+        const hit = state.nodeHits.find((node) => Math.hypot(node.x - x, node.y - y) <= node.radius + 4);
+        if (!hit) return;
+        if (!hit.canTravel) {
+          setStatus("You can only travel to connected regions.", true);
+          return;
+        }
+        travelTo(hit.id);
+      });
+
+      document.getElementById("syncMapBtn").addEventListener("click", syncMap);
+      document.getElementById("startBattleBtn").addEventListener("click", startBattle);
+      document.getElementById("strikeBtn").addEventListener("click", () => playTurn("strike"));
+      document.getElementById("guardBtn").addEventListener("click", () => playTurn("guard"));
+      document.getElementById("skillBtn").addEventListener("click", () => playTurn("skill"));
+
+      [inputApiBase, inputSource, inputExternalId, inputToken].forEach((input) => {
+        input.addEventListener("change", saveConfig);
+      });
+
+      loadConfig();
+      renderAll();
+      syncMap();
+    </script>
+  </body>
+</html>
