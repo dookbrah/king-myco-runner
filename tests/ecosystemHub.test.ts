@@ -218,6 +218,146 @@ describe("King Myco ecosystem integration", () => {
     expect(receipt.wallet.spores).toBe(receipt.rewards.awardedSpores);
   });
 
+  it("advances objective chain after successful objective completion", async () => {
+    const generated = await hub.generateRun({
+      source: "kingmyco.io",
+      externalId: "objective-branch-success",
+      claims: {
+        walletAddress: "0xobjectivebranchsuccess",
+      },
+      encounters: 6,
+      seed: "objective-branch-seed-success",
+    });
+
+    const firstObjective = generated.lastRun?.objective;
+    expect(firstObjective).toBeTruthy();
+    if (!firstObjective) {
+      throw new Error("Expected first objective");
+    }
+
+    const usedElements: Array<"fire" | "water" | "ice" | "nature" | "void"> = [
+      "fire",
+      "water",
+    ];
+    if (firstObjective.targetElement && !usedElements.includes(firstObjective.targetElement)) {
+      usedElements.push(firstObjective.targetElement);
+    }
+
+    await hub.recordSession({
+      source: "kingmyco.io",
+      externalId: "objective-branch-success",
+      claims: {
+        walletAddress: "0xobjectivebranchsuccess",
+      },
+      telemetry: {
+        playerId: generated.playerId,
+        completedEncounters: firstObjective.minimumLaneWins + 4,
+        failedEncounters: 0,
+        damageTaken: 18,
+        perfectActions: firstObjective.minimumPerfectActions + 2,
+        discoveryActions: 4,
+        riskyActions: 2,
+        sessionLengthSec: 670,
+        usedElements,
+        abandoned: false,
+        laneOutcomes: {
+          [firstObjective.targetLane]: {
+            wins: firstObjective.minimumLaneWins,
+            losses: 0,
+          },
+        },
+      },
+      score: 18400,
+    });
+
+    const nextRun = await hub.generateRun({
+      source: "kingmyco.io",
+      externalId: "objective-branch-success",
+      claims: {
+        walletAddress: "0xobjectivebranchsuccess",
+      },
+      encounters: 6,
+    });
+
+    const secondObjective = nextRun.lastRun?.objective;
+    expect(secondObjective).toBeTruthy();
+    if (!secondObjective) {
+      throw new Error("Expected second objective");
+    }
+
+    expect(secondObjective.chainId).toBe(firstObjective.chainId);
+    expect(secondObjective.chainStep).toBe(firstObjective.chainStep + 1);
+    expect(secondObjective.branch).toBe("ascend");
+    expect(secondObjective.prerequisiteObjectiveId).toBe(firstObjective.id);
+    expect(secondObjective.targetLane).toBe(firstObjective.targetLane);
+  });
+
+  it("creates recovery branch when objective is missed", async () => {
+    const generated = await hub.generateRun({
+      source: "kingmyco.io",
+      externalId: "objective-branch-fail",
+      claims: {
+        walletAddress: "0xobjectivebranchfail",
+      },
+      encounters: 6,
+      seed: "objective-branch-seed-fail",
+    });
+
+    const firstObjective = generated.lastRun?.objective;
+    expect(firstObjective).toBeTruthy();
+    if (!firstObjective) {
+      throw new Error("Expected first objective");
+    }
+
+    await hub.recordSession({
+      source: "kingmyco.io",
+      externalId: "objective-branch-fail",
+      claims: {
+        walletAddress: "0xobjectivebranchfail",
+      },
+      telemetry: {
+        playerId: generated.playerId,
+        completedEncounters: Math.max(1, firstObjective.minimumLaneWins),
+        failedEncounters: 2,
+        damageTaken: 55,
+        perfectActions: Math.max(0, firstObjective.minimumPerfectActions - 2),
+        discoveryActions: 1,
+        riskyActions: 4,
+        sessionLengthSec: 420,
+        usedElements: ["fire", "water"],
+        abandoned: false,
+        laneOutcomes: {
+          [firstObjective.targetLane]: {
+            wins: 0,
+            losses: firstObjective.minimumLaneWins,
+          },
+        },
+      },
+      score: 9200,
+    });
+
+    const nextRun = await hub.generateRun({
+      source: "kingmyco.io",
+      externalId: "objective-branch-fail",
+      claims: {
+        walletAddress: "0xobjectivebranchfail",
+      },
+      encounters: 6,
+    });
+
+    const secondObjective = nextRun.lastRun?.objective;
+    expect(secondObjective).toBeTruthy();
+    if (!secondObjective) {
+      throw new Error("Expected recovery objective");
+    }
+
+    expect(secondObjective.chainId).toBe(firstObjective.chainId);
+    expect(secondObjective.chainStep).toBe(firstObjective.chainStep);
+    expect(secondObjective.branch).toBe("recover");
+    expect(secondObjective.prerequisiteObjectiveId).toBe(firstObjective.id);
+    expect(secondObjective.targetLane).toBe(firstObjective.targetLane);
+  });
+
   it("requires fresh wallet challenge for solana verification", async () => {
     const signer = Keypair.generate();
 

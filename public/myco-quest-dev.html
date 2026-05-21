@@ -676,13 +676,18 @@
         }
 
         const objective = run.objective;
+        const objectiveResult = run.objectiveResult;
         const objectiveLines = objective
           ? [
               `Objective: ${objective.title}`,
+              `Chain ${objective.chainId} | step ${objective.chainStep} | branch ${objective.branch}`,
               `Lane ${objective.targetLane} | wins ${objective.minimumLaneWins}+ | perfect ${objective.minimumPerfectActions}+ | bonus ${objective.rewardBonusSpores} spores`,
               objective.targetElement
                 ? `Element attunement: ${objective.targetElement}`
                 : "Element attunement: optional",
+              objectiveResult
+                ? `Last result: ${objectiveResult.completed ? "completed" : "incomplete"} (${(objectiveResult.progress * 100).toFixed(1)}%)`
+                : "Last result: pending",
               `Hint: ${objective.completionHint}`,
               "",
             ]

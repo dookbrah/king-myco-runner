@@ -277,7 +277,7 @@ Useful playground env overrides:
 
 For frontend iteration, use the dev HUD bundle endpoint to fetch player state + last run + communication health in one request:
 
-Run generation now includes `lastRun.objective` (lane target, perfect-action target, optional element attunement, and bonus spores). Session receipts include `rewards.objectiveCompleted`, `rewards.objectiveProgress`, and `rewards.objectiveBonusSpores` so UI can show objective progress in real time.
+Run generation now includes `lastRun.objective` (lane target, perfect-action target, optional element attunement, bonus spores, and branching chain metadata). Objective chains branch automatically (`origin` -> `ascend` on success, `recover` on failure) so the next run responds to your last objective result. Session receipts include `rewards.objectiveCompleted`, `rewards.objectiveProgress`, and `rewards.objectiveBonusSpores` so UI can show objective progress in real time.
 
 ```bash
 curl -H "x-admin-key: dev-admin-key" "http://127.0.0.1:3000/api/dev/hud/<player-id>?windowMinutes=30&minEventsPerSource=1"

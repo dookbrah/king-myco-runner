@@ -1,5 +1,6 @@
 export type Element = "fire" | "water" | "ice" | "nature" | "void";
 export type NarrativeTone = "light" | "neutral" | "shadow";
+export type RunObjectiveBranch = "origin" | "ascend" | "recover";
 
 export type ChallengeLane =
   | "mobility"
@@ -107,6 +108,20 @@ export interface RunObjective {
   rewardBonusSpores: number;
   moralityShift: number;
   narrativeTone: NarrativeTone;
+  chainId: string;
+  chainStep: number;
+  branch: RunObjectiveBranch;
+  prerequisiteObjectiveId?: string;
+}
+
+export interface RunObjectiveResult {
+  objectiveId: string;
+  completed: boolean;
+  progress: number;
+  bonusSporesAwarded: number;
+  laneWins: number;
+  perfectActions: number;
+  recordedAt: string;
 }
 
 export interface PlannedRun {
@@ -114,4 +129,5 @@ export interface PlannedRun {
   seed: string;
   encounters: PlannedEncounter[];
   objective?: RunObjective;
+  objectiveResult?: RunObjectiveResult;
 }

@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { AdaptiveDirector } from "../ai/adaptiveDirector";
 import { applySessionTelemetry } from "../ai/playerModel";
-import { PlannedRun, RunObjective, SessionTelemetry } from "../types";
+import { PlannedRun, RunObjective, RunObjectiveResult, SessionTelemetry } from "../types";
 import { average, clamp, roundTo } from "../utils/math";
 import { AnalyticsService } from "./analytics";
 import { FraudGuard } from "./fraudGuard";
@@ -112,6 +112,8 @@ interface ObjectiveEvaluation {
   progress: number;
   bonusSpores: number;
   moralityShift: number;
+  laneWins: number;
+  perfectActions: number;
 }
 
 const evaluateRunObjective = (
@@ -124,6 +126,8 @@ const evaluateRunObjective = (
       progress: 0,
       bonusSpores: 0,
       moralityShift: 0,
+      laneWins: 0,
+      perfectActions: telemetry.perfectActions,
     };
   }
 
@@ -156,6 +160,8 @@ const evaluateRunObjective = (
     progress,
     bonusSpores: completed ? objective.rewardBonusSpores : 0,
     moralityShift: completed ? objective.moralityShift : 0,
+    laneWins,
+    perfectActions: telemetry.perfectActions,
   };
 };
 
@@ -227,9 +233,11 @@ export class KingMycoEcosystemHub {
 
     const profile = this.repository.getOrCreateProfile(playerId);
     const liveOps = this.repository.getLiveOps();
+    const priorRun = this.repository.getLastRun(playerId);
     const planned = this.director.planRun(profile, {
       encounters: request.encounters,
       seed: request.seed ?? `${playerId}:${profile.sessionsPlayed}`,
+      priorRun,
     });
 
     const tuned = tuneRunByLiveOps(planned, liveOps);
@@ -247,6 +255,8 @@ export class KingMycoEcosystemHub {
         seed: tuned.seed,
         objectiveId: tuned.objective?.id,
         objectiveLane: tuned.objective?.targetLane,
+        objectiveBranch: tuned.objective?.branch,
+        objectiveChainStep: tuned.objective?.chainStep,
       },
     });
 
@@ -321,6 +331,23 @@ export class KingMycoEcosystemHub {
         request.telemetry,
       );
 
+      if (lastRun?.objective) {
+        const objectiveResult: RunObjectiveResult = {
+          objectiveId: lastRun.objective.id,
+          completed: objectiveEvaluation.completed,
+          progress: objectiveEvaluation.progress,
+          bonusSporesAwarded: objectiveEvaluation.bonusSpores,
+          laneWins: objectiveEvaluation.laneWins,
+          perfectActions: objectiveEvaluation.perfectActions,
+          recordedAt: new Date().toISOString(),
+        };
+
+        this.repository.setLastRun(playerId, {
+          ...lastRun,
+          objectiveResult,
+        });
+      }
+
       rewards = {
         ...rewarded.breakdown,
         objectiveBonusSpores: objectiveEvaluation.bonusSpores,
@@ -376,6 +403,8 @@ export class KingMycoEcosystemHub {
         objectiveCompleted: rewards.objectiveCompleted,
         objectiveBonusSpores: rewards.objectiveBonusSpores,
         objectiveProgress: rewards.objectiveProgress,
+        objectiveChainStep: lastRun?.objective?.chainStep,
+        objectiveBranch: lastRun?.objective?.branch,
         adaptiveRiskScore: riskSnapshot.playerRisk,
         morality: nextProfile.morality,
         learnedMagicCount: nextProfile.learnedMagic.length,

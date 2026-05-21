@@ -7,6 +7,7 @@ import {
   PlannedRun,
   PlayerProfile,
   RunObjective,
+  RunObjectiveResult,
   SessionTelemetry,
 } from "../types";
 import { createSeededRng, pickOne } from "../engine/random";
@@ -115,6 +116,17 @@ const createBanditState = (): PlayerBanditState => ({
 interface RunOptions {
   seed?: string;
   encounters?: number;
+  priorRun?: PlannedRun;
+}
+
+interface ObjectiveChainContext {
+  chainId: string;
+  chainStep: number;
+  branch: "origin" | "ascend" | "recover";
+  prerequisiteObjectiveId?: string;
+  targetLane?: ChallengeLane;
+  requirementDelta: number;
+  rewardMultiplier: number;
 }
 
 export class AdaptiveDirector {
@@ -132,6 +144,9 @@ export class AdaptiveDirector {
       boss: 0,
       puzzle: 0,
     };
+
+    const previousObjective = options.priorRun?.objective;
+    const previousObjectiveResult = options.priorRun?.objectiveResult;
 
     const unmasteredElements = profile.unlockedElements.filter(
       (element) => !profile.masteredElements.includes(element),
@@ -231,6 +246,8 @@ export class AdaptiveDirector {
         laneUsage,
         seed,
         rng,
+        previousObjective,
+        previousObjectiveResult,
       }),
     };
   }
@@ -240,33 +257,70 @@ export class AdaptiveDirector {
     laneUsage: Record<ChallengeLane, number>;
     seed: string;
     rng: () => number;
+    previousObjective?: RunObjective;
+    previousObjectiveResult?: RunObjectiveResult;
   }): RunObjective {
-    const { profile, laneUsage, seed, rng } = input;
-    const targetLane = this.chooseObjectiveLane(profile, laneUsage, rng);
-    const narrativeTone = this.resolveNarrativeTone(profile.morality, rng);
+    const {
+      profile,
+      laneUsage,
+      seed,
+      rng,
+      previousObjective,
+      previousObjectiveResult,
+    } = input;
+    const chain = this.resolveObjectiveChainContext({
+      seed,
+      previousObjective,
+      previousObjectiveResult,
+    });
+
+    const targetLane =
+      chain.targetLane ?? this.chooseObjectiveLane(profile, laneUsage, rng);
+    const narrativeTone: NarrativeTone =
+      chain.branch === "recover"
+        ? "neutral"
+        : this.resolveNarrativeTone(profile.morality, rng);
     const template = pickOne(OBJECTIVE_TEMPLATES[narrativeTone], rng);
     const targetElement = this.resolveObjectiveElement(profile, targetLane);
-    const minimumLaneWins = Math.max(
+
+    const baseLaneWins = Math.max(
       1,
       Math.min(3, Math.round(1 + (1 - profile.laneMastery[targetLane]) * 2)),
     );
-    const minimumPerfectActions = Math.max(
+    const basePerfectActions = Math.max(
       2,
       Math.min(
         8,
         Math.round(2 + profile.skill * 3 + profile.playstyle.precision * 2),
       ),
     );
-    const rewardBonusSpores = Math.round(
-      60 +
-        (1 - profile.laneMastery[targetLane]) * 85 +
-        profile.novelty * 45 +
-        minimumLaneWins * 12,
+
+    const minimumLaneWins = Math.max(
+      1,
+      Math.min(4, baseLaneWins + chain.requirementDelta),
+    );
+    const minimumPerfectActions = Math.max(
+      2,
+      Math.min(10, basePerfectActions + chain.requirementDelta),
     );
 
+    const baseRewardBonus =
+      60 +
+      (1 - profile.laneMastery[targetLane]) * 85 +
+      profile.novelty * 45 +
+      minimumLaneWins * 12;
+    const rewardBonusSpores = Math.round(baseRewardBonus * chain.rewardMultiplier);
+
+    const branchLabel =
+      chain.branch === "origin"
+        ? "Genesis"
+        : chain.branch === "ascend"
+          ? "Ascension"
+          : "Recovery";
+
     return {
-      id: `${seed}:objective:${targetLane}:${narrativeTone}`,
-      title: template.title,
+      id: `${chain.chainId}:step-${chain.chainStep}:${targetLane}:${narrativeTone}`,
+      title: `${branchLabel} Chain ${chain.chainStep}: ${template.title}`,
       description: `${template.description} Secure ${minimumLaneWins} lane wins in ${targetLane}${
         targetElement ? ` while attuning ${targetElement}.` : "."
       }`,
@@ -276,8 +330,60 @@ export class AdaptiveDirector {
       minimumLaneWins,
       minimumPerfectActions,
       rewardBonusSpores,
-      moralityShift: clamp(template.moralityShift, -0.12, 0.12),
+      moralityShift: clamp(
+        template.moralityShift * (chain.branch === "recover" ? 0.65 : 1),
+        -0.12,
+        0.12,
+      ),
       narrativeTone,
+      chainId: chain.chainId,
+      chainStep: chain.chainStep,
+      branch: chain.branch,
+      prerequisiteObjectiveId: chain.prerequisiteObjectiveId,
+    };
+  }
+
+  private resolveObjectiveChainContext(input: {
+    seed: string;
+    previousObjective?: RunObjective;
+    previousObjectiveResult?: RunObjectiveResult;
+  }): ObjectiveChainContext {
+    const { seed, previousObjective, previousObjectiveResult } = input;
+
+    if (
+      !previousObjective ||
+      !previousObjectiveResult ||
+      previousObjectiveResult.objectiveId !== previousObjective.id
+    ) {
+      return {
+        chainId: `${seed}:chain`,
+        chainStep: 1,
+        branch: "origin",
+        requirementDelta: 0,
+        rewardMultiplier: 1,
+      };
+    }
+
+    if (previousObjectiveResult.completed) {
+      return {
+        chainId: previousObjective.chainId,
+        chainStep: Math.max(1, previousObjective.chainStep + 1),
+        branch: "ascend",
+        prerequisiteObjectiveId: previousObjective.id,
+        targetLane: previousObjective.targetLane,
+        requirementDelta: 1,
+        rewardMultiplier: 1.25,
+      };
+    }
+
+    return {
+      chainId: previousObjective.chainId,
+      chainStep: Math.max(1, previousObjective.chainStep),
+      branch: "recover",
+      prerequisiteObjectiveId: previousObjective.id,
+      targetLane: previousObjective.targetLane,
+      requirementDelta: -1,
+      rewardMultiplier: 0.9,
     };
   }
 
