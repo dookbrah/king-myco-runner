@@ -16,6 +16,7 @@
         margin: 0;
         background: radial-gradient(circle at top, #1a2548 0%, #080d1c 62%);
         color: #dbeafe;
+        overscroll-behavior: none;
       }
       main {
         width: 100%;
@@ -276,6 +277,104 @@
       .hidden {
         display: none !important;
       }
+      .mobile-controls {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: max(10px, env(safe-area-inset-bottom));
+        z-index: 36;
+        display: none;
+        justify-content: space-between;
+        align-items: flex-end;
+        padding: 0 10px;
+        pointer-events: none;
+      }
+      .mobile-pad,
+      .mobile-actions {
+        pointer-events: auto;
+        display: grid;
+        gap: 6px;
+      }
+      .mobile-pad {
+        grid-template-columns: repeat(3, 50px);
+        grid-template-rows: repeat(3, 42px);
+      }
+      .mobile-actions {
+        grid-template-columns: repeat(2, minmax(56px, 72px));
+      }
+      .touch-btn {
+        border: 1px solid #3e639a;
+        border-radius: 10px;
+        background: rgba(12, 25, 49, 0.92);
+        color: #eef6ff;
+        font-size: 13px;
+        font-weight: 700;
+        touch-action: none;
+        min-height: 40px;
+      }
+      .touch-btn.active {
+        background: #1d4ed8;
+      }
+      .touch-spacer {
+        pointer-events: none;
+      }
+      @media (max-width: 1024px) {
+        h1 {
+          font-size: 20px;
+        }
+        #worldCanvas {
+          height: calc(100vh - 300px);
+          min-height: 420px;
+        }
+        .corner-menu {
+          width: min(46vw, 340px);
+          max-height: calc(100vh - 18px);
+        }
+      }
+      @media (max-width: 760px) {
+        main {
+          padding: 6px;
+          gap: 6px;
+        }
+        .top-grid {
+          grid-template-columns: repeat(2, minmax(120px, 1fr));
+        }
+        #worldCanvas {
+          height: calc(100vh - 350px);
+          min-height: 300px;
+        }
+        .corner-menu {
+          top: 6px;
+          width: calc(50vw - 10px);
+          max-height: 46vh;
+        }
+        .corner-menu.left {
+          left: 6px;
+        }
+        .corner-menu.right {
+          right: 6px;
+        }
+        .corner-menu summary {
+          font-size: 12px;
+          padding: 7px 8px;
+        }
+        .corner-menu .panel {
+          margin: 6px;
+          padding: 8px;
+        }
+        .dialogue {
+          bottom: 112px;
+          width: calc(100% - 12px);
+          border-radius: 10px;
+          padding: 10px;
+        }
+        .battle-controls {
+          grid-template-columns: 1fr 1fr 1fr;
+        }
+        .mobile-controls {
+          display: flex;
+        }
+      }
       a {
         color: #93c5fd;
       }
@@ -456,6 +555,28 @@
       </details>
     </section>
 
+    <section id="mobileControls" class="mobile-controls">
+      <div class="mobile-pad">
+        <span class="touch-spacer"></span>
+        <button class="touch-btn" data-key="arrowup">▲</button>
+        <button class="touch-btn" data-key="shift">RUN</button>
+        <button class="touch-btn" data-key="arrowleft">◀</button>
+        <span class="touch-spacer"></span>
+        <button class="touch-btn" data-key="arrowright">▶</button>
+        <span class="touch-spacer"></span>
+        <button class="touch-btn" data-key="arrowdown">▼</button>
+        <span class="touch-spacer"></span>
+      </div>
+      <div class="mobile-actions">
+        <button class="touch-btn" data-action="interact">Interact</button>
+        <button class="touch-btn" data-action="item">Potion</button>
+        <button class="touch-btn" data-action="strike">Strike</button>
+        <button class="touch-btn" data-action="guard">Guard</button>
+        <button class="touch-btn" data-action="skill">Skill</button>
+        <button class="touch-btn" data-action="sync">Sync</button>
+      </div>
+    </section>
+
     <section id="dialoguePanel" class="dialogue">
       <h3 id="dialogueTitle">Dialogue</h3>
       <p id="dialogueBody">...</p>
@@ -557,6 +678,7 @@
         panelBattle: document.getElementById("panelBattle"),
         panelControls: document.getElementById("panelControls"),
         panelAudio: document.getElementById("panelAudio"),
+        mobileControls: document.getElementById("mobileControls"),
       };
 
       const REGIONS = [
@@ -992,6 +1114,96 @@
             state.contactLatch = null;
           }
         }
+      };
+
+      const resizeCanvases = () => {
+        const dpr = Math.min(2, window.devicePixelRatio || 1);
+        const worldRect = worldCanvas.getBoundingClientRect();
+        const worldW = Math.max(320, Math.round(worldRect.width * dpr));
+        const worldH = Math.max(220, Math.round(worldRect.height * dpr));
+        if (worldCanvas.width !== worldW || worldCanvas.height !== worldH) {
+          worldCanvas.width = worldW;
+          worldCanvas.height = worldH;
+          updateCamera();
+        }
+
+        const battleRect = battleCanvas.getBoundingClientRect();
+        const battleW = Math.max(260, Math.round(battleRect.width * dpr));
+        const battleH = Math.max(140, Math.round((battleRect.width * 0.5) * dpr));
+        if (battleCanvas.width !== battleW || battleCanvas.height !== battleH) {
+          battleCanvas.width = battleW;
+          battleCanvas.height = battleH;
+        }
+      };
+
+      const setVirtualKey = (key, isDown, buttonEl) => {
+        const normalized = key.toLowerCase();
+        if (isDown) {
+          state.keys.add(normalized);
+          if (buttonEl) buttonEl.classList.add("active");
+        } else {
+          state.keys.delete(normalized);
+          if (buttonEl) buttonEl.classList.remove("active");
+        }
+      };
+
+      const setupMobileControls = () => {
+        if (!dom.mobileControls) return;
+        const keyButtons = dom.mobileControls.querySelectorAll("[data-key]");
+        keyButtons.forEach((button) => {
+          const key = button.getAttribute("data-key");
+          if (!key) return;
+          const down = (event) => {
+            event.preventDefault();
+            if (!state.audio.initialized) {
+              initAudio();
+            }
+            setVirtualKey(key, true, button);
+          };
+          const up = (event) => {
+            event.preventDefault();
+            setVirtualKey(key, false, button);
+          };
+          button.addEventListener("pointerdown", down);
+          button.addEventListener("pointerup", up);
+          button.addEventListener("pointercancel", up);
+          button.addEventListener("pointerleave", up);
+        });
+
+        const actionButtons = dom.mobileControls.querySelectorAll("[data-action]");
+        actionButtons.forEach((button) => {
+          const action = button.getAttribute("data-action");
+          if (!action) return;
+          button.addEventListener("click", (event) => {
+            event.preventDefault();
+            if (!state.audio.initialized) {
+              initAudio();
+            }
+            if (action === "interact") {
+              interact();
+              return;
+            }
+            if (action === "item") {
+              useInventoryItem("mycoPotion");
+              return;
+            }
+            if (action === "strike") {
+              playTurn("strike");
+              return;
+            }
+            if (action === "guard") {
+              playTurn("guard");
+              return;
+            }
+            if (action === "skill") {
+              playTurn("skill");
+              return;
+            }
+            if (action === "sync") {
+              syncCampaign();
+            }
+          });
+        });
       };
 
       const buildGain = (ctx, gainValue, destination) => {
@@ -2613,12 +2825,17 @@
       });
 
       window.addEventListener("beforeunload", saveGame);
+      window.addEventListener("resize", () => {
+        resizeCanvases();
+      });
 
       loadConfig();
       loadGame();
       setupCornerMenus();
+      setupMobileControls();
       dom.choiceTradeBtn.style.display = "none";
       updateAudioUi();
+      resizeCanvases();
       updateCamera();
       renderHud();
       drawWorld();
