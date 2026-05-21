@@ -18,11 +18,11 @@
         color: #dbeafe;
       }
       main {
-        max-width: 1480px;
+        width: 100%;
         margin: 0 auto;
-        padding: 16px;
+        padding: 10px;
         display: grid;
-        gap: 12px;
+        gap: 10px;
       }
       .panel {
         border: 1px solid #2f4678;
@@ -102,8 +102,8 @@
       }
       .layout {
         display: grid;
-        grid-template-columns: 1.5fr 0.85fr;
-        gap: 12px;
+        grid-template-columns: 1fr;
+        gap: 10px;
       }
       @media (max-width: 1160px) {
         .layout {
@@ -122,7 +122,9 @@
         image-rendering: auto;
       }
       #worldCanvas {
-        max-height: 74vh;
+        height: calc(100vh - 260px);
+        max-height: none;
+        min-height: 560px;
       }
       .hint {
         margin-top: 8px;
@@ -241,6 +243,39 @@
         color: #9fb6dd;
         font-size: 12px;
       }
+      .corner-menu {
+        position: fixed;
+        top: 12px;
+        z-index: 30;
+        width: min(400px, 34vw);
+        max-height: calc(100vh - 24px);
+        overflow: auto;
+      }
+      .corner-menu.left {
+        left: 12px;
+      }
+      .corner-menu.right {
+        right: 12px;
+      }
+      .corner-menu details {
+        border: 1px solid #355487;
+        background: rgba(8, 15, 32, 0.95);
+        border-radius: 10px;
+        margin-bottom: 8px;
+        overflow: hidden;
+      }
+      .corner-menu summary {
+        cursor: pointer;
+        font-weight: 700;
+        padding: 8px 10px;
+        background: #0f1d39;
+      }
+      .corner-menu .panel {
+        margin: 8px;
+      }
+      .hidden {
+        display: none !important;
+      }
       a {
         color: #93c5fd;
       }
@@ -293,8 +328,8 @@
           <p id="regionHint" class="hint">Booting world...</p>
         </article>
 
-        <aside class="hud-grid">
-          <section class="panel">
+        <aside id="hudAside" class="hud-grid">
+          <section id="panelStatus" class="panel">
             <h2>King Myco Status</h2>
             <div class="stat-row" style="margin-top: 8px">
               <span>HP</span>
@@ -339,14 +374,14 @@
             </div>
           </section>
 
-          <section class="panel">
+          <section id="panelStory" class="panel">
             <h2>Story Phase + Clues</h2>
             <ul id="questList" class="quest-list"></ul>
             <p class="subtle" style="margin-top: 8px">Collected clues</p>
             <div id="clueList" class="chips"></div>
           </section>
 
-          <section class="panel">
+          <section id="panelInventory" class="panel">
             <h2>Inventory + Shop</h2>
             <p class="subtle">Spend spores to prep for battles and puzzle routes.</p>
             <div id="inventoryList" class="chips" style="margin-top: 8px"></div>
@@ -360,7 +395,7 @@
             <p class="subtle" style="margin-top: 6px">Potion heals HP, Mana Dew boosts magic turns, Smoke Bomb can escape battle.</p>
           </section>
 
-          <section class="panel">
+          <section id="panelBattle" class="panel">
             <h2>Turn Battle</h2>
             <div class="canvas-shell" style="margin-top: 8px">
               <canvas id="battleCanvas" width="460" height="230"></canvas>
@@ -382,7 +417,7 @@
             <div id="battleLog" class="log">No combat logs yet.</div>
           </section>
 
-          <section class="panel">
+          <section id="panelControls" class="panel">
             <h3>Controls</h3>
             <p class="subtle">
               Move: WASD / Arrow keys<br />
@@ -393,7 +428,7 @@
             </p>
           </section>
 
-          <section class="panel">
+          <section id="panelAudio" class="panel">
             <h3>Audio (32-bit style)</h3>
             <p class="subtle">Static background visual mode is active. Enable music/SFX below.</p>
             <div class="actions" style="margin-top: 6px">
@@ -406,6 +441,20 @@
         </aside>
       </section>
     </main>
+
+    <section class="corner-menu left">
+      <details open>
+        <summary>World + Story</summary>
+        <div id="leftMenuContent"></div>
+      </details>
+    </section>
+
+    <section class="corner-menu right">
+      <details open>
+        <summary>Character + Inventory + Battle + Audio</summary>
+        <div id="rightMenuContent"></div>
+      </details>
+    </section>
 
     <section id="dialoguePanel" class="dialogue">
       <h3 id="dialogueTitle">Dialogue</h3>
@@ -499,6 +548,15 @@
         musicToggleBtn: document.getElementById("musicToggleBtn"),
         sfxToggleBtn: document.getElementById("sfxToggleBtn"),
         audioStateText: document.getElementById("audioStateText"),
+        leftMenuContent: document.getElementById("leftMenuContent"),
+        rightMenuContent: document.getElementById("rightMenuContent"),
+        hudAside: document.getElementById("hudAside"),
+        panelStatus: document.getElementById("panelStatus"),
+        panelStory: document.getElementById("panelStory"),
+        panelInventory: document.getElementById("panelInventory"),
+        panelBattle: document.getElementById("panelBattle"),
+        panelControls: document.getElementById("panelControls"),
+        panelAudio: document.getElementById("panelAudio"),
       };
 
       const REGIONS = [
@@ -821,6 +879,7 @@
         aiRemoteDirectiveAt: 0,
         activeDialogue: null,
         contactLockUntil: 0,
+        contactLatch: null,
         lastAdvice: "Earn trust in each region to receive reliable guidance.",
         cutscene: {
           active: false,
@@ -898,6 +957,41 @@
         dom.audioStateText.textContent = state.audio.initialized
           ? "Audio active: magical 32-bit synth enabled."
           : "Audio locked until first user interaction.";
+      };
+
+      const setupCornerMenus = () => {
+        const left = dom.leftMenuContent;
+        const right = dom.rightMenuContent;
+        if (!left || !right) return;
+        if (dom.panelStory) left.appendChild(dom.panelStory);
+        if (dom.panelControls) left.appendChild(dom.panelControls);
+        if (dom.panelStatus) right.appendChild(dom.panelStatus);
+        if (dom.panelInventory) right.appendChild(dom.panelInventory);
+        if (dom.panelBattle) right.appendChild(dom.panelBattle);
+        if (dom.panelAudio) right.appendChild(dom.panelAudio);
+        if (dom.hudAside) {
+          dom.hudAside.classList.add("hidden");
+        }
+      };
+
+      const clearContactLatchIfFar = () => {
+        if (!state.contactLatch) return;
+        if (state.contactLatch.type === "npc") {
+          const npc = NPCS.find((entry) => entry.id === state.contactLatch.id);
+          if (!npc || dist(state.hero.x, state.hero.y, npc.x, npc.y) > 58) {
+            state.contactLatch = null;
+          }
+          return;
+        }
+        if (state.contactLatch.type === "structure") {
+          const structure = STRUCTURES.find((entry) => entry.id === state.contactLatch.id);
+          if (
+            !structure ||
+            dist(state.hero.x, state.hero.y, structure.x + structure.w / 2, structure.y + structure.h / 2) > 66
+          ) {
+            state.contactLatch = null;
+          }
+        }
       };
 
       const buildGain = (ctx, gainValue, destination) => {
@@ -1280,6 +1374,7 @@
 
       const closeDialogue = () => {
         state.activeDialogue = null;
+        state.contactLockUntil = Date.now() + 1200;
         dom.choiceTradeBtn.style.display = "none";
         dom.dialoguePanel.classList.remove("active");
       };
@@ -1584,7 +1679,11 @@
 
         const bumpNpc = NPCS.find((npc) => dist(state.hero.x, state.hero.y, npc.x, npc.y) < 34);
         if (bumpNpc) {
-          state.contactLockUntil = now + 1800;
+          if (state.contactLatch?.type === "npc" && state.contactLatch.id === bumpNpc.id) {
+            return;
+          }
+          state.contactLockUntil = now + 1600;
+          state.contactLatch = { type: "npc", id: bumpNpc.id };
           const alreadySpoken = state.progress.interactedNpcs.has(bumpNpc.id);
           openDialogue(buildNpcEncounter(bumpNpc, alreadySpoken));
           return;
@@ -1594,7 +1693,11 @@
           (entry) => dist(state.hero.x, state.hero.y, entry.x + entry.w / 2, entry.y + entry.h / 2) < 44,
         );
         if (bumpStructure) {
-          state.contactLockUntil = now + 1800;
+          if (state.contactLatch?.type === "structure" && state.contactLatch.id === bumpStructure.id) {
+            return;
+          }
+          state.contactLockUntil = now + 1600;
+          state.contactLatch = { type: "structure", id: bumpStructure.id };
           openDialogue(buildStructureEncounter(bumpStructure));
         }
       };
@@ -1990,6 +2093,7 @@
         moveHero(dt);
         updateEnemies(dt);
         updatePickups();
+        clearContactLatchIfFar();
         checkActiveContacts();
         if (state.activeDialogue) {
           updateCamera();
@@ -2512,6 +2616,7 @@
 
       loadConfig();
       loadGame();
+      setupCornerMenus();
       dom.choiceTradeBtn.style.display = "none";
       updateAudioUi();
       updateCamera();
