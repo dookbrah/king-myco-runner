@@ -1,6 +1,5 @@
 import { createHmac } from "node:crypto";
 import { Keypair } from "@solana/web3.js";
-import bs58 from "bs58";
 import nacl from "tweetnacl";
 import { describe, expect, it } from "vitest";
 import { AnalyticsService } from "../src/platform/analytics";
@@ -67,7 +66,7 @@ describe("Security and Solana integration helpers", () => {
       externalId: "session-1",
       walletAddress: signer.publicKey.toBase58(),
       message,
-      signature: bs58.encode(signature),
+      signature: Buffer.from(signature).toString("base64"),
     });
 
     expect(proof.verified).toBe(true);

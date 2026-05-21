@@ -1,10 +1,12 @@
 import { Pool } from "pg";
-import { createClient, RedisClientType } from "redis";
+import { createClient } from "redis";
 import { PersistentState } from "./stateTypes";
 import { PlatformEvent } from "./types";
 
 const STATE_CACHE_KEY = "kingmyco:state:v1";
 const EVENT_LIST_KEY = "kingmyco:events:v1";
+
+type RedisLike = ReturnType<typeof createClient>;
 
 const ensureJsonObject = <T>(value: unknown): T | null => {
   if (!value || typeof value !== "object") {
@@ -17,7 +19,7 @@ const ensureJsonObject = <T>(value: unknown): T | null => {
 export class PostgresRedisAdapter {
   private constructor(
     private readonly pool?: Pool,
-    private readonly redis?: RedisClientType,
+    private readonly redis?: RedisLike,
   ) {}
 
   static async fromEnv(): Promise<PostgresRedisAdapter | undefined> {
@@ -51,7 +53,7 @@ export class PostgresRedisAdapter {
             return mapped;
           }
         } catch {
-          // ignore malformed cache entries and fall through to db.
+          // Ignore malformed cache entries and fall through.
         }
       }
     }
@@ -60,7 +62,7 @@ export class PostgresRedisAdapter {
       return null;
     }
 
-    const result = await this.pool.query(
+    const result = await this.pool.query<{ state_json: unknown }>(
       "SELECT state_json FROM kingmyco_state WHERE id = $1 LIMIT 1",
       ["primary"],
     );
@@ -69,7 +71,9 @@ export class PostgresRedisAdapter {
       return null;
     }
 
-    const parsed = ensureJsonObject<Partial<PersistentState>>(result.rows[0]?.state_json);
+    const parsed = ensureJsonObject<Partial<PersistentState>>(
+      result.rows[0]?.state_json,
+    );
     if (!parsed) {
       return null;
     }
@@ -159,7 +163,7 @@ export class PostgresRedisAdapter {
       return [];
     }
 
-    const result = await this.pool.query(
+    const result = await this.pool.query<{ payload: unknown }>(
       `
         SELECT payload
         FROM kingmyco_events

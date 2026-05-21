@@ -6,7 +6,6 @@ import {
   Transaction,
   TransactionInstruction,
 } from "@solana/web3.js";
-import bs58 from "bs58";
 import nacl from "tweetnacl";
 import { randomUUID } from "node:crypto";
 import {
@@ -30,11 +29,80 @@ const MEMO_PROGRAM = new PublicKey(
   "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr",
 );
 
+const BASE58_ALPHABET =
+  "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+const BASE58_MAP = new Map(
+  Array.from(BASE58_ALPHABET).map((character, index) => [character, index]),
+);
+
+const decodeBase58 = (value: string): Uint8Array => {
+  if (value.length === 0) {
+    return new Uint8Array();
+  }
+
+  const bytes = [0];
+
+  for (const character of value) {
+    const alphabetIndex = BASE58_MAP.get(character);
+    if (alphabetIndex === undefined) {
+      throw new Error("signature contains invalid base58 characters");
+    }
+
+    let carry = alphabetIndex;
+    for (let index = 0; index < bytes.length; index += 1) {
+      carry += bytes[index] * 58;
+      bytes[index] = carry & 0xff;
+      carry >>= 8;
+    }
+
+    while (carry > 0) {
+      bytes.push(carry & 0xff);
+      carry >>= 8;
+    }
+  }
+
+  for (let index = 0; index < value.length && value[index] === "1"; index += 1) {
+    bytes.push(0);
+  }
+
+  return new Uint8Array(bytes.reverse());
+};
+
+const decodeSignature = (signature: string): Uint8Array => {
+  const normalized = signature.trim();
+
+  if (normalized.length === 0) {
+    throw new Error("signature cannot be empty");
+  }
+
+  // Accept explicit base64 signatures (prefix optional) for easier service integration.
+  const maybeBase64 = normalized.startsWith("base64:")
+    ? normalized.slice("base64:".length)
+    : normalized;
+
+  try {
+    const fromBase64 = Buffer.from(maybeBase64, "base64");
+    if (fromBase64.length > 0) {
+      const normalizedRoundTrip = fromBase64.toString("base64").replace(/=+$/u, "");
+      const incomingRoundTrip = maybeBase64.replace(/=+$/u, "");
+      if (normalizedRoundTrip === incomingRoundTrip) {
+        return new Uint8Array(fromBase64);
+      }
+    }
+  } catch {
+    // Ignore and try base58.
+  }
+
+  return decodeBase58(normalized);
+};
+
 export class SolanaService {
   readonly rpcUrl: string;
   private readonly connection: Connection;
 
-  constructor(rpcUrl = process.env.SOLANA_RPC_URL ?? "https://api.mainnet-beta.solana.com") {
+  constructor(
+    rpcUrl = process.env.SOLANA_RPC_URL ?? "https://api.mainnet-beta.solana.com",
+  ) {
     this.rpcUrl = rpcUrl;
     this.connection = new Connection(rpcUrl, "confirmed");
   }
@@ -42,13 +110,7 @@ export class SolanaService {
   verifyWalletProof(input: WalletProofInput): SolanaWalletProof {
     const publicKey = this.parsePublicKey(input.walletAddress);
     const messageBytes = new TextEncoder().encode(input.message);
-
-    let signatureBytes: Uint8Array;
-    try {
-      signatureBytes = bs58.decode(input.signature);
-    } catch {
-      throw new Error("Invalid base58 signature encoding");
-    }
+    const signatureBytes = decodeSignature(input.signature);
 
     const verified = nacl.sign.detached.verify(
       messageBytes,

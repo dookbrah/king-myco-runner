@@ -28,6 +28,7 @@
   "homepage": "https://github.com/dookbrah/king-myco-runner#readme",
   "devDependencies": {
     "@types/node": "^25.9.1",
+    "@types/pg": "^8.20.0",
     "tsx": "^4.22.3",
     "typescript": "^6.0.3",
     "vitest": "^4.1.7"
