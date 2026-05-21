@@ -47,6 +47,7 @@ Myco Quest adaptive AI game-core + ecosystem backend for King Myco.
 
 ### Health
 - `GET /health`
+- `GET /dev/myco-quest` (interactive dev UI)
 
 ### Identity and gameplay
 - `POST /api/identity/link`
@@ -255,6 +256,8 @@ Use this to immediately generate adaptive runs and session telemetry while you t
 ```bash
 npm run playground
 ```
+
+Then open `http://127.0.0.1:3000/dev/myco-quest` to drive gameplay calls and inspect morality/magic/spores progression with communication health in one screen.
 
 Useful playground env overrides:
 - `PLAYGROUND_PLAYER_ID` (default `dev-playground-player`)

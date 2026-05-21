@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Myco Quest Dev HUD</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      }
+      body {
+        margin: 0;
+        background: #0b1020;
+        color: #dbeafe;
+      }
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 24px;
+        display: grid;
+        gap: 16px;
+      }
+      .card {
+        background: #111933;
+        border: 1px solid #1f2b4d;
+        border-radius: 10px;
+        padding: 14px;
+      }
+      h1,
+      h2 {
+        margin: 0 0 12px;
+      }
+      h1 {
+        font-size: 24px;
+      }
+      h2 {
+        font-size: 18px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 10px;
+      }
+      label {
+        display: grid;
+        gap: 6px;
+        font-size: 13px;
+        color: #bfdbfe;
+      }
+      input,
+      select,
+      button,
+      textarea {
+        border: 1px solid #2e3d65;
+        border-radius: 8px;
+        background: #0f1730;
+        color: #e2e8f0;
+        padding: 8px 10px;
+      }
+      button {
+        background: #2563eb;
+        border-color: #1d4ed8;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button.secondary {
+        background: #1f2937;
+        border-color: #374151;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 10px;
+      }
+      .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 10px;
+      }
+      .metric {
+        background: #0f1730;
+        border: 1px solid #253356;
+        border-radius: 8px;
+        padding: 10px;
+      }
+      .metric p {
+        margin: 4px 0;
+      }
+      pre {
+        background: #0f1730;
+        border: 1px solid #253356;
+        border-radius: 8px;
+        padding: 10px;
+        overflow: auto;
+        max-height: 320px;
+      }
+      .status {
+        min-height: 20px;
+        color: #93c5fd;
+      }
+      .error {
+        color: #fca5a5;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="card">
+        <h1>Myco Quest Dev Playground + HUD</h1>
+        <div class="grid">
+          <label
+            >API Base URL
+            <input id="apiBase" value="" placeholder="same-origin when empty" />
+          </label>
+          <label
+            >Source
+            <select id="source">
+              <option>kingmyco.io</option>
+              <option>kingdom.kingmyco.com</option>
+              <option>mycokingdom_bot</option>
+              <option>mycoai_bot</option>
+              <option>openclaw</option>
+            </select>
+          </label>
+          <label
+            >External ID
+            <input id="externalId" value="dev-ui-player" />
+          </label>
+          <label
+            >Source Token (optional)
+            <input id="sourceToken" value="" />
+          </label>
+          <label
+            >Admin Key (for HUD)
+            <input id="adminKey" value="dev-admin-key" />
+          </label>
+          <label
+            >Player ID (auto-populates)
+            <input id="playerId" value="" />
+          </label>
+          <label
+            >Encounter Count
+            <input id="encounters" type="number" min="1" max="15" value="5" />
+          </label>
+          <label
+            >Seed (optional)
+            <input id="seed" value="" />
+          </label>
+          <label
+            >HUD Window Minutes
+            <input id="windowMinutes" type="number" min="1" value="30" />
+          </label>
+          <label
+            >HUD Min Events Per Source
+            <input id="minEventsPerSource" type="number" min="1" value="1" />
+          </label>
+        </div>
+        <div class="actions">
+          <button id="generateRun">Generate Run</button>
+          <button id="recordSession">Record Session</button>
+          <button class="secondary" id="refreshHud">Refresh HUD</button>
+          <button class="secondary" id="randomizeTelemetry">Randomize Telemetry</button>
+        </div>
+        <p class="status" id="statusText"></p>
+      </section>
+
+      <section class="card">
+        <h2>Session Telemetry Controls</h2>
+        <div class="grid">
+          <label>Completed Encounters <input id="completedEncounters" type="number" value="5" /></label>
+          <label>Failed Encounters <input id="failedEncounters" type="number" value="1" /></label>
+          <label>Damage Taken <input id="damageTaken" type="number" value="28" /></label>
+          <label>Perfect Actions <input id="perfectActions" type="number" value="7" /></label>
+          <label>Discovery Actions <input id="discoveryActions" type="number" value="4" /></label>
+          <label>Risky Actions <input id="riskyActions" type="number" value="3" /></label>
+          <label>Session Length (sec) <input id="sessionLengthSec" type="number" value="640" /></label>
+          <label>Spores Collected <input id="sporesCollected" type="number" value="40" /></label>
+          <label>Compassionate Actions <input id="compassionateActions" type="number" value="4" /></label>
+          <label>Ruthless Actions <input id="ruthlessActions" type="number" value="1" /></label>
+          <label>Score (optional) <input id="score" type="number" value="1200" /></label>
+          <label>Mode <input id="mode" value="myco-quest" /></label>
+        </div>
+        <div class="grid" style="margin-top: 10px">
+          <label>Fire Casts <input id="fireCasts" type="number" value="10" /></label>
+          <label>Water Casts <input id="waterCasts" type="number" value="8" /></label>
+          <label>Ice Casts <input id="iceCasts" type="number" value="5" /></label>
+          <label>Nature Casts <input id="natureCasts" type="number" value="2" /></label>
+          <label>Void Casts <input id="voidCasts" type="number" value="1" /></label>
+          <label style="grid-column: span 2"
+            >Rituals Completed (comma-separated)
+            <input id="rituals" value="mycelial-oath" />
+          </label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Live Progress Metrics</h2>
+        <div class="metric-grid">
+          <div class="metric"><p><strong>Morality</strong></p><p id="morality">-</p></div>
+          <div class="metric"><p><strong>Spores Collected</strong></p><p id="sporesCollectedTotal">-</p></div>
+          <div class="metric"><p><strong>Wallet Spores</strong></p><p id="walletSpores">-</p></div>
+          <div class="metric"><p><strong>Learned Magic</strong></p><p id="learnedMagicCount">-</p></div>
+          <div class="metric"><p><strong>All Sources Active</strong></p><p id="allSourcesActive">-</p></div>
+          <div class="metric"><p><strong>Active Sources</strong></p><p id="activeSourceCount">-</p></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Run Encounters</h2>
+        <pre id="runOutput">No run generated yet.</pre>
+      </section>
+
+      <section class="card">
+        <h2>HUD Payload</h2>
+        <pre id="hudOutput">No HUD loaded yet.</pre>
+      </section>
+    </main>
+    <script>
+      const get = (id) => document.getElementById(id);
+      const parseNumber = (id, fallback = 0) => {
+        const value = Number(get(id).value);
+        return Number.isFinite(value) ? value : fallback;
+      };
+
+      const state = { playerId: "" };
+
+      const setStatus = (message, isError = false) => {
+        const status = get("statusText");
+        status.textContent = message;
+        status.className = isError ? "status error" : "status";
+      };
+
+      const baseUrl = () => get("apiBase").value.trim().replace(/\/+$/, "");
+      const apiUrl = (path) => `${baseUrl()}${path}`;
+
+      const headers = ({ includeAdmin = false } = {}) => {
+        const result = { "content-type": "application/json" };
+        const sourceToken = get("sourceToken").value.trim();
+        if (sourceToken) {
+          result["x-source-token"] = sourceToken;
+        }
+        if (includeAdmin) {
+          result["x-admin-key"] = get("adminKey").value.trim();
+        }
+        return result;
+      };
+
+      const renderRun = (run) => {
+        if (!run || !Array.isArray(run.encounters)) {
+          get("runOutput").textContent = "No run available.";
+          return;
+        }
+        const lines = run.encounters.map((encounter) => {
+          return `#${encounter.encounterNumber} ${encounter.lane} | ${encounter.title} | difficulty ${encounter.targetDifficulty}`;
+        });
+        get("runOutput").textContent = lines.join("\n");
+      };
+
+      const renderMetrics = (player, communication) => {
+        const profile = player?.profile ?? {};
+        const wallet = player?.wallet ?? {};
+        get("morality").textContent = String(profile.morality ?? "-");
+        get("sporesCollectedTotal").textContent = String(profile.sporesCollected ?? "-");
+        get("walletSpores").textContent = String(wallet.spores ?? "-");
+        get("learnedMagicCount").textContent = String(
+          Array.isArray(profile.learnedMagic) ? profile.learnedMagic.length : "-",
+        );
+        get("allSourcesActive").textContent = String(communication?.allSourcesActive ?? "-");
+        get("activeSourceCount").textContent = String(communication?.activeSourceCount ?? "-");
+      };
+
+      const getTelemetryPayload = () => {
+        const castsByElement = {
+          fire: parseNumber("fireCasts"),
+          water: parseNumber("waterCasts"),
+          ice: parseNumber("iceCasts"),
+          nature: parseNumber("natureCasts"),
+          void: parseNumber("voidCasts"),
+        };
+
+        const usedElements = Object.entries(castsByElement)
+          .filter(([, count]) => count > 0)
+          .map(([element]) => element);
+
+        if (usedElements.length === 0) {
+          usedElements.push("fire", "water");
+        }
+
+        return {
+          sessionLengthSec: parseNumber("sessionLengthSec", 600),
+          completedEncounters: parseNumber("completedEncounters", 5),
+          failedEncounters: parseNumber("failedEncounters", 1),
+          damageTaken: parseNumber("damageTaken", 25),
+          perfectActions: parseNumber("perfectActions", 6),
+          riskyActions: parseNumber("riskyActions", 3),
+          discoveryActions: parseNumber("discoveryActions", 4),
+          sporesCollected: parseNumber("sporesCollected", 30),
+          abandoned: false,
+          usedElements,
+          morality: {
+            compassionateActions: parseNumber("compassionateActions", 3),
+            ruthlessActions: parseNumber("ruthlessActions", 1),
+          },
+          magic: {
+            castsByElement,
+            ritualsCompleted: get("rituals")
+              .value.split(",")
+              .map((value) => value.trim())
+              .filter((value) => value.length > 0),
+          },
+        };
+      };
+
+      const requirePlayerId = () => {
+        const id = get("playerId").value.trim() || state.playerId;
+        if (!id) {
+          throw new Error("No playerId found yet. Generate a run or record a session first.");
+        }
+        return id;
+      };
+
+      const generateRun = async () => {
+        setStatus("Generating run...");
+        const payload = {
+          source: get("source").value,
+          externalId: get("externalId").value.trim(),
+          encounters: parseNumber("encounters", 5),
+        };
+        const seed = get("seed").value.trim();
+        if (seed) {
+          payload.seed = seed;
+        }
+
+        const response = await fetch(apiUrl("/api/run/generate"), {
+          method: "POST",
+          headers: headers(),
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+        const data = await response.json();
+        state.playerId = data.playerId;
+        get("playerId").value = data.playerId;
+        renderRun(data.lastRun);
+        renderMetrics(data, null);
+        setStatus(`Run generated for player ${data.playerId}`);
+      };
+
+      const recordSession = async () => {
+        setStatus("Recording session...");
+        const payload = {
+          source: get("source").value,
+          externalId: get("externalId").value.trim(),
+          mode: get("mode").value.trim() || "myco-quest",
+          score: parseNumber("score", 1200),
+          telemetry: getTelemetryPayload(),
+        };
+        const response = await fetch(apiUrl("/api/session/record"), {
+          method: "POST",
+          headers: headers(),
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+        const data = await response.json();
+        state.playerId = data.playerId;
+        get("playerId").value = data.playerId;
+        renderMetrics({ profile: data.profile, wallet: data.wallet }, null);
+        setStatus(`Session recorded. Awarded ${data.rewards?.awardedSpores ?? 0} spores.`);
+      };
+
+      const refreshHud = async () => {
+        const playerId = requirePlayerId();
+        setStatus(`Refreshing HUD for ${playerId}...`);
+        const params = new URLSearchParams({
+          windowMinutes: String(parseNumber("windowMinutes", 30)),
+          minEventsPerSource: String(parseNumber("minEventsPerSource", 1)),
+        });
+        const response = await fetch(apiUrl(`/api/dev/hud/${encodeURIComponent(playerId)}?${params}`), {
+          method: "GET",
+          headers: headers({ includeAdmin: true }),
+        });
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+        const data = await response.json();
+        renderRun(data.player?.lastRun);
+        renderMetrics(data.player, data.communication);
+        get("hudOutput").textContent = JSON.stringify(data, null, 2);
+        setStatus("HUD refreshed.");
+      };
+
+      const randomizeTelemetry = () => {
+        get("completedEncounters").value = String(4 + Math.floor(Math.random() * 5));
+        get("failedEncounters").value = String(Math.floor(Math.random() * 3));
+        get("damageTaken").value = String(12 + Math.floor(Math.random() * 35));
+        get("perfectActions").value = String(4 + Math.floor(Math.random() * 8));
+        get("discoveryActions").value = String(2 + Math.floor(Math.random() * 7));
+        get("riskyActions").value = String(Math.floor(Math.random() * 6));
+        get("sessionLengthSec").value = String(480 + Math.floor(Math.random() * 320));
+        get("sporesCollected").value = String(20 + Math.floor(Math.random() * 60));
+        get("compassionateActions").value = String(1 + Math.floor(Math.random() * 6));
+        get("ruthlessActions").value = String(Math.floor(Math.random() * 4));
+        get("score").value = String(850 + Math.floor(Math.random() * 900));
+        get("fireCasts").value = String(6 + Math.floor(Math.random() * 10));
+        get("waterCasts").value = String(4 + Math.floor(Math.random() * 9));
+        get("iceCasts").value = String(2 + Math.floor(Math.random() * 8));
+        get("natureCasts").value = String(Math.floor(Math.random() * 6));
+        get("voidCasts").value = String(Math.floor(Math.random() * 4));
+        get("rituals").value = `dev-ritual-${Math.floor(Math.random() * 1000)}`;
+        setStatus("Telemetry randomized.");
+      };
+
+      const withErrorHandling = (action) => async () => {
+        try {
+          await action();
+        } catch (error) {
+          setStatus(error instanceof Error ? error.message : "Unknown error", true);
+        }
+      };
+
+      get("generateRun").addEventListener("click", withErrorHandling(generateRun));
+      get("recordSession").addEventListener("click", withErrorHandling(recordSession));
+      get("refreshHud").addEventListener("click", withErrorHandling(refreshHud));
+      get("randomizeTelemetry").addEventListener("click", randomizeTelemetry);
+    </script>
+  </body>
+</html>

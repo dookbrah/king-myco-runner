@@ -1,5 +1,6 @@
 import { createServer, IncomingMessage, ServerResponse } from "node:http";
 import { URL } from "node:url";
+import { readFile } from "node:fs/promises";
 import { SourceAuthService } from "./platform/auth";
 import { KingMycoEcosystemHub } from "./platform/ecosystemHub";
 import { DeepPartial, LiveOpsConfig } from "./platform/liveOps";
@@ -25,6 +26,16 @@ const sendJson = (
   response.statusCode = statusCode;
   response.setHeader("content-type", "application/json; charset=utf-8");
   response.end(data);
+};
+
+const sendHtml = (
+  response: ServerResponse,
+  statusCode: number,
+  html: string,
+): void => {
+  response.statusCode = statusCode;
+  response.setHeader("content-type", "text/html; charset=utf-8");
+  response.end(html);
 };
 
 const getHeader = (
@@ -149,6 +160,11 @@ const start = async (): Promise<void> => {
           status: "ok",
           service: "king-myco-ecosystem-hub",
         });
+      }
+
+      if (method === "GET" && pathname === "/dev/myco-quest") {
+        const html = await readFile("public/myco-quest-dev.html", "utf8");
+        return sendHtml(response, 200, html);
       }
 
       if (method === "POST" && pathname === "/api/identity/link") {
