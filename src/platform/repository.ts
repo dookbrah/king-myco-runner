@@ -3,48 +3,24 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { createInitialProfile } from "../ai/playerModel";
 import { PlannedRun, PlayerProfile } from "../types";
-import { DEFAULT_LIVE_OPS, LiveOpsConfig } from "./liveOps";
+import { LiveOpsConfig } from "./liveOps";
+import { PostgresRedisAdapter } from "./postgresRedisAdapter";
+import {
+  createDefaultWallet,
+  emptyLeaderboardTable,
+  normalizePersistentState,
+  PersistentState,
+} from "./stateTypes";
 import {
   EcosystemSource,
   IdentityClaims,
   LeaderboardTable,
   LinkedIdentity,
+  PlatformEvent,
   PlayerWallet,
+  SolanaRewardTransferIntent,
+  SolanaWalletProof,
 } from "./types";
-
-export interface PersistentState {
-  profiles: Record<string, PlayerProfile>;
-  wallets: Record<string, PlayerWallet>;
-  identityByKey: Record<string, string>;
-  identitiesByPlayer: Record<string, LinkedIdentity[]>;
-  leaderboards: Record<string, LeaderboardTable>;
-  liveOps: LiveOpsConfig;
-  recentFingerprints: Record<string, string[]>;
-  lastRunByPlayer: Record<string, PlannedRun>;
-}
-
-const defaultWallet = (): PlayerWallet => ({
-  spores: 0,
-  lifetimeSpores: 0,
-  sessionStreak: 0,
-  suspiciousSessions: 0,
-});
-
-const emptyLeaderboardTable = (): LeaderboardTable => ({
-  entries: [],
-  quarantined: [],
-});
-
-const normalizeState = (raw: Partial<PersistentState> | null | undefined): PersistentState => ({
-  profiles: raw?.profiles ?? {},
-  wallets: raw?.wallets ?? {},
-  identityByKey: raw?.identityByKey ?? {},
-  identitiesByPlayer: raw?.identitiesByPlayer ?? {},
-  leaderboards: raw?.leaderboards ?? {},
-  liveOps: raw?.liveOps ?? DEFAULT_LIVE_OPS,
-  recentFingerprints: raw?.recentFingerprints ?? {},
-  lastRunByPlayer: raw?.lastRunByPlayer ?? {},
-});
 
 const createIdentityKeys = (
   source: EcosystemSource,
@@ -80,9 +56,12 @@ export class KingMycoRepository {
   private constructor(
     private readonly filePath: string,
     private state: PersistentState,
+    private readonly pgRedisAdapter?: PostgresRedisAdapter,
   ) {}
 
   static async create(filePath: string): Promise<KingMycoRepository> {
+    const pgRedisAdapter = await PostgresRedisAdapter.fromEnv();
+
     let parsed: Partial<PersistentState> | null = null;
 
     try {
@@ -95,7 +74,11 @@ export class KingMycoRepository {
       }
     }
 
-    return new KingMycoRepository(filePath, normalizeState(parsed));
+    if (!parsed && pgRedisAdapter) {
+      parsed = await pgRedisAdapter.loadSnapshot();
+    }
+
+    return new KingMycoRepository(filePath, normalizePersistentState(parsed), pgRedisAdapter);
   }
 
   resolveOrCreatePlayer(
@@ -184,7 +167,7 @@ export class KingMycoRepository {
       return existing;
     }
 
-    const created = defaultWallet();
+    const created = createDefaultWallet();
     this.state.wallets[playerId] = created;
     return created;
   }
@@ -232,6 +215,50 @@ export class KingMycoRepository {
     this.state.lastRunByPlayer[playerId] = run;
   }
 
+  setWalletProof(proof: SolanaWalletProof): void {
+    this.state.walletProofs[proof.walletAddress.toLowerCase()] = proof;
+  }
+
+  getWalletProof(walletAddress: string): SolanaWalletProof | undefined {
+    return this.state.walletProofs[walletAddress.toLowerCase()];
+  }
+
+  setTransferIntent(intent: SolanaRewardTransferIntent): void {
+    this.state.transferIntents[intent.id] = intent;
+  }
+
+  getTransferIntents(playerId?: string): SolanaRewardTransferIntent[] {
+    const intents = Object.values(this.state.transferIntents);
+    if (!playerId) {
+      return intents;
+    }
+
+    return intents.filter((intent) => intent.playerId === playerId);
+  }
+
+  async appendEvent(event: PlatformEvent): Promise<void> {
+    this.state.events.push(event);
+    this.state.events = this.state.events.slice(-5000);
+
+    if (this.pgRedisAdapter) {
+      await this.pgRedisAdapter.appendEvent(event);
+    }
+  }
+
+  async getRecentEvents(limit: number): Promise<PlatformEvent[]> {
+    const safeLimit = Math.max(1, Math.min(limit, 2000));
+
+    if (this.state.events.length > 0) {
+      return [...this.state.events].slice(-safeLimit);
+    }
+
+    if (this.pgRedisAdapter) {
+      return this.pgRedisAdapter.readRecentEvents(safeLimit);
+    }
+
+    return [];
+  }
+
   async save(): Promise<void> {
     await mkdir(dirname(this.filePath), { recursive: true });
     const tempPath = `${this.filePath}.tmp`;
@@ -239,6 +266,10 @@ export class KingMycoRepository {
 
     await writeFile(tempPath, payload, "utf8");
     await rename(tempPath, this.filePath);
+
+    if (this.pgRedisAdapter) {
+      await this.pgRedisAdapter.saveSnapshot(this.state);
+    }
   }
 
   private mergePlayers(targetId: string, fromId: string): void {
@@ -249,7 +280,7 @@ export class KingMycoRepository {
       this.state.profiles[targetId] = fromProfile;
     }
 
-    const targetWallet = this.state.wallets[targetId] ?? defaultWallet();
+    const targetWallet = this.state.wallets[targetId] ?? createDefaultWallet();
     const fromWallet = this.state.wallets[fromId];
     if (fromWallet) {
       targetWallet.spores += fromWallet.spores;
@@ -280,6 +311,24 @@ export class KingMycoRepository {
     for (const [identityKey, mappedPlayerId] of Object.entries(this.state.identityByKey)) {
       if (mappedPlayerId === fromId) {
         this.state.identityByKey[identityKey] = targetId;
+      }
+    }
+
+    for (const proof of Object.values(this.state.walletProofs)) {
+      if (proof.playerId === fromId) {
+        this.state.walletProofs[proof.walletAddress.toLowerCase()] = {
+          ...proof,
+          playerId: targetId,
+        };
+      }
+    }
+
+    for (const [intentId, intent] of Object.entries(this.state.transferIntents)) {
+      if (intent.playerId === fromId) {
+        this.state.transferIntents[intentId] = {
+          ...intent,
+          playerId: targetId,
+        };
       }
     }
 

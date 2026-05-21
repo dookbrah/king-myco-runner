@@ -1,82 +1,117 @@
 # king-myco-runner
 
-Myco Quest adaptive AI game-core + ecosystem hub.
+Myco Quest adaptive AI game-core + ecosystem backend for King Myco.
 
-## What is implemented now
+## Implemented capability tiers
 
-This repository now includes both:
+### Tier 1 - Adaptive gameplay core
+- Player modeling (skill, playstyle, novelty, mastery)
+- Adaptive encounter sequencing
+- Per-run procedural tuning
 
-1. **Adaptive run generation core** for Myco Quest
-2. **Ecosystem integration backend** for cross-platform identity + progression
+### Tier 2 - Ecosystem orchestration
+- Unified identity across:
+  - `mycokingdom_bot`
+  - `mycoai_bot`
+  - `kingdom.kingmyco.com`
+  - `kingmyco.io`
+  - `openclaw`
+- Reward economy and streaks
+- Fraud scoring + quarantined leaderboard submissions
 
-## Ecosystem connection model
+### Tier 3 - Production hardening + Web3
+- Source token auth with per-source scopes
+- Signed webhook verification (Telegram secret token + OpenClaw HMAC)
+- Event stream analytics summary endpoint
+- Postgres/Redis adapter for persisted state snapshots + events
+- Solana wallet signature verification and reward transfer intent generation
 
-The backend supports linking one player identity across:
+## Architecture map
 
-- `mycokingdom_bot` (Telegram gameplay bot)
-- `mycoai_bot` (AI coaching bot)
-- `kingdom.kingmyco.com` (web app)
-- `kingmyco.io` (hub + games)
-- `openclaw` (external gameplay integration)
-
-## Core architecture
-
-- `src/ai/playerModel.ts` - updates player skill/playstyle/mastery from telemetry
-- `src/ai/adaptiveDirector.ts` - active-learning run planner per player
-- `src/quest/catalog.ts` - encounter blueprints
-- `src/platform/repository.ts` - persistent JSON state (profiles, wallets, identities, leaderboards)
-- `src/platform/rewardEconomy.ts` - spores, streaks, multipliers, anti-grind penalties
-- `src/platform/fraudGuard.ts` - anti-exploit heuristics + quarantine decisions
-- `src/platform/leaderboard.ts` - high-score integrity + quarantined submissions
-- `src/platform/ecosystemHub.ts` - orchestration service
-- `src/server.ts` - HTTP API surface
-
-## Active learning loop
-
-1. Generate personalized run from profile + prior outcomes.
-2. Capture telemetry from gameplay.
-3. Evaluate fraud/anomaly risk.
-4. If valid: update profile, award spores, update leaderboard.
-5. Use profile deltas to alter next run composition and difficulty.
-6. Expose coaching guidance through `mycoai_bot` endpoint.
+- `src/ai/*` - adaptive difficulty and personalization engine
+- `src/platform/repository.ts` - state repository with file + PG/Redis adapter integration
+- `src/platform/postgresRedisAdapter.ts` - SQL/cache persistence bridge
+- `src/platform/rewardEconomy.ts` - spores, streaks, anti-grind economics
+- `src/platform/fraudGuard.ts` - anti-exploit risk detection
+- `src/platform/analytics.ts` - event stream aggregation
+- `src/platform/auth.ts` - source token and scope validation
+- `src/platform/webhookVerifier.ts` - webhook signature checking
+- `src/platform/solanaService.ts` - Solana wallet verification + transfer intent prep
+- `src/platform/ecosystemHub.ts` - central orchestration layer
+- `src/server.ts` - API surface
 
 ## API endpoints
 
 ### Health
 - `GET /health`
 
-### Identity + progression
+### Identity and gameplay
 - `POST /api/identity/link`
 - `POST /api/run/generate`
 - `POST /api/session/record`
+- `POST /api/mycoai/coach`
 - `GET /api/player/:playerId`
 
-### Competitive + economy
+### Leaderboard and live ops
 - `GET /api/leaderboard/:mode`
-
-### AI coaching
-- `POST /api/mycoai/coach`
-
-### LiveOps tuning
 - `GET /api/liveops`
-- `POST /api/liveops` (requires `x-admin-key`)
+- `POST /api/liveops` (admin key)
 
-## Environment variables
+### Analytics
+- `GET /api/analytics/summary` (admin key)
 
-- `PORT` - API port (default `3000`)
-- `KINGMYCO_STATE_PATH` - JSON persistence path (default `data/kingmyco-state.json`)
-- `KINGMYCO_ADMIN_KEY` - key for protected LiveOps update endpoint
+### Webhooks
+- `POST /webhooks/mycokingdom_bot`
+- `POST /webhooks/mycoai_bot`
+- `POST /webhooks/openclaw`
+
+### Solana (Web3)
+- `POST /api/solana/verify-link`
+- `GET /api/solana/wallet/:walletAddress`
+- `POST /api/solana/rewards/prepare` (admin key)
+
+## Security model
+
+### Source auth
+Provide `KINGMYCO_SOURCE_AUTH_JSON` to enforce per-source bearer tokens and scopes via `x-source-token`.
+
+Example:
+
+```json
+{
+  "mycokingdom_bot": { "token": "token-a", "scopes": ["identity:write", "session:write", "webhook:ingest"] },
+  "mycoai_bot": { "token": "token-b", "scopes": ["coach:read", "identity:write", "webhook:ingest"] },
+  "kingmyco.io": { "token": "token-c", "scopes": ["identity:write", "run:generate", "session:write", "solana:verify"] },
+  "kingdom.kingmyco.com": { "token": "token-d", "scopes": ["identity:write", "run:generate", "session:write"] },
+  "openclaw": { "token": "token-e", "scopes": ["session:write", "run:generate", "solana:reward:prepare", "webhook:ingest"] }
+}
+```
+
+### Webhook verification
+- Telegram: `KINGMYCO_TELEGRAM_WEBHOOK_SECRET`
+- OpenClaw: `OPENCLAW_WEBHOOK_SECRET`
+
+### Admin routes
+- `x-admin-key` must match `KINGMYCO_ADMIN_KEY`
+
+## Solana configuration
+
+- `SOLANA_RPC_URL` (default `https://api.mainnet-beta.solana.com`)
+- `KINGMYCO_TREASURY_WALLET` (required for reward transfer intent preparation)
+
+## Persistence options
+
+By default, state is persisted to local JSON via `KINGMYCO_STATE_PATH`.
+
+Optional adapter settings:
+- `KINGMYCO_PG_URL` - postgres connection string
+- `KINGMYCO_REDIS_URL` - redis connection string
+
+When configured, snapshots and events are mirrored to Postgres/Redis.
 
 ## Scripts
 
-- `npm run demo` - run adaptation demo in terminal
-- `npm run test` - run tests
-- `npm run build` - compile TypeScript
-- `npm run start:api` - run integration API server
-
-## Next product steps (recommended)
-
-1. Add signed webhook verification for Telegram and OpenClaw ingress.
-2. Replace JSON store with Postgres + Redis for multi-instance scale.
-3. Add wallet-verified reward claims pipeline before on-chain settlement.
-4. Introduce experiment buckets for controlled live-ops A/B tuning.
+- `npm run demo` - adaptive behavior simulation
+- `npm run test` - unit tests
+- `npm run build` - TypeScript compile
+- `npm run start:api` - launch API server

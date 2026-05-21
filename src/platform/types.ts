@@ -7,6 +7,30 @@ export type EcosystemSource =
   | "kingmyco.io"
   | "openclaw";
 
+export const ECOSYSTEM_SOURCES: EcosystemSource[] = [
+  "mycokingdom_bot",
+  "mycoai_bot",
+  "kingdom.kingmyco.com",
+  "kingmyco.io",
+  "openclaw",
+];
+
+export type SourceScope =
+  | "identity:write"
+  | "run:generate"
+  | "session:write"
+  | "coach:read"
+  | "solana:verify"
+  | "solana:reward:prepare"
+  | "webhook:ingest";
+
+export interface SourceAuthConfig {
+  token: string;
+  scopes: Array<SourceScope | "*">;
+}
+
+export type SourceAuthMap = Partial<Record<EcosystemSource, SourceAuthConfig>>;
+
 export interface IdentityClaims {
   walletAddress?: string;
   telegramUserId?: string;
@@ -105,4 +129,98 @@ export interface CoachingResponse {
   focusLane: string;
   recommendations: string[];
   response: string;
+}
+
+export type PlatformEventType =
+  | "identity_linked"
+  | "run_generated"
+  | "session_recorded"
+  | "coaching_generated"
+  | "liveops_updated"
+  | "webhook_ingested"
+  | "solana_wallet_verified"
+  | "reward_intent_prepared";
+
+export interface PlatformEvent {
+  id: string;
+  type: PlatformEventType;
+  timestamp: string;
+  source?: EcosystemSource;
+  playerId?: string;
+  mode?: string;
+  payload: Record<string, unknown>;
+}
+
+export interface AnalyticsSummary {
+  generatedAt: string;
+  windowEventCount: number;
+  uniquePlayers: number;
+  eventBreakdown: Record<PlatformEventType, number>;
+  sourceBreakdown: Partial<Record<EcosystemSource, number>>;
+  suspiciousSessionRate: number;
+  averageSessionScore: number;
+}
+
+export interface SolanaWalletProof {
+  playerId: string;
+  source: EcosystemSource;
+  externalId: string;
+  walletAddress: string;
+  message: string;
+  signature: string;
+  verified: boolean;
+  verifiedAt: string;
+}
+
+export interface SolanaWalletSnapshot {
+  walletAddress: string;
+  lamports: number | null;
+  sol: number | null;
+  rpcUrl: string;
+  rpcReachable: boolean;
+  fetchedAt: string;
+}
+
+export interface SolanaWalletVerificationRequest extends IdentityLinkRequest {
+  walletAddress: string;
+  message: string;
+  signature: string;
+}
+
+export interface SolanaWalletVerificationResponse {
+  verified: boolean;
+  player: PlayerSnapshot;
+  proof: SolanaWalletProof;
+  wallet: SolanaWalletSnapshot;
+}
+
+export type RewardTransferStatus = "prepared" | "submitted" | "settled" | "failed";
+
+export interface SolanaRewardTransferIntent {
+  id: string;
+  playerId: string;
+  source: EcosystemSource;
+  destinationWallet: string;
+  treasuryWallet: string;
+  lamports: number;
+  memo?: string;
+  blockhash: string;
+  lastValidBlockHeight: number;
+  unsignedTransactionBase64: string;
+  status: RewardTransferStatus;
+  createdAt: string;
+}
+
+export interface SolanaRewardTransferRequest {
+  playerId: string;
+  source: EcosystemSource;
+  destinationWallet: string;
+  lamports: number;
+  memo?: string;
+}
+
+export interface WebhookReceipt {
+  accepted: boolean;
+  source: EcosystemSource;
+  eventId: string;
 }

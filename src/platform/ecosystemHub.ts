@@ -1,22 +1,37 @@
+import { randomUUID } from "node:crypto";
 import { AdaptiveDirector } from "../ai/adaptiveDirector";
 import { applySessionTelemetry } from "../ai/playerModel";
 import { PlannedRun, SessionTelemetry } from "../types";
 import { average, clamp } from "../utils/math";
+import { AnalyticsService } from "./analytics";
 import { FraudGuard } from "./fraudGuard";
-import { DEFAULT_LIVE_OPS, DeepPartial, LiveOpsConfig, mergeLiveOpsConfig } from "./liveOps";
+import {
+  DEFAULT_LIVE_OPS,
+  DeepPartial,
+  LiveOpsConfig,
+  mergeLiveOpsConfig,
+} from "./liveOps";
 import { LeaderboardService } from "./leaderboard";
 import { KingMycoRepository } from "./repository";
 import { RewardEconomy } from "./rewardEconomy";
+import { SolanaService } from "./solanaService";
 import {
+  AnalyticsSummary,
   CoachingRequest,
   CoachingResponse,
   EcosystemSource,
   IdentityLinkRequest,
+  PlatformEventType,
   PlayerSnapshot,
   RewardBreakdown,
   RunGenerationRequest,
   SessionIngestRequest,
   SessionReceipt,
+  SolanaRewardTransferIntent,
+  SolanaRewardTransferRequest,
+  SolanaWalletVerificationRequest,
+  SolanaWalletVerificationResponse,
+  WebhookReceipt,
 } from "./types";
 
 const DEFAULT_MODE = "myco-quest";
@@ -44,7 +59,10 @@ const estimateScoreFromTelemetry = (telemetry: SessionTelemetry): number => {
   );
 };
 
-const tuneRunByLiveOps = (run: PlannedRun, liveOps: LiveOpsConfig): PlannedRun => {
+const tuneRunByLiveOps = (
+  run: PlannedRun,
+  liveOps: LiveOpsConfig,
+): PlannedRun => {
   return {
     ...run,
     encounters: run.encounters.map((encounter) => {
@@ -67,12 +85,17 @@ export class KingMycoEcosystemHub {
   private readonly rewards = new RewardEconomy();
   private readonly fraud = new FraudGuard();
   private readonly leaderboard = new LeaderboardService();
+  private readonly analytics = new AnalyticsService();
 
-  private constructor(private readonly repository: KingMycoRepository) {}
+  private constructor(
+    private readonly repository: KingMycoRepository,
+    private readonly solana: SolanaService,
+  ) {}
 
   static async create(statePath = "data/kingmyco-state.json"): Promise<KingMycoEcosystemHub> {
     const repository = await KingMycoRepository.create(statePath);
-    return new KingMycoEcosystemHub(repository);
+    const solana = new SolanaService();
+    return new KingMycoEcosystemHub(repository, solana);
   }
 
   async linkIdentity(request: IdentityLinkRequest): Promise<PlayerSnapshot> {
@@ -83,6 +106,14 @@ export class KingMycoEcosystemHub {
     );
 
     const snapshot = this.getPlayerSnapshot(playerId);
+    await this.emitEvent("identity_linked", {
+      playerId,
+      source: request.source,
+      payload: {
+        source: request.source,
+        hasWalletClaim: Boolean(request.claims?.walletAddress),
+      },
+    });
     await this.repository.save();
     return snapshot;
   }
@@ -103,6 +134,20 @@ export class KingMycoEcosystemHub {
 
     const tuned = tuneRunByLiveOps(planned, liveOps);
     this.repository.setLastRun(playerId, tuned);
+
+    await this.emitEvent("run_generated", {
+      playerId,
+      source: request.source,
+      payload: {
+        encounterCount: tuned.encounters.length,
+        averageDifficulty:
+          tuned.encounters.length > 0
+            ? average(tuned.encounters.map((encounter) => encounter.targetDifficulty))
+            : 0,
+        seed: tuned.seed,
+      },
+    });
+
     await this.repository.save();
 
     return this.getPlayerSnapshot(playerId);
@@ -183,6 +228,19 @@ export class KingMycoEcosystemHub {
     });
 
     this.repository.setLeaderboard(mode, updatedTable);
+
+    await this.emitEvent("session_recorded", {
+      playerId,
+      source: request.source,
+      mode,
+      payload: {
+        score,
+        fraudFlagged: fraud.flagged,
+        suspiciousScore: fraud.riskScore,
+        awardedSpores: rewards.awardedSpores,
+      },
+    });
+
     await this.repository.save();
 
     return {
@@ -228,6 +286,15 @@ export class KingMycoEcosystemHub {
       `${nextObjective ?? "Prioritize precision plus exploration actions"} ` +
       `to force the director to open more unique encounters.`;
 
+    await this.emitEvent("coaching_generated", {
+      playerId,
+      source: request.source,
+      payload: {
+        focusLane: weakestLane,
+        recommendationCount: recommendations.length,
+      },
+    });
+
     await this.repository.save();
 
     return {
@@ -235,6 +302,100 @@ export class KingMycoEcosystemHub {
       focusLane: weakestLane,
       recommendations,
       response,
+    };
+  }
+
+  async verifySolanaWalletLink(
+    request: SolanaWalletVerificationRequest,
+  ): Promise<SolanaWalletVerificationResponse> {
+    const playerId = this.repository.resolveOrCreatePlayer(
+      request.source,
+      request.externalId,
+      {
+        ...request.claims,
+        walletAddress: request.walletAddress,
+      },
+    );
+
+    const proof = this.solana.verifyWalletProof({
+      playerId,
+      source: request.source,
+      externalId: request.externalId,
+      walletAddress: request.walletAddress,
+      message: request.message,
+      signature: request.signature,
+    });
+
+    this.repository.setWalletProof(proof);
+    const player = this.getPlayerSnapshot(playerId);
+    const wallet = await this.solana.getWalletSnapshot(request.walletAddress);
+
+    await this.emitEvent("solana_wallet_verified", {
+      playerId,
+      source: request.source,
+      payload: {
+        walletAddress: proof.walletAddress,
+      },
+    });
+
+    await this.repository.save();
+
+    return {
+      verified: true,
+      player,
+      proof,
+      wallet,
+    };
+  }
+
+  async prepareSolanaRewardTransfer(
+    request: SolanaRewardTransferRequest,
+  ): Promise<SolanaRewardTransferIntent> {
+    const intent = await this.solana.prepareSolTransfer(request);
+    this.repository.setTransferIntent(intent);
+
+    await this.emitEvent("reward_intent_prepared", {
+      playerId: request.playerId,
+      source: request.source,
+      payload: {
+        intentId: intent.id,
+        lamports: intent.lamports,
+        destinationWallet: intent.destinationWallet,
+      },
+    });
+
+    await this.repository.save();
+    return intent;
+  }
+
+  async getSolanaWalletSnapshot(walletAddress: string) {
+    return this.solana.getWalletSnapshot(walletAddress);
+  }
+
+  async ingestWebhookEvent(
+    source: EcosystemSource,
+    eventName: string,
+    payload: Record<string, unknown>,
+  ): Promise<WebhookReceipt> {
+    const eventId = randomUUID();
+
+    await this.repository.appendEvent({
+      id: eventId,
+      type: "webhook_ingested",
+      timestamp: new Date().toISOString(),
+      source,
+      payload: {
+        eventName,
+        ...payload,
+      },
+    });
+
+    await this.repository.save();
+
+    return {
+      accepted: true,
+      source,
+      eventId,
     };
   }
 
@@ -266,8 +427,38 @@ export class KingMycoEcosystemHub {
     const current = this.repository.getLiveOps() ?? DEFAULT_LIVE_OPS;
     const merged = mergeLiveOpsConfig(current, patch);
     this.repository.setLiveOps(merged);
+
+    await this.emitEvent("liveops_updated", {
+      payload: {
+        antiExploitThreshold: merged.antiExploitThreshold,
+        rewardMultiplier: merged.rewardMultiplier,
+      },
+    });
+
     await this.repository.save();
     return merged;
+  }
+
+  async getAnalyticsSummary(limit = 300): Promise<AnalyticsSummary> {
+    const events = await this.repository.getRecentEvents(limit);
+    return this.analytics.summarize(events);
+  }
+
+  private async emitEvent(inputType: PlatformEventType, input: {
+    playerId?: string;
+    source?: EcosystemSource;
+    mode?: string;
+    payload: Record<string, unknown>;
+  }): Promise<void> {
+    await this.repository.appendEvent({
+      id: randomUUID(),
+      type: inputType,
+      timestamp: new Date().toISOString(),
+      playerId: input.playerId,
+      source: input.source,
+      mode: input.mode,
+      payload: input.payload,
+    });
   }
 
   private computeFingerprintPreview(telemetry: SessionTelemetry, score: number): string {
@@ -280,7 +471,11 @@ export class KingMycoEcosystemHub {
       telemetry.riskyActions,
       telemetry.sessionLengthSec,
       telemetry.usedElements.join(","),
-      average(Object.values(telemetry.laneOutcomes ?? {}).map((lane) => (lane ? lane.wins + lane.losses : 0))),
+      average(
+        Object.values(telemetry.laneOutcomes ?? {}).map((lane) =>
+          lane ? lane.wins + lane.losses : 0,
+        ),
+      ),
       score,
     ].join(":");
   }
