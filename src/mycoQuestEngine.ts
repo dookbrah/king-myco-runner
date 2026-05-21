@@ -1,5 +1,9 @@
 import { AdaptiveDirector } from "./ai/adaptiveDirector";
-import { applySessionTelemetry, createInitialProfile } from "./ai/playerModel";
+import {
+  applySessionTelemetry,
+  createInitialProfile,
+  normalizeProfile,
+} from "./ai/playerModel";
 import { PlannedRun, PlayerProfile, SessionTelemetry } from "./types";
 
 interface GenerateRunOptions {
@@ -42,7 +46,9 @@ export class MycoQuestEngine {
   private getOrCreateProfile(playerId: string): PlayerProfile {
     const existing = this.profiles.get(playerId);
     if (existing) {
-      return existing;
+      const normalized = normalizeProfile(existing);
+      this.profiles.set(playerId, normalized);
+      return normalized;
     }
 
     const created = createInitialProfile(playerId);

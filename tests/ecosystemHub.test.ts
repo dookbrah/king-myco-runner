@@ -139,6 +139,8 @@ describe("King Myco ecosystem integration", () => {
     expect(receipt.fraud.flagged).toBe(false);
     expect(receipt.rewards.awardedSpores).toBeGreaterThan(0);
     expect(receipt.wallet.spores).toBeGreaterThan(0);
+    expect(receipt.profile.sporesCollected).toBe(receipt.rewards.awardedSpores);
+    expect(receipt.profile.learnedMagic.length).toBeGreaterThan(0);
 
     const leaderboard = hub.getLeaderboard("myco-quest");
     expect(leaderboard.entries).toHaveLength(1);

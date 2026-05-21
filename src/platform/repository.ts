@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import { createInitialProfile } from "../ai/playerModel";
+import { createInitialProfile, normalizeProfile } from "../ai/playerModel";
 import { PlannedRun, PlayerProfile } from "../types";
 import { clamp } from "../utils/math";
 import { LiveOpsConfig } from "./liveOps";
@@ -196,7 +196,9 @@ export class KingMycoRepository {
   getOrCreateProfile(playerId: string): PlayerProfile {
     const existing = this.state.profiles[playerId];
     if (existing) {
-      return existing;
+      const normalized = normalizeProfile(existing);
+      this.state.profiles[playerId] = normalized;
+      return normalized;
     }
 
     const created = createInitialProfile(playerId);
@@ -205,7 +207,7 @@ export class KingMycoRepository {
   }
 
   setProfile(profile: PlayerProfile): void {
-    this.state.profiles[profile.playerId] = profile;
+    this.state.profiles[profile.playerId] = normalizeProfile(profile);
   }
 
   getWallet(playerId: string): PlayerWallet {

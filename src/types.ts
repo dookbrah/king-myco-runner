@@ -14,6 +14,16 @@ export interface PlaystyleVector {
   risk: number;
 }
 
+export interface MoralityTelemetry {
+  compassionateActions?: number;
+  ruthlessActions?: number;
+}
+
+export interface MagicTelemetry {
+  castsByElement?: Partial<Record<Element, number>>;
+  ritualsCompleted?: string[];
+}
+
 export interface PlayerProfile {
   playerId: string;
   skill: number;
@@ -22,6 +32,10 @@ export interface PlayerProfile {
   masteredElements: Element[];
   playstyle: PlaystyleVector;
   laneMastery: Record<ChallengeLane, number>;
+  morality: number;
+  learnedMagic: string[];
+  magicMastery: Record<Element, number>;
+  sporesCollected: number;
   sessionsPlayed: number;
   lastUpdatedAt: string;
 }
@@ -42,6 +56,9 @@ export interface SessionTelemetry {
   sessionLengthSec: number;
   usedElements: Element[];
   abandoned: boolean;
+  sporesCollected?: number;
+  morality?: MoralityTelemetry;
+  magic?: MagicTelemetry;
   laneOutcomes?: Partial<Record<ChallengeLane, LaneOutcome>>;
 }
 
@@ -71,6 +88,8 @@ export interface PlannedEncounter {
   description: string;
   requiredElements: Element[];
   suggestedLearningObjective?: string;
+  narrativeTone?: "light" | "neutral" | "shadow";
+  suggestedMagicToPractice?: string;
   targetDifficulty: number;
   tuning: EncounterTuning;
 }

@@ -96,6 +96,49 @@ describe("MycoQuest personalization", () => {
     expect(secondAvg).toBeGreaterThan(firstAvg);
   });
 
+  it("tracks morality magic progression and spores collected", () => {
+    const engine = new MycoQuestEngine();
+
+    const before = engine.getProfile("rpg-progression");
+
+    const after = engine.recordSession({
+      playerId: "rpg-progression",
+      completedEncounters: 11,
+      failedEncounters: 1,
+      damageTaken: 24,
+      perfectActions: 9,
+      discoveryActions: 6,
+      riskyActions: 2,
+      sessionLengthSec: 870,
+      usedElements: ["fire", "water", "nature"],
+      sporesCollected: 420,
+      morality: {
+        compassionateActions: 7,
+        ruthlessActions: 1,
+      },
+      magic: {
+        castsByElement: {
+          fire: 18,
+          water: 14,
+          nature: 10,
+        },
+        ritualsCompleted: ["mycelial-oath"],
+      },
+      abandoned: false,
+      laneOutcomes: {
+        puzzle: { wins: 3, losses: 0 },
+        tactics: { wins: 2, losses: 1 },
+        mobility: { wins: 3, losses: 1 },
+      },
+    });
+
+    expect(after.morality).toBeGreaterThan(before.morality);
+    expect(after.magicMastery.nature).toBeGreaterThan(0.05);
+    expect(after.learnedMagic).toContain("mycelial-oath");
+    expect(after.sporesCollected).toBe(before.sporesCollected + 420);
+  });
+
+
   it("is deterministic for same profile and seed", () => {
     const director = new AdaptiveDirector();
     const profile = createInitialProfile("deterministic");

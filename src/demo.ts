@@ -4,13 +4,20 @@ const summarize = (title: string, runData: ReturnType<MycoQuestEngine["generateR
   console.log(`\n=== ${title} ===`);
   console.log(`Player: ${runData.profile.playerId}`);
   console.log(`Skill: ${runData.profile.skill.toFixed(2)} | Novelty: ${runData.profile.novelty.toFixed(2)}`);
+  console.log(`Morality: ${runData.profile.morality.toFixed(2)} | Spores Collected: ${runData.profile.sporesCollected} | Learned Magic: ${runData.profile.learnedMagic.length}`);
 
   for (const encounter of runData.run.encounters) {
     const objective = encounter.suggestedLearningObjective
       ? ` | Objective: ${encounter.suggestedLearningObjective}`
       : "";
+    const magic = encounter.suggestedMagicToPractice
+      ? ` | Magic: ${encounter.suggestedMagicToPractice}`
+      : "";
+    const tone = encounter.narrativeTone
+      ? ` | Tone: ${encounter.narrativeTone}`
+      : "";
     console.log(
-      `${encounter.encounterNumber}. [${encounter.lane}] ${encounter.title} (difficulty ${encounter.targetDifficulty})${objective}`,
+      `${encounter.encounterNumber}. [${encounter.lane}] ${encounter.title} (difficulty ${encounter.targetDifficulty})${objective}${magic}${tone}`,
     );
   }
 };
@@ -35,7 +42,20 @@ engine.recordSession({
   discoveryActions: 1,
   riskyActions: 8,
   sessionLengthSec: 760,
-  usedElements: ["fire", "water"],
+  usedElements: ["fire", "water", "void"],
+  sporesCollected: 310,
+  morality: {
+    compassionateActions: 1,
+    ruthlessActions: 4,
+  },
+  magic: {
+    castsByElement: {
+      fire: 14,
+      water: 7,
+      void: 9,
+    },
+    ritualsCompleted: ["obsidian-vow"],
+  },
   abandoned: false,
   laneOutcomes: {
     swarm: { wins: 4, losses: 1 },
@@ -53,7 +73,21 @@ engine.recordSession({
   discoveryActions: 6,
   riskyActions: 2,
   sessionLengthSec: 880,
-  usedElements: ["fire", "water", "ice"],
+  usedElements: ["fire", "water", "ice", "nature"],
+  sporesCollected: 420,
+  morality: {
+    compassionateActions: 6,
+    ruthlessActions: 1,
+  },
+  magic: {
+    castsByElement: {
+      fire: 6,
+      water: 14,
+      ice: 11,
+      nature: 8,
+    },
+    ritualsCompleted: ["verdant-oath"],
+  },
   abandoned: false,
   laneOutcomes: {
     puzzle: { wins: 4, losses: 1 },

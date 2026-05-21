@@ -33,6 +33,22 @@ const laneElementMatrix: Record<ChallengeLane, string[]> = {
   puzzle: ["water", "nature"],
 };
 
+const LIGHT_MORALITY_LANE_AFFINITY: Record<ChallengeLane, number> = {
+  mobility: 0.8,
+  swarm: 0.35,
+  tactics: 0.55,
+  boss: 0.3,
+  puzzle: 0.9,
+};
+
+const SHADOW_MORALITY_LANE_AFFINITY: Record<ChallengeLane, number> = {
+  mobility: 0.35,
+  swarm: 0.85,
+  tactics: 0.7,
+  boss: 0.95,
+  puzzle: 0.4,
+};
+
 const createBanditState = (): PlayerBanditState => ({
   mobility: { attempts: 0, cumulativeReward: 0 },
   swarm: { attempts: 0, cumulativeReward: 0 },
@@ -95,6 +111,11 @@ export class AdaptiveDirector {
       const suggestedLearningObjective = blueprint.teaches.find(
         (element) => !profile.masteredElements.includes(element),
       );
+      const suggestedMagicToPractice = this.getSuggestedMagicToPractice(
+        profile,
+        blueprint.requiredElements,
+      );
+      const narrativeTone = this.resolveNarrativeTone(profile.morality, rng);
 
       encounters.push({
         encounterNumber: index + 1,
@@ -106,6 +127,8 @@ export class AdaptiveDirector {
         suggestedLearningObjective: suggestedLearningObjective
           ? `Practice ${suggestedLearningObjective.toUpperCase()} mechanics in combat.`
           : undefined,
+        narrativeTone,
+        suggestedMagicToPractice,
         targetDifficulty,
         tuning: {
           enemySpeedMultiplier: roundTo(
@@ -219,6 +242,7 @@ export class AdaptiveDirector {
         0.26 *
         profile.novelty;
       const styleAffinity = this.getStyleAffinity(profile, lane);
+      const moralityAffinity = this.getMoralityLaneAffinity(profile.morality, lane);
       const learningBoost = laneElementMatrix[lane].some((element) =>
         unmasteredElements.includes(element as never),
       )
@@ -228,9 +252,10 @@ export class AdaptiveDirector {
       const jitter = (rng() - 0.5) * 0.06;
 
       const score =
-        expectedReward * 0.35 +
-        profile.laneMastery[lane] * 0.26 +
-        styleAffinity * 0.28 +
+        expectedReward * 0.32 +
+        profile.laneMastery[lane] * 0.24 +
+        styleAffinity * 0.24 +
+        moralityAffinity * 0.2 +
         explorationBonus +
         learningBoost -
         antiRepeatPenalty +
@@ -291,7 +316,13 @@ export class AdaptiveDirector {
     rng: () => number,
   ): number {
     const arcProgress = (index + 1) / encounterCount;
-    const base = 2 + profile.skill * 5.8 + arcProgress * 2.2 + profile.novelty * 0.8;
+    const moralityIntensity = Math.abs(profile.morality) * 0.35;
+    const base =
+      2 +
+      profile.skill * 5.8 +
+      arcProgress * 2.2 +
+      profile.novelty * 0.8 +
+      moralityIntensity;
     const jitter = (rng() - 0.5) * 0.8;
     return roundTo(clamp(base + jitter, 1, 10));
   }
@@ -313,6 +344,51 @@ export class AdaptiveDirector {
       default:
         return 0.5;
     }
+  }
+
+  private getMoralityLaneAffinity(morality: number, lane: ChallengeLane): number {
+    const lightAffinity = LIGHT_MORALITY_LANE_AFFINITY[lane];
+    const shadowAffinity = SHADOW_MORALITY_LANE_AFFINITY[lane];
+    const normalizedMorality = clamp((morality + 1) / 2, 0, 1);
+    return shadowAffinity * (1 - normalizedMorality) + lightAffinity * normalizedMorality;
+  }
+
+  private resolveNarrativeTone(
+    morality: number,
+    rng: () => number,
+  ): "light" | "neutral" | "shadow" {
+    const jitteredMorality = morality + (rng() - 0.5) * 0.18;
+    if (jitteredMorality >= 0.25) {
+      return "light";
+    }
+    if (jitteredMorality <= -0.25) {
+      return "shadow";
+    }
+    return "neutral";
+  }
+
+  private getSuggestedMagicToPractice(
+    profile: PlayerProfile,
+    requiredElements: string[],
+  ): string | undefined {
+    const sortable = requiredElements
+      .filter((element) => profile.unlockedElements.includes(element as never))
+      .map((element) => ({
+        element,
+        mastery: profile.magicMastery[element as keyof typeof profile.magicMastery] ?? 0,
+      }))
+      .sort((left, right) => left.mastery - right.mastery);
+
+    if (sortable.length === 0) {
+      return profile.learnedMagic[0];
+    }
+
+    const focusElement = sortable[0].element;
+    const spellHint = profile.learnedMagic.find((spell) =>
+      spell.startsWith(`${focusElement}-`) || spell.includes(focusElement),
+    );
+
+    return spellHint ?? `${focusElement}-attunement`;
   }
 
   private getOrCreateBanditState(playerId: string): PlayerBanditState {

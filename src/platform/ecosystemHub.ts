@@ -238,8 +238,10 @@ export class KingMycoEcosystemHub {
       this.repository.setWallet(playerId, nextWallet);
     } else {
       this.director.recordSessionOutcome(playerId, request.telemetry);
-      nextProfile = applySessionTelemetry(profile, request.telemetry);
-      this.repository.setProfile(nextProfile);
+      nextProfile = applySessionTelemetry(profile, {
+        ...request.telemetry,
+        sporesCollected: 0,
+      });
 
       const difficulties = lastRun
         ? lastRun.encounters.map((encounter) => encounter.targetDifficulty)
@@ -256,6 +258,11 @@ export class KingMycoEcosystemHub {
       });
 
       rewards = rewarded.breakdown;
+      nextProfile = {
+        ...nextProfile,
+        sporesCollected: nextProfile.sporesCollected + rewards.awardedSpores,
+      };
+      this.repository.setProfile(nextProfile);
       nextWallet = rewarded.wallet;
       this.repository.setWallet(playerId, nextWallet);
     }
@@ -289,6 +296,9 @@ export class KingMycoEcosystemHub {
         suspiciousScore: fraud.riskScore,
         awardedSpores: rewards.awardedSpores,
         adaptiveRiskScore: riskSnapshot.playerRisk,
+        morality: nextProfile.morality,
+        learnedMagicCount: nextProfile.learnedMagic.length,
+        sporesCollected: nextProfile.sporesCollected,
       },
     });
 

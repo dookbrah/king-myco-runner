@@ -8,6 +8,7 @@ Myco Quest adaptive AI game-core + ecosystem backend for King Myco.
 - Player modeling (skill, playstyle, novelty, mastery)
 - Adaptive encounter sequencing
 - Per-run procedural tuning
+- Persistent RPG progression: morality, learned magic, and spores collected history
 
 ### Tier 2 - Ecosystem orchestration
 - Unified identity across:
@@ -87,6 +88,11 @@ Myco Quest adaptive AI game-core + ecosystem backend for King Myco.
 4. Wallet is now trusted for reward redemption.
 
 Challenges are one-time and expire automatically.
+
+Session telemetry can also include optional RPG fields:
+- `sporesCollected` (explicit in-game collection amount)
+- `morality.compassionateActions` / `morality.ruthlessActions`
+- `magic.castsByElement` and `magic.ritualsCompleted`
 
 ## Solana reward claim flow
 
