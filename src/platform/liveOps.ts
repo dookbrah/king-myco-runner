@@ -11,6 +11,7 @@ export interface LiveOpsConfig {
   difficultyMax: number;
   streakBonusStep: number;
   streakBonusCap: number;
+  mycoBurnPerSpore: number;
   sporeToLamportsRate: number;
   minSporesPerClaim: number;
   maxSporesPerClaim: number;
@@ -53,6 +54,7 @@ export const DEFAULT_LIVE_OPS: LiveOpsConfig = {
   difficultyMax: 10,
   streakBonusStep: 0.04,
   streakBonusCap: 0.4,
+  mycoBurnPerSpore: 0.25,
   sporeToLamportsRate: 120,
   minSporesPerClaim: 100,
   maxSporesPerClaim: 100000,
@@ -92,6 +94,7 @@ export const sanitizeLiveOpsConfig = (config: LiveOpsConfig): LiveOpsConfig => {
     difficultyMax: clamp(config.difficultyMax, 1, 10),
     streakBonusStep: clamp(config.streakBonusStep, 0, 0.2),
     streakBonusCap: clamp(config.streakBonusCap, 0, 1.5),
+    mycoBurnPerSpore: clamp(config.mycoBurnPerSpore, 0.000001, 100),
     sporeToLamportsRate: clamp(config.sporeToLamportsRate, 1, 1000000),
     minSporesPerClaim: Math.round(clamp(config.minSporesPerClaim, 1, 1000000000)),
     maxSporesPerClaim: Math.round(clamp(config.maxSporesPerClaim, 1, 1000000000)),

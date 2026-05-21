@@ -16,7 +16,7 @@ Myco Quest adaptive AI game-core + ecosystem backend for King Myco.
   - `kingdom.kingmyco.com`
   - `kingmyco.io`
   - `openclaw`
-- Reward economy and streaks
+- Reward economy and streaks (spores are the only reward currency)
 - Fraud scoring + quarantined leaderboard submissions
 
 ### Tier 3 - Production hardening + Web3
@@ -25,7 +25,7 @@ Myco Quest adaptive AI game-core + ecosystem backend for King Myco.
 - Event stream analytics summary endpoint
 - Postgres/Redis adapter for persisted state snapshots + events
 - Solana wallet challenge + signature verification
-- Solana reward claim pipeline (spores -> lamports) with status updates and refund-on-failure
+- Solana reward claim pipeline (spores -> lamports) with deterministic MYCO burn-equivalent accounting and refund-on-failure
 - Automated settlement worker for prepared/submitted transfer intents
 
 ## Architecture map
@@ -94,9 +94,10 @@ Challenges are one-time and expire automatically.
 4. Backend evaluates adaptive risk score (player/IP) and can temporarily hard-block high-risk claimants.
 5. Backend applies redemption velocity throttles (wallet/hour, IP/hour, and unique-wallets-per-IP/day) using risk-tightened effective limits.
 6. Backend converts spores to lamports via `sporeToLamportsRate` in live ops.
-7. Backend creates unsigned transfer intent and debits spores immediately.
-8. Settlement service updates result using `POST /api/solana/rewards/status` or `POST /api/solana/rewards/process`.
-9. If status becomes `failed`, spores are automatically refunded (including daily cap ledger rollback).
+7. Backend computes MYCO burn-equivalent via `mycoBurnPerSpore` (default `0.25` MYCO burned per spore burned).
+8. Backend creates unsigned transfer intent and debits spores immediately.
+9. Settlement service updates result using `POST /api/solana/rewards/status` or `POST /api/solana/rewards/process`.
+10. If status becomes `failed`, spores are automatically refunded (including daily cap ledger rollback).
 
 ## Security model
 
@@ -135,6 +136,7 @@ Example:
 
 ## Live ops Web3 tuning fields
 
+- `mycoBurnPerSpore` (default `0.25`)
 - `sporeToLamportsRate`
 - `minSporesPerClaim`
 - `maxSporesPerClaim`

@@ -223,6 +223,7 @@ export interface SolanaRewardTransferIntent {
   treasuryWallet: string;
   lamports: number;
   sporesDebited: number;
+  mycoBurned?: number;
   memo?: string;
   blockhash: string;
   lastValidBlockHeight: number;
@@ -240,6 +241,7 @@ export interface SolanaRewardTransferRequest {
   destinationWallet: string;
   lamports: number;
   sporesDebited?: number;
+  mycoBurned?: number;
   memo?: string;
 }
 
@@ -256,6 +258,7 @@ export interface SolanaRewardClaimReceipt {
   playerId: string;
   sporesDebited: number;
   lamports: number;
+  mycoBurned: number;
   wallet: PlayerWallet;
   intent: SolanaRewardTransferIntent;
   idempotencyKey?: string;
@@ -269,6 +272,7 @@ export interface SolanaClaimIdempotencyRecord {
   intentId: string;
   sporesDebited: number;
   lamports: number;
+  mycoBurned?: number;
   createdAt: string;
 }
 

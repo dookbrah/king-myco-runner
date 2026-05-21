@@ -335,6 +335,10 @@ const start = async (): Promise<void> => {
             typeof body.sporesDebited === "number"
               ? body.sporesDebited
               : undefined,
+          mycoBurned:
+            typeof body.mycoBurned === "number"
+              ? body.mycoBurned
+              : undefined,
           memo: typeof body.memo === "string" ? body.memo : undefined,
         } satisfies SolanaRewardTransferRequest);
 

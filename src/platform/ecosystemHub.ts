@@ -2,7 +2,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { AdaptiveDirector } from "../ai/adaptiveDirector";
 import { applySessionTelemetry } from "../ai/playerModel";
 import { PlannedRun, SessionTelemetry } from "../types";
-import { average, clamp } from "../utils/math";
+import { average, clamp, roundTo } from "../utils/math";
 import { AnalyticsService } from "./analytics";
 import { FraudGuard } from "./fraudGuard";
 import {
@@ -453,6 +453,7 @@ export class KingMycoEcosystemHub {
         walletAddress: request.destinationWallet,
       },
     );
+    const liveOps = this.repository.getLiveOps();
 
     const idempotencyKey = request.idempotencyKey?.trim();
     if (idempotencyKey) {
@@ -470,10 +471,16 @@ export class KingMycoEcosystemHub {
           );
         }
 
+        const existingMycoBurned =
+          existing.mycoBurned ??
+          existingIntent.mycoBurned ??
+          roundTo(existing.sporesDebited * liveOps.mycoBurnPerSpore, 6);
+
         return {
           playerId,
           sporesDebited: existing.sporesDebited,
           lamports: existing.lamports,
+          mycoBurned: existingMycoBurned,
           wallet: this.repository.getWallet(playerId),
           intent: existingIntent,
           idempotencyKey,
@@ -489,7 +496,6 @@ export class KingMycoEcosystemHub {
       );
     }
 
-    const liveOps = this.repository.getLiveOps();
     const sporesToRedeem = Math.floor(request.sporesToRedeem);
     const nowIso = new Date().toISOString();
 
@@ -627,12 +633,18 @@ export class KingMycoEcosystemHub {
       throw new Error("Claim conversion produced zero lamports");
     }
 
+    const mycoBurned = roundTo(sporesToRedeem * liveOps.mycoBurnPerSpore, 6);
+    if (mycoBurned <= 0) {
+      throw new Error("MYCO burn equivalent produced zero value");
+    }
+
     const intent = await this.solana.prepareSolTransfer({
       playerId,
       source: request.source,
       destinationWallet: request.destinationWallet,
       lamports,
       sporesDebited: sporesToRedeem,
+      mycoBurned,
       memo:
         request.memo ??
         `kingmyco reward claim | player:${playerId} | spores:${sporesToRedeem}`,
@@ -667,6 +679,7 @@ export class KingMycoEcosystemHub {
         intentId: intent.id,
         sporesDebited: sporesToRedeem,
         lamports,
+        mycoBurned,
         createdAt: nowIso,
       });
     }
@@ -678,6 +691,7 @@ export class KingMycoEcosystemHub {
         intentId: intent.id,
         lamports,
         sporesDebited: sporesToRedeem,
+        mycoBurned,
         destinationWallet: intent.destinationWallet,
         clientIpPresent: Boolean(request.clientIp),
         clientFingerprintPresent: Boolean(request.clientFingerprint),
@@ -694,6 +708,7 @@ export class KingMycoEcosystemHub {
       playerId,
       sporesDebited: sporesToRedeem,
       lamports,
+      mycoBurned,
       wallet: updatedWallet,
       intent,
       idempotencyKey,
@@ -704,7 +719,15 @@ export class KingMycoEcosystemHub {
   async prepareSolanaRewardTransfer(
     request: SolanaRewardTransferRequest,
   ): Promise<SolanaRewardTransferIntent> {
-    const intent = await this.solana.prepareSolTransfer(request);
+    const liveOps = this.repository.getLiveOps();
+    const requestWithBurn: SolanaRewardTransferRequest = {
+      ...request,
+      mycoBurned:
+        request.mycoBurned ??
+        roundTo((request.sporesDebited ?? 0) * liveOps.mycoBurnPerSpore, 6),
+    };
+
+    const intent = await this.solana.prepareSolTransfer(requestWithBurn);
     this.repository.setTransferIntent(intent);
 
     await this.emitEvent("reward_intent_prepared", {
@@ -714,6 +737,7 @@ export class KingMycoEcosystemHub {
         intentId: intent.id,
         lamports: intent.lamports,
         sporesDebited: intent.sporesDebited,
+        mycoBurned: intent.mycoBurned,
         destinationWallet: intent.destinationWallet,
       },
     });
@@ -792,6 +816,7 @@ export class KingMycoEcosystemHub {
         previousStatus: existing.status,
         nextStatus: status,
         txSignature: updatedIntent.txSignature,
+        mycoBurned: existing.mycoBurned,
       },
     });
 
@@ -1021,6 +1046,7 @@ export class KingMycoEcosystemHub {
       payload: {
         antiExploitThreshold: merged.antiExploitThreshold,
         rewardMultiplier: merged.rewardMultiplier,
+        mycoBurnPerSpore: merged.mycoBurnPerSpore,
         sporeToLamportsRate: merged.sporeToLamportsRate,
         claimCooldownSec: merged.claimCooldownSec,
         maxDailySporeRedeem: merged.maxDailySporeRedeem,

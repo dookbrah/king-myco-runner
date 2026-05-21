@@ -223,6 +223,7 @@ export class SolanaService {
       treasuryWallet: treasuryPublicKey.toBase58(),
       lamports: request.lamports,
       sporesDebited: request.sporesDebited ?? 0,
+      mycoBurned: request.mycoBurned ?? 0,
       memo: request.memo,
       blockhash,
       lastValidBlockHeight,

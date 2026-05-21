@@ -260,6 +260,8 @@ describe("King Myco ecosystem integration", () => {
     });
 
     expect(claim.sporesDebited).toBe(150);
+    expect(claim.mycoBurned).toBe(37.5);
+    expect(claim.intent.mycoBurned).toBe(37.5);
     expect(claim.intent.status).toBe("prepared");
     expect(claim.wallet.spores).toBe(sessionReceipt.wallet.spores - 150);
 
@@ -407,6 +409,7 @@ describe("King Myco ecosystem integration", () => {
 
     expect(second.reused).toBe(true);
     expect(second.intent.id).toBe(first.intent.id);
+    expect(second.mycoBurned).toBe(first.mycoBurned);
     expect(second.wallet.spores).toBe(first.wallet.spores);
   });
 
