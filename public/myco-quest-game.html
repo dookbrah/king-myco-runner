@@ -354,6 +354,8 @@
               <button id="buyPotionBtn">Buy Myco Potion (15 spores)</button>
               <button id="buyManaBtn">Buy Mana Dew (22 spores)</button>
               <button id="buyBombBtn">Buy Smoke Bomb (28 spores)</button>
+              <button id="useManaBtn">Use Mana Dew</button>
+              <button id="useBombBtn">Use Smoke Bomb</button>
             </div>
             <p class="subtle" style="margin-top: 6px">Potion heals HP, Mana Dew boosts magic turns, Smoke Bomb can escape battle.</p>
           </section>
@@ -466,6 +468,8 @@
         buyPotionBtn: document.getElementById("buyPotionBtn"),
         buyManaBtn: document.getElementById("buyManaBtn"),
         buyBombBtn: document.getElementById("buyBombBtn"),
+        useManaBtn: document.getElementById("useManaBtn"),
+        useBombBtn: document.getElementById("useBombBtn"),
         dialoguePanel: document.getElementById("dialoguePanel"),
         dialogueTitle: document.getElementById("dialogueTitle"),
         dialogueBody: document.getElementById("dialogueBody"),
@@ -2082,6 +2086,8 @@
       dom.buyPotionBtn.addEventListener("click", () => tryBuyItem("mycoPotion"));
       dom.buyManaBtn.addEventListener("click", () => tryBuyItem("manaDew"));
       dom.buyBombBtn.addEventListener("click", () => tryBuyItem("smokeBomb"));
+      dom.useManaBtn.addEventListener("click", () => useInventoryItem("manaDew"));
+      dom.useBombBtn.addEventListener("click", () => useInventoryItem("smokeBomb"));
 
       dom.upgradeAttackBtn.addEventListener("click", () => tryUpgrade("attack"));
       dom.upgradeDefenseBtn.addEventListener("click", () => tryUpgrade("defense"));
