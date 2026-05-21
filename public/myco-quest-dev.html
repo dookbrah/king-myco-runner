@@ -189,6 +189,21 @@
             <button class="secondary" id="savePreset">Save Preset</button>
             <button class="secondary" id="deletePreset">Delete Preset</button>
           </div>
+          <label style="grid-column: 1 / -1"
+            >Preset JSON Import/Export
+            <textarea
+              id="presetJson"
+              rows="8"
+              placeholder='{"version":1,"presets":[{"name":"example","data":{...}}]}'
+            ></textarea>
+          </label>
+          <div class="preset-buttons" style="grid-column: 1 / -1">
+            <button class="secondary" id="exportPresets">Export JSON</button>
+            <button class="secondary" id="importPresets">Import JSON</button>
+            <button class="secondary" id="downloadPresets">Download JSON</button>
+            <button class="secondary" id="uploadPresets">Upload JSON</button>
+            <input id="presetFile" type="file" accept=".json,application/json" style="display:none" />
+          </div>
         </div>
         <p class="status" id="statusText"></p>
       </section>
@@ -253,6 +268,7 @@
 
       const state = { playerId: "" };
       const PRESET_STORAGE_KEY = "mycoQuestDevPresets.v1";
+      const PRESET_EXPORT_VERSION = 1;
       const BUILTIN_PRESETS = [
         {
           id: "balanced-adventurer",
@@ -424,6 +440,14 @@
         return [...builtIn, ...custom];
       };
 
+      const normalizePresetId = (value) => {
+        const normalized = String(value || "")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)/g, "");
+        return normalized.length > 0 ? normalized : "";
+      };
+
       const captureCurrentPresetData = () => {
         const data = {};
         for (const id of PRESET_FIELD_IDS) {
@@ -492,7 +516,7 @@
           throw new Error("Enter a custom preset name before saving.");
         }
 
-        const normalizedId = rawName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+        const normalizedId = normalizePresetId(rawName);
         const presetId = normalizedId.length > 0 ? normalizedId : `preset-${Date.now()}`;
 
         const current = getCustomPresets();
@@ -508,6 +532,117 @@
         const selected = `custom:${presetId}`;
         populatePresetSelect(selected);
         setStatus(`Saved preset: ${rawName}`);
+      };
+
+      const buildPresetExportPayload = () => {
+        return {
+          version: PRESET_EXPORT_VERSION,
+          exportedAt: new Date().toISOString(),
+          presets: getCustomPresets(),
+        };
+      };
+
+      const exportPresetsToJsonText = () => {
+        return JSON.stringify(buildPresetExportPayload(), null, 2);
+      };
+
+      const exportPresetsToTextarea = () => {
+        const json = exportPresetsToJsonText();
+        get("presetJson").value = json;
+        setStatus(`Exported ${getCustomPresets().length} custom preset(s) to JSON.`);
+        return json;
+      };
+
+      const downloadPresetsJson = () => {
+        const json = exportPresetsToJsonText();
+        get("presetJson").value = json;
+
+        const blob = new Blob([json], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = "myco-quest-presets.json";
+        anchor.click();
+        URL.revokeObjectURL(url);
+
+        setStatus("Preset JSON downloaded.");
+      };
+
+      const normalizeImportedPresets = (rawPresets) => {
+        const normalized = [];
+
+        rawPresets.forEach((preset, index) => {
+          if (!preset || typeof preset !== "object" || !preset.data || typeof preset.data !== "object") {
+            return;
+          }
+
+          const name = typeof preset.name === "string" ? preset.name.trim() : "";
+          if (!name) {
+            return;
+          }
+
+          const idSource =
+            typeof preset.id === "string" && preset.id.trim().length > 0
+              ? preset.id
+              : name;
+          const id = normalizePresetId(idSource) || `imported-${Date.now()}-${index}`;
+
+          const cleanData = {};
+          for (const fieldId of PRESET_FIELD_IDS) {
+            if (Object.prototype.hasOwnProperty.call(preset.data, fieldId)) {
+              cleanData[fieldId] = preset.data[fieldId];
+            }
+          }
+
+          normalized.push({ id, name, data: cleanData });
+        });
+
+        return normalized;
+      };
+
+      const importPresetsFromJsonText = (raw) => {
+        const trimmed = String(raw || "").trim();
+        if (!trimmed) {
+          throw new Error("Paste preset JSON before importing.");
+        }
+
+        const parsed = JSON.parse(trimmed);
+        const importedArray = Array.isArray(parsed)
+          ? parsed
+          : Array.isArray(parsed.presets)
+            ? parsed.presets
+            : [];
+
+        const imported = normalizeImportedPresets(importedArray);
+        if (imported.length === 0) {
+          throw new Error("No valid presets found in provided JSON.");
+        }
+
+        const mergedMap = new Map(getCustomPresets().map((preset) => [preset.id, preset]));
+        for (const preset of imported) {
+          mergedMap.set(preset.id, preset);
+        }
+
+        const merged = Array.from(mergedMap.values());
+        setCustomPresets(merged);
+
+        const selected = `custom:${imported[0].id}`;
+        populatePresetSelect(selected);
+        applySelectedPreset();
+        setStatus(`Imported ${imported.length} preset(s). Total custom presets: ${merged.length}.`);
+      };
+
+      const handlePresetFileUpload = async () => {
+        const input = get("presetFile");
+        const [file] = input.files || [];
+        if (!file) {
+          return;
+        }
+
+        const content = await file.text();
+        get("presetJson").value = content;
+        importPresetsFromJsonText(content);
+        input.value = "";
       };
 
       const deleteSelectedCustomPreset = () => {
@@ -726,8 +861,24 @@
       get("presetSelect").addEventListener("change", withErrorHandling(() => {
         applySelectedPreset();
       }));
+      get("exportPresets").addEventListener("click", withErrorHandling(() => {
+        exportPresetsToTextarea();
+      }));
+      get("importPresets").addEventListener("click", withErrorHandling(() => {
+        importPresetsFromJsonText(get("presetJson").value);
+      }));
+      get("downloadPresets").addEventListener("click", withErrorHandling(() => {
+        downloadPresetsJson();
+      }));
+      get("uploadPresets").addEventListener("click", () => {
+        get("presetFile").click();
+      });
+      get("presetFile").addEventListener("change", withErrorHandling(async () => {
+        await handlePresetFileUpload();
+      }));
 
       initializePresets();
+      exportPresetsToTextarea();
     </script>
   </body>
 </html>
