@@ -10,6 +10,7 @@ let tempDir = "";
 let statePath = "";
 let hub: KingMycoEcosystemHub;
 let priorTreasury: string | undefined;
+let priorTreasurySecret: string | undefined;
 
 describe("King Myco ecosystem integration", () => {
   beforeEach(async () => {
@@ -18,7 +19,9 @@ describe("King Myco ecosystem integration", () => {
     hub = await KingMycoEcosystemHub.create(statePath);
 
     priorTreasury = process.env.KINGMYCO_TREASURY_WALLET;
+    priorTreasurySecret = process.env.KINGMYCO_TREASURY_SECRET;
     process.env.KINGMYCO_TREASURY_WALLET = Keypair.generate().publicKey.toBase58();
+    delete process.env.KINGMYCO_TREASURY_SECRET;
   });
 
   afterEach(async () => {
@@ -26,6 +29,12 @@ describe("King Myco ecosystem integration", () => {
       process.env.KINGMYCO_TREASURY_WALLET = priorTreasury;
     } else {
       delete process.env.KINGMYCO_TREASURY_WALLET;
+    }
+
+    if (priorTreasurySecret) {
+      process.env.KINGMYCO_TREASURY_SECRET = priorTreasurySecret;
+    } else {
+      delete process.env.KINGMYCO_TREASURY_SECRET;
     }
 
     await rm(tempDir, { recursive: true, force: true });
@@ -263,4 +272,70 @@ describe("King Myco ecosystem integration", () => {
     expect(failed.intent.status).toBe("failed");
     expect(failed.wallet.spores).toBe(sessionReceipt.wallet.spores);
   });
+  it("worker processing marks failed intents and refunds spores", async () => {
+    const signer = Keypair.generate();
+
+    await hub.generateRun({
+      source: "kingmyco.io",
+      externalId: "player-settlement",
+      claims: { walletAddress: signer.publicKey.toBase58() },
+    });
+
+    const sessionReceipt = await hub.recordSession({
+      source: "kingmyco.io",
+      externalId: "player-settlement",
+      claims: { walletAddress: signer.publicKey.toBase58() },
+      telemetry: {
+        playerId: "player-settlement",
+        completedEncounters: 9,
+        failedEncounters: 1,
+        damageTaken: 28,
+        perfectActions: 4,
+        discoveryActions: 2,
+        riskyActions: 3,
+        sessionLengthSec: 640,
+        usedElements: ["fire", "water"],
+        abandoned: false,
+      },
+      score: 17200,
+    });
+
+    const challenge = await hub.createSolanaWalletChallenge({
+      source: "kingmyco.io",
+      externalId: "player-settlement",
+      claims: { walletAddress: signer.publicKey.toBase58() },
+      walletAddress: signer.publicKey.toBase58(),
+    });
+
+    const signature = nacl.sign.detached(
+      new TextEncoder().encode(challenge.message),
+      signer.secretKey,
+    );
+
+    await hub.verifySolanaWalletLink({
+      source: "kingmyco.io",
+      externalId: "player-settlement",
+      claims: { walletAddress: signer.publicKey.toBase58() },
+      walletAddress: signer.publicKey.toBase58(),
+      message: challenge.message,
+      signature: Buffer.from(signature).toString("base64"),
+    });
+
+    const claim = await hub.claimSolanaRewards({
+      source: "kingmyco.io",
+      externalId: "player-settlement",
+      claims: { walletAddress: signer.publicKey.toBase58() },
+      destinationWallet: signer.publicKey.toBase58(),
+      sporesToRedeem: 120,
+    });
+
+    const processed = await hub.processPreparedTransferIntent(claim.intent.id);
+
+    expect(processed.intent.status).toBe("failed");
+    expect(processed.wallet.spores).toBe(sessionReceipt.wallet.spores);
+
+    const prepared = hub.getTransferIntents({ status: "prepared" });
+    expect(prepared.find((intent) => intent.id === claim.intent.id)).toBeUndefined();
+  });
+
 });

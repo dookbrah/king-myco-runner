@@ -24,6 +24,7 @@ import {
   PlatformEventType,
   PlayerSnapshot,
   RewardBreakdown,
+  RewardTransferStatus,
   RunGenerationRequest,
   SessionIngestRequest,
   SessionReceipt,
@@ -518,11 +519,31 @@ export class KingMycoEcosystemHub {
       throw new Error(`Transfer intent not found: ${request.intentId}`);
     }
 
+    const status = request.status;
+    const wallet = this.repository.getWallet(existing.playerId);
+
     if (existing.status === "settled") {
+      if (status === "settled") {
+        return {
+          intent: existing,
+          wallet,
+        };
+      }
+
       throw new Error("Settled intents are immutable");
     }
 
-    const status = request.status;
+    if (
+      existing.status === status &&
+      (request.txSignature ?? existing.txSignature) === existing.txSignature &&
+      (request.failureReason ?? existing.failureReason) === existing.failureReason
+    ) {
+      return {
+        intent: existing,
+        wallet,
+      };
+    }
+
     const updatedIntent: SolanaRewardTransferIntent = {
       ...existing,
       status,
@@ -531,14 +552,18 @@ export class KingMycoEcosystemHub {
       updatedAt: new Date().toISOString(),
     };
 
-    let wallet = this.repository.getWallet(existing.playerId);
+    let nextWallet = wallet;
 
-    if (status === "failed" && existing.status !== "failed" && existing.sporesDebited > 0) {
-      wallet = {
+    if (
+      status === "failed" &&
+      existing.status !== "failed" &&
+      existing.sporesDebited > 0
+    ) {
+      nextWallet = {
         ...wallet,
         spores: wallet.spores + existing.sporesDebited,
       };
-      this.repository.setWallet(existing.playerId, wallet);
+      this.repository.setWallet(existing.playerId, nextWallet);
     }
 
     this.repository.setTransferIntent(updatedIntent);
@@ -558,8 +583,104 @@ export class KingMycoEcosystemHub {
 
     return {
       intent: updatedIntent,
-      wallet,
+      wallet: nextWallet,
     };
+  }
+
+  getTransferIntents(options: {
+    playerId?: string;
+    status?: RewardTransferStatus;
+    limit?: number;
+  } = {}): SolanaRewardTransferIntent[] {
+    const intents = this.repository
+      .getTransferIntents(options.playerId)
+      .filter((intent) =>
+        options.status ? intent.status === options.status : true,
+      )
+      .sort((left, right) => {
+        return Date.parse(left.createdAt) - Date.parse(right.createdAt);
+      });
+
+    if (!options.limit || options.limit <= 0) {
+      return intents;
+    }
+
+    return intents.slice(0, options.limit);
+  }
+
+  async processPreparedTransferIntent(
+    intentId: string,
+  ): Promise<SolanaRewardTransferStatusReceipt> {
+    const intent = this.repository.getTransferIntent(intentId);
+    if (!intent) {
+      throw new Error(`Transfer intent not found: ${intentId}`);
+    }
+
+    if (intent.status !== "prepared") {
+      return {
+        intent,
+        wallet: this.repository.getWallet(intent.playerId),
+      };
+    }
+
+    try {
+      const { txSignature } = await this.solana.submitPreparedTransferIntent(intent);
+      return this.updateSolanaRewardTransferStatus({
+        intentId,
+        status: "submitted",
+        txSignature,
+      });
+    } catch (error) {
+      const failureReason =
+        error instanceof Error ? error.message : "transfer submission failed";
+      return this.updateSolanaRewardTransferStatus({
+        intentId,
+        status: "failed",
+        failureReason,
+      });
+    }
+  }
+
+  async reconcileSubmittedTransferIntent(
+    intentId: string,
+  ): Promise<SolanaRewardTransferStatusReceipt> {
+    const intent = this.repository.getTransferIntent(intentId);
+    if (!intent) {
+      throw new Error(`Transfer intent not found: ${intentId}`);
+    }
+
+    if (intent.status !== "submitted") {
+      return {
+        intent,
+        wallet: this.repository.getWallet(intent.playerId),
+      };
+    }
+
+    if (!intent.txSignature) {
+      return this.updateSolanaRewardTransferStatus({
+        intentId,
+        status: "failed",
+        failureReason: "submitted intent has no transaction signature",
+      });
+    }
+
+    const chainStatus = await this.solana.getTransferSignatureState(intent.txSignature);
+    if (chainStatus === "pending") {
+      return {
+        intent,
+        wallet: this.repository.getWallet(intent.playerId),
+      };
+    }
+
+    return this.updateSolanaRewardTransferStatus({
+      intentId,
+      status: chainStatus,
+      txSignature: intent.txSignature,
+      failureReason:
+        chainStatus === "failed"
+          ? "on-chain transfer failed"
+          : undefined,
+    });
   }
 
   async getSolanaWalletSnapshot(walletAddress: string) {

@@ -26,6 +26,7 @@ Myco Quest adaptive AI game-core + ecosystem backend for King Myco.
 - Postgres/Redis adapter for persisted state snapshots + events
 - Solana wallet challenge + signature verification
 - Solana reward claim pipeline (spores -> lamports) with status updates and refund-on-failure
+- Automated settlement worker for prepared/submitted transfer intents
 
 ## Architecture map
 
@@ -119,6 +120,7 @@ Example:
 
 - `SOLANA_RPC_URL` (default `https://api.mainnet-beta.solana.com`)
 - `KINGMYCO_TREASURY_WALLET` (required for reward transfer intent preparation)
+- `KINGMYCO_TREASURY_SECRET` (required for transfer submission in settlement worker)
 - `KINGMYCO_SOLANA_CHALLENGE_TTL_MS` (optional challenge TTL)
 
 ## Live ops Web3 tuning fields
@@ -126,6 +128,19 @@ Example:
 - `sporeToLamportsRate`
 - `minSporesPerClaim`
 - `maxSporesPerClaim`
+
+## Settlement worker
+
+Run `npm run start:settlement-worker` to continuously:
+
+1. submit prepared intents (`prepared -> submitted`)
+2. reconcile submitted signatures (`submitted -> settled/failed`)
+
+Worker tuning env vars:
+- `KINGMYCO_SETTLEMENT_POLL_MS`
+- `KINGMYCO_SETTLEMENT_PREPARED_BATCH`
+- `KINGMYCO_SETTLEMENT_SUBMITTED_BATCH`
+- `KINGMYCO_SETTLEMENT_DRY_RUN`
 
 ## Persistence options
 
@@ -143,3 +158,4 @@ When configured, snapshots and events are mirrored to Postgres/Redis.
 - `npm run test` - unit tests
 - `npm run build` - TypeScript compile
 - `npm run start:api` - launch API server
+- `npm run start:settlement-worker` - run automated Solana settlement loop
