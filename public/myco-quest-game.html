@@ -119,7 +119,7 @@
       canvas {
         width: 100%;
         display: block;
-        image-rendering: pixelated;
+        image-rendering: auto;
       }
       #worldCanvas {
         max-height: 74vh;
@@ -249,7 +249,7 @@
   <body>
     <main>
       <section class="panel">
-        <h1>Myco Quest - Overworld + Contact Battle Prototype</h1>
+        <h1>Myco Quest - 32-bit Overworld + Contact Battle</h1>
         <p class="tiny">
           Inspiration blend: exploration adventure + creature encounters + turn RPG strategy. Move through regions, collect clues, unlock powers, and
           challenge Dark Mycelius in the Solana Chainlands.
@@ -285,7 +285,7 @@
 
       <section class="layout">
         <article class="panel">
-          <h2>Kingdom Overworld (Top-Down, Explorable)</h2>
+          <h2>Kingdom Overworld (32-bit, Top-Down, Explorable)</h2>
           <p class="subtle">Use WASD or Arrow keys to move. Press E to interact with NPCs, houses, caves, dungeons, and gates.</p>
           <div class="canvas-shell" style="margin-top: 8px">
             <canvas id="worldCanvas" width="960" height="540"></canvas>
@@ -389,7 +389,7 @@
               Interact: E<br />
               Sprint: Hold Shift<br />
               Cutscene Next: Space<br />
-              Contact an enemy to enter turn battle.
+              Run into houses, NPCs, or dungeons to activate events. Contact an enemy to enter turn battle.
             </p>
           </section>
         </aside>
@@ -402,6 +402,7 @@
       <div class="dialogue-actions">
         <button id="choiceMycoBtn" class="primary">Mycoside Choice</button>
         <button id="choiceDarkBtn" class="warn">Darkside Choice</button>
+        <button id="choiceTradeBtn">Trade</button>
         <button id="closeDialogueBtn">Close</button>
       </div>
     </section>
@@ -419,10 +420,10 @@
     <script>
       const STORAGE_CONFIG_KEY = "mycoQuestPlayableConfig";
       const STORAGE_STATE_KEY = "mycoQuestOverworldStateV2";
-      const TILE = 32;
-      const WORLD_WIDTH = 3200;
-      const WORLD_HEIGHT = 2200;
-      const BASE_MAX_HP = 110;
+      const TILE = 48;
+      const WORLD_WIDTH = 4600;
+      const WORLD_HEIGHT = 3200;
+      const BASE_MAX_HP = 126;
 
       const worldCanvas = document.getElementById("worldCanvas");
       const worldCtx = worldCanvas.getContext("2d");
@@ -475,6 +476,7 @@
         dialogueBody: document.getElementById("dialogueBody"),
         choiceMycoBtn: document.getElementById("choiceMycoBtn"),
         choiceDarkBtn: document.getElementById("choiceDarkBtn"),
+        choiceTradeBtn: document.getElementById("choiceTradeBtn"),
         closeDialogueBtn: document.getElementById("closeDialogueBtn"),
         cutscenePanel: document.getElementById("cutscenePanel"),
         cutsceneTitle: document.getElementById("cutsceneTitle"),
@@ -490,8 +492,8 @@
           name: "Myco Kingdom",
           x: 0,
           y: 0,
-          w: 1220,
-          h: 1180,
+          w: 1400,
+          h: 1300,
           colorA: "#2f6b3f",
           colorB: "#234f32",
           label: "Mushroom villages and the royal grove.",
@@ -499,32 +501,32 @@
         {
           id: "rougarou-fen",
           name: "Rougarou Fen",
-          x: 1220,
+          x: 1400,
           y: 0,
-          w: 1020,
-          h: 930,
-          colorA: "#53723c",
-          colorB: "#425b32",
+          w: 1200,
+          h: 1100,
+          colorA: "#56753f",
+          colorB: "#415a30",
           label: "Howling marshes ruled by Rougarou.",
         },
         {
           id: "tri-drake-peaks",
           name: "Tri-Drake Peaks",
-          x: 2240,
+          x: 2600,
           y: 0,
-          w: 960,
-          h: 1030,
-          colorA: "#505060",
-          colorB: "#434351",
+          w: 1200,
+          h: 1300,
+          colorA: "#545468",
+          colorB: "#414155",
           label: "Ash mountains of the three-headed dragon.",
         },
         {
           id: "crimson-tide",
           name: "Crimson Tide Shelf",
-          x: 1220,
-          y: 930,
-          w: 1080,
-          h: 1270,
+          x: 1400,
+          y: 1100,
+          w: 1400,
+          h: 1500,
           colorA: "#14586d",
           colorB: "#11485b",
           label: "Coral caverns where the evil crab commands.",
@@ -532,41 +534,63 @@
         {
           id: "solana-chainlands",
           name: "Solana Chainlands",
-          x: 2300,
-          y: 1030,
-          w: 900,
-          h: 1170,
-          colorA: "#31285a",
+          x: 2800,
+          y: 1300,
+          w: 1800,
+          h: 1700,
+          colorA: "#2f2a63",
           colorB: "#251f45",
           label: "Corrupted blockchain frontier of Dark Mycelius.",
+        },
+        {
+          id: "verdant-commons",
+          name: "Verdant Commons",
+          x: 0,
+          y: 1300,
+          w: 1400,
+          h: 1200,
+          colorA: "#2f7f58",
+          colorB: "#236043",
+          label: "Trade fields, hidden houses, and caravan trails.",
+        },
+        {
+          id: "obsidian-wilds",
+          name: "Obsidian Wilds",
+          x: 0,
+          y: 2500,
+          w: 2200,
+          h: 700,
+          colorA: "#3f434f",
+          colorB: "#2d313a",
+          label: "Fractured blackstone canyons crawling with rot scouts.",
         },
       ];
 
       const GATES = [
         {
           id: "fen-to-drake",
-          x: 2228,
-          y: 355,
+          x: 2588,
+          y: 420,
           w: 24,
-          h: 160,
+          h: 180,
           hint: "Need clue: Lunar Wolf Mark (from Fen villagers).",
           isUnlocked: (state) => state.progress.clues.has("lunar-wolf-mark"),
         },
         {
           id: "fen-to-crimson",
-          x: 1660,
-          y: 912,
-          w: 180,
+          x: 1860,
+          y: 1088,
+          w: 220,
           h: 24,
           hint: "Defeat Rougarou to break the rot bramble.",
           isUnlocked: (state) => state.progress.defeatedBosses.has("rougarou"),
         },
         {
           id: "crimson-to-solana",
-          x: 2280,
-          y: 1440,
+          x: 2780,
+          y: 1760,
           w: 24,
-          h: 200,
+          h: 220,
           hint: "Need Abyss Pearl clue, magic level 3+, and dragon + crab victories.",
           isUnlocked: (state) =>
             state.progress.clues.has("abyss-pearl") &&
@@ -574,28 +598,47 @@
             state.progress.defeatedBosses.has("tri-drake") &&
             state.progress.defeatedBosses.has("evil-crab"),
         },
+        {
+          id: "commons-to-obsidian",
+          x: 1388,
+          y: 2488,
+          w: 220,
+          h: 24,
+          hint: "Need Trade Charter clue from Verdant caravans.",
+          isUnlocked: (state) => state.progress.clues.has("trade-charter"),
+        },
       ];
 
       const STRUCTURES = [
-        { id: "house-1", type: "house", x: 190, y: 180, w: 138, h: 102, name: "Sporecap Cottage", solid: true },
-        { id: "house-2", type: "house", x: 410, y: 250, w: 132, h: 96, name: "Healer Hut", solid: true },
-        { id: "house-3", type: "house", x: 710, y: 160, w: 142, h: 108, name: "Elder Archive", solid: true },
-        { id: "cave-1", type: "cave", x: 1315, y: 305, w: 124, h: 92, name: "Fen Echo Cave", solid: true },
-        { id: "dungeon-1", type: "dungeon", x: 2520, y: 260, w: 162, h: 120, name: "Drake Bastion", solid: true },
-        { id: "dungeon-2", type: "dungeon", x: 1540, y: 1570, w: 166, h: 122, name: "Crimson Reef Vault", solid: true },
-        { id: "dungeon-3", type: "dungeon", x: 2590, y: 1600, w: 190, h: 126, name: "Chain Crypt", solid: true },
-        { id: "shrine-1", type: "shrine", x: 870, y: 640, w: 82, h: 82, name: "Myco Shrine", solid: false },
-        { id: "shrine-2", type: "shrine", x: 1860, y: 1310, w: 82, h: 82, name: "Tidal Rune Shrine", solid: false },
+        { id: "house-1", type: "house", x: 190, y: 180, w: 148, h: 110, name: "Sporecap Cottage", solid: true },
+        { id: "house-2", type: "house", x: 440, y: 270, w: 138, h: 100, name: "Healer Hut", solid: true },
+        { id: "house-3", type: "house", x: 760, y: 170, w: 152, h: 114, name: "Elder Archive", solid: true },
+        { id: "house-4", type: "house", x: 360, y: 1540, w: 150, h: 108, name: "Commons Trade Hall", solid: true },
+        { id: "house-5", type: "house", x: 950, y: 1760, w: 160, h: 112, name: "Caravan Inn", solid: true },
+        { id: "cave-1", type: "cave", x: 1470, y: 340, w: 134, h: 98, name: "Fen Echo Cave", solid: true },
+        { id: "cave-2", type: "cave", x: 320, y: 2670, w: 150, h: 108, name: "Obsidian Rift Cave", solid: true },
+        { id: "dungeon-1", type: "dungeon", x: 2870, y: 300, w: 176, h: 132, name: "Drake Bastion", solid: true },
+        { id: "dungeon-2", type: "dungeon", x: 1660, y: 1810, w: 176, h: 130, name: "Crimson Reef Vault", solid: true },
+        { id: "dungeon-3", type: "dungeon", x: 3240, y: 1840, w: 210, h: 142, name: "Chain Crypt", solid: true },
+        { id: "dungeon-4", type: "dungeon", x: 1190, y: 2670, w: 188, h: 130, name: "Obsidian Trial Den", solid: true },
+        { id: "shrine-1", type: "shrine", x: 920, y: 700, w: 90, h: 90, name: "Myco Shrine", solid: false },
+        { id: "shrine-2", type: "shrine", x: 1960, y: 1450, w: 90, h: 90, name: "Tidal Rune Shrine", solid: false },
+        { id: "shrine-3", type: "shrine", x: 630, y: 2320, w: 90, h: 90, name: "Commons Memory Shrine", solid: false },
       ];
 
       const NPCS = [
         {
           id: "elder-myca",
           name: "Elder Myca",
-          x: 760,
-          y: 340,
+          x: 800,
+          y: 360,
           clueId: "royal-oath",
           clueLabel: "Royal Oath Fragment",
+          tradeItem: "mycoPotion",
+          tradeCost: 16,
+          tradeQty: 1,
+          adviceGood: "Trust the villagers first. Compassion reveals hidden shrine paths.",
+          adviceBad: "Charge east immediately. You will hit elite packs before you're ready.",
           mycoText: "You choose compassion. The kingdom still believes in you, King Myco.",
           darkText: "Power without purpose feeds the rot. Do not forget who you protect.",
           intro: "Your crown dims, but your spirit can relight the kingdom. Seek clues to restore your sorcery.",
@@ -603,10 +646,15 @@
         {
           id: "fen-scout",
           name: "Fen Scout Rill",
-          x: 1470,
-          y: 420,
+          x: 1600,
+          y: 440,
           clueId: "lunar-wolf-mark",
           clueLabel: "Lunar Wolf Mark",
+          tradeItem: "smokeBomb",
+          tradeCost: 26,
+          tradeQty: 1,
+          adviceGood: "Rougarou feints left, then lunges right. Guard on turn two.",
+          adviceBad: "Never guard in Fen fights. Pure offense always works. (It doesn't.)",
           mycoText: "You protected the marsh families. Take this mark and pass the drake gate.",
           darkText: "Fear wins this moment, but fear always asks for more.",
           intro: "Rougarou hunts by moon scent. Read his trails and you'll survive the Fen.",
@@ -614,10 +662,15 @@
         {
           id: "drake-hermit",
           name: "Hermit Cindr",
-          x: 2740,
-          y: 520,
+          x: 3060,
+          y: 560,
           clueId: "drake-ember",
           clueLabel: "Drake Ember Sigil",
+          tradeItem: "manaDew",
+          tradeCost: 24,
+          tradeQty: 1,
+          adviceGood: "Cycle elements in drake fights to break scale resistance.",
+          adviceBad: "Use only one element. The dragon will adapt and punish that.",
           mycoText: "You solved the ash-rune puzzle. This sigil can pierce scale warding.",
           darkText: "You ripped the answer by force. It works, but leaves a scar on your path.",
           intro: "Three heads, three lies. Only a balanced flame can shatter the dragon ward.",
@@ -625,10 +678,15 @@
         {
           id: "reef-oracle",
           name: "Oracle Neri",
-          x: 1730,
-          y: 1400,
+          x: 1880,
+          y: 1480,
           clueId: "abyss-pearl",
           clueLabel: "Abyss Pearl Cipher",
+          tradeItem: "mycoPotion",
+          tradeCost: 18,
+          tradeQty: 2,
+          adviceGood: "Evil Crab's shell is weakest after it defends. Strike then skill.",
+          adviceBad: "Crab armor never breaks, so run forever. (Bad advice.)",
           mycoText: "Tides answer your patience. The pearl reveals corrupted chain routes.",
           darkText: "You bent the tide with rage. The cipher still works, but the waters remember.",
           intro: "The evil crab hides between currents. Read this cipher to open the Solana tide lock.",
@@ -636,42 +694,73 @@
         {
           id: "chain-smith",
           name: "Chain Smith Vox",
-          x: 2650,
-          y: 1860,
+          x: 3380,
+          y: 2140,
           clueId: "solana-anchor",
           clueLabel: "Solana Anchor Key",
+          tradeItem: "smokeBomb",
+          tradeCost: 30,
+          tradeQty: 1,
+          adviceGood: "Dark Mycelius alternates pressure. Guard every third turn to survive spikes.",
+          adviceBad: "Dark Mycelius cannot hit through guard; just stall. (False.)",
           mycoText: "You chose to rebuild, not consume. The anchor key is yours.",
           darkText: "You cracked my forge for speed. You have the key, but not my trust.",
           intro: "Dark Mycelius bends corrupted blocks. Anchor your will before you face him.",
         },
+        {
+          id: "commons-merchant",
+          name: "Merchant Poro",
+          x: 520,
+          y: 1710,
+          clueId: "trade-charter",
+          clueLabel: "Trade Charter",
+          tradeItem: "goldenSpore",
+          tradeCost: 42,
+          tradeQty: 1,
+          adviceGood: "Treat villagers fairly and they reveal safe house routes through new regions.",
+          adviceBad: "Scam everyone now and you'll still get their best clues. (You won't.)",
+          mycoText: "Fair dealing travels faster than rumors. Take this trade charter.",
+          darkText: "You bargained with threats. The charter is real, but your reputation sinks.",
+          intro: "Commons caravans know every road. Trade honestly and you'll unlock the long routes.",
+        },
       ];
 
       const BASE_ENEMIES = [
-        { id: "slime-1", kind: "rot-spore", x: 560, y: 760, lane: "speed", boss: false, region: "myco-kingdom" },
-        { id: "slime-2", kind: "mold-raider", x: 960, y: 840, lane: "precision", boss: false, region: "myco-kingdom" },
-        { id: "fen-1", kind: "fen-stalker", x: 1600, y: 610, lane: "survival", boss: false, region: "rougarou-fen" },
-        { id: "fen-2", kind: "rot-jackal", x: 1980, y: 680, lane: "speed", boss: false, region: "rougarou-fen" },
-        { id: "boss-rougarou", kind: "rougarou", x: 1870, y: 300, lane: "survival", boss: true, region: "rougarou-fen" },
-        { id: "drake-1", kind: "ember-drone", x: 2460, y: 660, lane: "precision", boss: false, region: "tri-drake-peaks" },
-        { id: "boss-drake", kind: "tri-drake", x: 2820, y: 320, lane: "tactical", boss: true, region: "tri-drake-peaks" },
-        { id: "reef-1", kind: "shell-rot", x: 1440, y: 1660, lane: "puzzle", boss: false, region: "crimson-tide" },
-        { id: "reef-2", kind: "spine-fin", x: 2140, y: 1720, lane: "survival", boss: false, region: "crimson-tide" },
-        { id: "boss-crab", kind: "evil-crab", x: 1910, y: 1250, lane: "tactical", boss: true, region: "crimson-tide" },
-        { id: "chain-1", kind: "block-wraith", x: 2490, y: 1410, lane: "precision", boss: false, region: "solana-chainlands" },
-        { id: "boss-dark", kind: "dark-mycelius", x: 2770, y: 1710, lane: "tactical", boss: true, region: "solana-chainlands" },
+        { id: "slime-1", kind: "rot-spore", x: 620, y: 820, lane: "speed", boss: false, region: "myco-kingdom" },
+        { id: "slime-2", kind: "mold-raider", x: 1060, y: 930, lane: "precision", boss: false, region: "myco-kingdom" },
+        { id: "fen-1", kind: "fen-stalker", x: 1700, y: 670, lane: "survival", boss: false, region: "rougarou-fen" },
+        { id: "fen-2", kind: "rot-jackal", x: 2280, y: 760, lane: "speed", boss: false, region: "rougarou-fen" },
+        { id: "boss-rougarou", kind: "rougarou", x: 2040, y: 320, lane: "survival", boss: true, region: "rougarou-fen" },
+        { id: "drake-1", kind: "ember-drone", x: 2860, y: 760, lane: "precision", boss: false, region: "tri-drake-peaks" },
+        { id: "drake-2", kind: "ash-ripper", x: 3500, y: 860, lane: "tactical", boss: false, region: "tri-drake-peaks" },
+        { id: "boss-drake", kind: "tri-drake", x: 3260, y: 360, lane: "tactical", boss: true, region: "tri-drake-peaks" },
+        { id: "reef-1", kind: "shell-rot", x: 1540, y: 1860, lane: "puzzle", boss: false, region: "crimson-tide" },
+        { id: "reef-2", kind: "spine-fin", x: 2580, y: 1940, lane: "survival", boss: false, region: "crimson-tide" },
+        { id: "boss-crab", kind: "evil-crab", x: 2140, y: 1360, lane: "tactical", boss: true, region: "crimson-tide" },
+        { id: "chain-1", kind: "block-wraith", x: 3080, y: 1580, lane: "precision", boss: false, region: "solana-chainlands" },
+        { id: "chain-2", kind: "ledger-specter", x: 4100, y: 1960, lane: "puzzle", boss: false, region: "solana-chainlands" },
+        { id: "boss-dark", kind: "dark-mycelius", x: 3780, y: 2320, lane: "tactical", boss: true, region: "solana-chainlands" },
+        { id: "commons-1", kind: "thorn-bandit", x: 840, y: 2060, lane: "speed", boss: false, region: "verdant-commons" },
+        { id: "commons-2", kind: "spore-thief", x: 1180, y: 1580, lane: "precision", boss: false, region: "verdant-commons" },
+        { id: "obsidian-1", kind: "basalt-hound", x: 620, y: 2860, lane: "survival", boss: false, region: "obsidian-wilds" },
+        { id: "obsidian-2", kind: "void-miner", x: 1780, y: 2960, lane: "tactical", boss: false, region: "obsidian-wilds" },
       ];
 
       const PICKUPS = [
-        { id: "spore-1", x: 350, y: 620, value: 12, golden: false },
-        { id: "spore-2", x: 1090, y: 920, value: 14, golden: false },
-        { id: "spore-3", x: 1410, y: 170, value: 16, golden: false },
-        { id: "spore-4", x: 1670, y: 860, value: 20, golden: false },
-        { id: "spore-5", x: 2390, y: 740, value: 18, golden: false },
-        { id: "spore-6", x: 1600, y: 1780, value: 20, golden: false },
-        { id: "spore-7", x: 2260, y: 2080, value: 24, golden: false },
-        { id: "gold-1", x: 890, y: 520, value: 1, golden: true },
-        { id: "gold-2", x: 2730, y: 420, value: 1, golden: true },
-        { id: "gold-3", x: 2660, y: 1830, value: 1, golden: true },
+        { id: "spore-1", x: 380, y: 660, value: 12, golden: false },
+        { id: "spore-2", x: 1220, y: 980, value: 14, golden: false },
+        { id: "spore-3", x: 1520, y: 210, value: 16, golden: false },
+        { id: "spore-4", x: 1890, y: 920, value: 20, golden: false },
+        { id: "spore-5", x: 2960, y: 820, value: 18, golden: false },
+        { id: "spore-6", x: 1760, y: 2040, value: 20, golden: false },
+        { id: "spore-7", x: 2580, y: 2240, value: 24, golden: false },
+        { id: "spore-8", x: 980, y: 1880, value: 20, golden: false },
+        { id: "spore-9", x: 1660, y: 2860, value: 26, golden: false },
+        { id: "spore-10", x: 3880, y: 2460, value: 28, golden: false },
+        { id: "gold-1", x: 980, y: 580, value: 1, golden: true },
+        { id: "gold-2", x: 3240, y: 460, value: 1, golden: true },
+        { id: "gold-3", x: 3340, y: 2280, value: 1, golden: true },
+        { id: "gold-4", x: 1160, y: 2740, value: 1, golden: true },
       ];
 
       const CUTSCENES = {
@@ -716,6 +805,8 @@
         aiDirectiveAt: 0,
         aiRemoteDirectiveAt: 0,
         activeDialogue: null,
+        contactLockUntil: 0,
+        lastAdvice: "Earn trust in each region to receive reliable guidance.",
         cutscene: {
           active: false,
           id: null,
@@ -744,9 +835,9 @@
         hero: {
           x: 280,
           y: 500,
-          w: 26,
-          h: 30,
-          speed: 168,
+          w: 30,
+          h: 34,
+          speed: 188,
           hp: BASE_MAX_HP,
           maxHp: BASE_MAX_HP,
           attack: 1,
@@ -810,6 +901,7 @@
           collectedPickups: Array.from(state.progress.collectedPickups),
           cutscenesSeen: Array.from(state.progress.cutscenesSeen),
           inventory: state.inventory,
+          lastAdvice: state.lastAdvice,
           enemyStates: state.enemies.map((enemy) => ({
             id: enemy.id,
             active: enemy.active,
@@ -857,6 +949,9 @@
                 ...state.inventory,
                 ...parsed.inventory,
               };
+            }
+            if (typeof parsed.lastAdvice === "string") {
+              state.lastAdvice = parsed.lastAdvice;
             }
             for (const enemyState of parsed.enemyStates ?? []) {
               if (!enemyState || typeof enemyState !== "object") continue;
@@ -941,10 +1036,11 @@
       const gateLocked = (gate) => !gate.isUnlocked(state);
 
       const staticObstacles = [
-        { x: 1030, y: 320, w: 80, h: 320 },
-        { x: 1170, y: 530, w: 40, h: 360 },
-        { x: 1380, y: 1180, w: 260, h: 80 },
-        { x: 2380, y: 1000, w: 290, h: 84 },
+        { x: 1180, y: 360, w: 90, h: 360 },
+        { x: 1320, y: 620, w: 44, h: 420 },
+        { x: 1620, y: 1260, w: 320, h: 92 },
+        { x: 2820, y: 1120, w: 320, h: 92 },
+        { x: 2300, y: 2580, w: 360, h: 80 },
       ];
 
       const isBlocked = (nextX, nextY) => {
@@ -1010,11 +1106,15 @@
         dom.dialogueBody.textContent = payload.body;
         dom.choiceMycoBtn.textContent = payload.mycoLabel ?? "Mycoside Choice";
         dom.choiceDarkBtn.textContent = payload.darkLabel ?? "Darkside Choice";
+        const tradeEnabled = typeof payload.onTrade === "function";
+        dom.choiceTradeBtn.style.display = tradeEnabled ? "inline-block" : "none";
+        dom.choiceTradeBtn.textContent = payload.tradeLabel ?? "Trade";
         dom.dialoguePanel.classList.add("active");
       };
 
       const closeDialogue = () => {
         state.activeDialogue = null;
+        dom.choiceTradeBtn.style.display = "none";
         dom.dialoguePanel.classList.remove("active");
       };
 
@@ -1194,39 +1294,135 @@
         const clueCount = state.progress.clues.size;
         let body = npc.intro;
         if (alreadySpoken) {
-          body = `${npc.name}: The world seed shifted. Your ${alignment} alignment is rewriting local events.`;
+          body = `${npc.name}: I can already feel your ${alignment} aura changing the routes ahead.`;
         } else if (bossCount >= 2) {
-          body = `${npc.intro} You already crushed ${bossCount} lieutenants; strategy now matters more than raw power.`;
+          body = `${npc.intro} You already crushed ${bossCount} lieutenants; now tactics matter more than raw force.`;
         } else if (clueCount >= 3) {
           body = `${npc.intro} Clue density is high — puzzle routes now open if you read the signs.`;
         }
 
+        const applyTrade = (trustful) => {
+          const cost = npc.tradeCost ?? 0;
+          if (state.hero.spores < cost) {
+            setStatus(`${npc.name}: Bring ${cost} spores for this trade.`, true);
+            return;
+          }
+          state.hero.spores -= cost;
+          if (!trustful && Math.random() < 0.55) {
+            state.lastAdvice = npc.adviceBad;
+            setStatus(`${npc.name} gave a shady trade. Advice quality dropped.` , true);
+            return;
+          }
+          const qty = npc.tradeQty ?? 1;
+          if (npc.tradeItem === "mycoPotion") state.inventory.mycoPotion += qty;
+          if (npc.tradeItem === "manaDew") state.inventory.manaDew += qty;
+          if (npc.tradeItem === "smokeBomb") state.inventory.smokeBomb += qty;
+          if (npc.tradeItem === "goldenSpore") state.hero.goldenSpores += qty;
+          state.lastAdvice = npc.adviceGood;
+          setStatus(`${npc.name} trade complete. ${npc.adviceGood}`);
+        };
+
         return {
           title: npc.name,
           body,
-          mycoLabel: alignment === "dark" ? "Resist Darkness (+morality)" : "Mycoside Path (+morality)",
-          darkLabel: alignment === "myco" ? "Risk Corruption (-morality)" : "Darkside Path (-morality)",
+          mycoLabel: alignment === "dark" ? "Treat Kindly (+morality)" : "Mycoside Path (+morality)",
+          darkLabel: alignment === "myco" ? "Treat Rudely (-morality)" : "Darkside Path (-morality)",
+          tradeLabel: `Trade (${npc.tradeCost ?? 0} spores)`,
           onMyco: () => {
             applyMorality(8 + Math.floor(clueCount / 2));
             grantSpores(16 + bossCount * 2);
-            if (Math.random() < 0.35) {
+            state.lastAdvice = npc.adviceGood;
+            if (Math.random() < 0.25) {
               state.inventory.mycoPotion += 1;
             }
             addClue(npc.clueId, npc.clueLabel);
             state.progress.interactedNpcs.add(npc.id);
-            setStatus(npc.mycoText);
+            setStatus(`${npc.mycoText} Advice: ${npc.adviceGood}`);
           },
           onDark: () => {
             applyMorality(-10 - Math.floor(bossCount / 2));
             state.hero.attack += 1;
+            state.lastAdvice = npc.adviceBad;
             if (Math.random() < 0.45) {
               state.inventory.smokeBomb += 1;
             }
             addClue(npc.clueId, npc.clueLabel);
             state.progress.interactedNpcs.add(npc.id);
-            setStatus(npc.darkText);
+            setStatus(`${npc.darkText} Advice: ${npc.adviceBad}`);
+          },
+          onTrade: () => {
+            const trustful = state.hero.morality >= -10;
+            applyTrade(trustful);
           },
         };
+      };
+
+      const buildStructureEncounter = (nearbyStructure) => {
+        const solved = state.progress.solvedStructures.has(nearbyStructure.id);
+        return {
+          title: nearbyStructure.name,
+          body: solved
+            ? "You already solved this location's challenge. The echoes still guide your path."
+            : nearbyStructure.type === "shrine"
+              ? "A rune puzzle asks: 'What restores magic faster than conquest?'"
+              : nearbyStructure.type === "dungeon"
+                ? "A locked sigil puzzle blocks the inner chamber."
+                : nearbyStructure.type === "house"
+                  ? "A household asks for aid and offers local intelligence in return."
+                  : "A villager asks for aid against roaming rot packs.",
+          mycoLabel: solved ? "Close" : "Resolve peacefully",
+          darkLabel: solved ? "Close" : "Force through",
+          onMyco: () => {
+            if (!solved) {
+              state.progress.solvedStructures.add(nearbyStructure.id);
+              applyMorality(7);
+              if (nearbyStructure.type === "shrine") {
+                state.hero.magic += 1;
+              }
+              if (nearbyStructure.type === "dungeon") {
+                grantSpores(32);
+                addClue("dungeon-rune", "Ancient Dungeon Rune");
+              }
+              if (nearbyStructure.type === "house") {
+                state.hero.hp = state.hero.maxHp;
+                state.lastAdvice = "House allies marked safer paths on your map.";
+              }
+              setStatus(`${nearbyStructure.name} completed. Your balanced path strengthens Myco magic.`);
+            }
+          },
+          onDark: () => {
+            if (!solved) {
+              state.progress.solvedStructures.add(nearbyStructure.id);
+              applyMorality(-9);
+              state.hero.attack += 1;
+              grantSpores(18);
+              state.lastAdvice = "Rushed tactics unlocked riskier shortcuts with stronger enemies.";
+              setStatus(`${nearbyStructure.name} was forced open. You gained speed, but the realm darkened.`);
+            }
+          },
+        };
+      };
+
+      const checkActiveContacts = () => {
+        if (state.activeDialogue || state.cutscene.active || state.mode !== "explore") return;
+        const now = Date.now();
+        if (now < state.contactLockUntil) return;
+
+        const bumpNpc = NPCS.find((npc) => dist(state.hero.x, state.hero.y, npc.x, npc.y) < 34);
+        if (bumpNpc) {
+          state.contactLockUntil = now + 1800;
+          const alreadySpoken = state.progress.interactedNpcs.has(bumpNpc.id);
+          openDialogue(buildNpcEncounter(bumpNpc, alreadySpoken));
+          return;
+        }
+
+        const bumpStructure = STRUCTURES.find(
+          (entry) => dist(state.hero.x, state.hero.y, entry.x + entry.w / 2, entry.y + entry.h / 2) < 44,
+        );
+        if (bumpStructure) {
+          state.contactLockUntil = now + 1800;
+          openDialogue(buildStructureEncounter(bumpStructure));
+        }
       };
 
       const interact = () => {
@@ -1238,59 +1434,22 @@
           return;
         }
 
-        const nearbyNpc = NPCS.find((npc) => dist(state.hero.x, state.hero.y, npc.x, npc.y) < 78);
+        const nearbyNpc = NPCS.find((npc) => dist(state.hero.x, state.hero.y, npc.x, npc.y) < 82);
         if (nearbyNpc) {
           const alreadySpoken = state.progress.interactedNpcs.has(nearbyNpc.id);
           openDialogue(buildNpcEncounter(nearbyNpc, alreadySpoken));
           return;
         }
 
-        const nearbyStructure = STRUCTURES.find((entry) => dist(state.hero.x, state.hero.y, entry.x + entry.w / 2, entry.y + entry.h / 2) < 86);
+        const nearbyStructure = STRUCTURES.find((entry) => dist(state.hero.x, state.hero.y, entry.x + entry.w / 2, entry.y + entry.h / 2) < 88);
         if (nearbyStructure) {
-          const solved = state.progress.solvedStructures.has(nearbyStructure.id);
-          openDialogue({
-            title: nearbyStructure.name,
-            body: solved
-              ? "You already solved this location's challenge. The echoes still guide your path."
-              : nearbyStructure.type === "shrine"
-                ? "A rune puzzle asks: 'What restores magic faster than conquest?'"
-                : nearbyStructure.type === "dungeon"
-                  ? "A locked sigil puzzle blocks the inner chamber."
-                  : "A villager asks for aid against roaming rot packs.",
-            mycoLabel: solved ? "Close" : "Solve with wisdom",
-            darkLabel: solved ? "Close" : "Force through with dark power",
-            onMyco: () => {
-              if (!solved) {
-                state.progress.solvedStructures.add(nearbyStructure.id);
-                applyMorality(7);
-                if (nearbyStructure.type === "shrine") {
-                  state.hero.magic += 1;
-                }
-                if (nearbyStructure.type === "dungeon") {
-                  grantSpores(28);
-                  addClue("dungeon-rune", "Ancient Dungeon Rune");
-                }
-                if (nearbyStructure.type === "house") {
-                  state.hero.hp = state.hero.maxHp;
-                }
-                setStatus(`${nearbyStructure.name} completed. Your balanced path strengthens Myco magic.`);
-              }
-            },
-            onDark: () => {
-              if (!solved) {
-                state.progress.solvedStructures.add(nearbyStructure.id);
-                applyMorality(-9);
-                state.hero.attack += 1;
-                grantSpores(15);
-                setStatus(`${nearbyStructure.name} was forced open. You gained speed, but the realm darkened.`);
-              }
-            },
-          });
+          openDialogue(buildStructureEncounter(nearbyStructure));
           return;
         }
 
         const nearbyGate = GATES.find((gate) => dist(state.hero.x, state.hero.y, gate.x + gate.w / 2, gate.y + gate.h / 2) < 92);
         if (nearbyGate && gateLocked(nearbyGate)) {
+          state.lastAdvice = nearbyGate.hint;
           setStatus(`Gate sealed. ${nearbyGate.hint}`, true);
           return;
         }
@@ -1322,6 +1481,16 @@
 
       const updateEnemies = (dt) => {
         const now = Date.now();
+        const regionSpeed = {
+          "myco-kingdom": 34,
+          "rougarou-fen": 42,
+          "tri-drake-peaks": 40,
+          "crimson-tide": 38,
+          "solana-chainlands": 46,
+          "verdant-commons": 35,
+          "obsidian-wilds": 39,
+        };
+        const darkPressure = state.hero.morality < 0 ? Math.min(0.35, Math.abs(state.hero.morality) / 260) : 0;
         for (const enemy of state.enemies) {
           if (!enemy.active) {
             if (enemy.respawnAt && now >= enemy.respawnAt && !enemy.boss) {
@@ -1336,7 +1505,7 @@
             enemy.directionShiftAt = now + randomBetween(1000, 3200);
           }
 
-          const speed = enemy.boss ? 24 : 36;
+          const speed = (enemy.boss ? 26 : (regionSpeed[enemy.region] ?? 36)) * (1 + darkPressure);
           const nextX = enemy.x + enemy.wanderDirX * speed * dt;
           const nextY = enemy.y + enemy.wanderDirY * speed * dt;
           const enemyRect = { x: nextX - 18, y: nextY - 18, w: 36, h: 36 };
@@ -1637,6 +1806,11 @@
         moveHero(dt);
         updateEnemies(dt);
         updatePickups();
+        checkActiveContacts();
+        if (state.activeDialogue) {
+          updateCamera();
+          return;
+        }
         updateDirective();
         await checkEnemyContact();
         updateCamera();
@@ -1688,12 +1862,50 @@
 
       const drawEnemy = (ctx, enemy, screenX, screenY) => {
         const x = Math.round(screenX);
-        const y = Math.round(screenY);
-        ctx.fillStyle = enemy.boss ? "#ef4444" : "#f97316";
-        ctx.fillRect(x - 10, y - 10, 20, 20);
+        const y = Math.round(screenY + Math.sin(state.worldTime * 6 + enemy.x * 0.01) * 1.5);
+        const regionPalette = {
+          "myco-kingdom": ["#ef4444", "#fca5a5"],
+          "rougarou-fen": ["#84cc16", "#365314"],
+          "tri-drake-peaks": ["#f97316", "#7c2d12"],
+          "crimson-tide": ["#06b6d4", "#0c4a6e"],
+          "solana-chainlands": ["#a78bfa", "#4c1d95"],
+          "verdant-commons": ["#22c55e", "#166534"],
+          "obsidian-wilds": ["#a1a1aa", "#27272a"],
+        };
+        const [base, accent] = regionPalette[enemy.region] ?? ["#f97316", "#7c2d12"];
+
+        if (enemy.region === "crimson-tide") {
+          ctx.fillStyle = base;
+          ctx.fillRect(x - 11, y - 7, 22, 14);
+          ctx.fillStyle = accent;
+          ctx.fillRect(x - 15, y - 3, 4, 4);
+          ctx.fillRect(x + 11, y - 3, 4, 4);
+        } else if (enemy.region === "tri-drake-peaks") {
+          ctx.fillStyle = base;
+          ctx.fillRect(x - 10, y - 10, 20, 20);
+          ctx.fillStyle = accent;
+          ctx.fillRect(x - 16, y - 6, 6, 6);
+          ctx.fillRect(x + 10, y - 6, 6, 6);
+        } else if (enemy.region === "solana-chainlands") {
+          ctx.fillStyle = base;
+          ctx.fillRect(x - 10, y - 10, 20, 20);
+          ctx.fillStyle = accent;
+          ctx.fillRect(x - 6, y - 6, 12, 12);
+        } else {
+          ctx.fillStyle = base;
+          ctx.fillRect(x - 10, y - 10, 20, 20);
+          ctx.fillStyle = accent;
+          ctx.fillRect(x - 12, y + 4, 24, 3);
+        }
+
         ctx.fillStyle = "#0f172a";
         ctx.fillRect(x - 4, y - 4, 3, 3);
         ctx.fillRect(x + 1, y - 4, 3, 3);
+        if (enemy.boss) {
+          ctx.strokeStyle = "#f8fafc";
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x - 14, y - 14, 28, 28);
+        }
       };
 
       const drawStructure = (ctx, structure, sx, sy) => {
@@ -1733,7 +1945,7 @@
           x <= state.camera.x + worldCanvas.width &&
           y <= state.camera.y + worldCanvas.height;
 
-        // Regions with animated 16-bit tile shimmer
+        // Regions with animated 32-bit tile shimmer
         for (const region of REGIONS) {
           if (!visible(region.x, region.y, region.w, region.h)) continue;
           const rx = region.x - state.camera.x;
@@ -1783,12 +1995,15 @@
         worldCtx.lineWidth = 6;
         worldCtx.globalAlpha = 0.22;
         worldCtx.beginPath();
-        worldCtx.moveTo(280 - state.camera.x, 460 - state.camera.y);
-        worldCtx.lineTo(1470 - state.camera.x, 380 - state.camera.y);
-        worldCtx.lineTo(2680 - state.camera.x, 330 - state.camera.y);
-        worldCtx.moveTo(1500 - state.camera.x, 920 - state.camera.y);
-        worldCtx.lineTo(1670 - state.camera.x, 1510 - state.camera.y);
-        worldCtx.lineTo(2520 - state.camera.x, 1510 - state.camera.y);
+        worldCtx.moveTo(300 - state.camera.x, 500 - state.camera.y);
+        worldCtx.lineTo(1640 - state.camera.x, 420 - state.camera.y);
+        worldCtx.lineTo(3180 - state.camera.x, 360 - state.camera.y);
+        worldCtx.moveTo(1700 - state.camera.x, 1090 - state.camera.y);
+        worldCtx.lineTo(1960 - state.camera.x, 1860 - state.camera.y);
+        worldCtx.lineTo(3080 - state.camera.x, 1880 - state.camera.y);
+        worldCtx.moveTo(690 - state.camera.x, 1320 - state.camera.y);
+        worldCtx.lineTo(740 - state.camera.x, 2380 - state.camera.y);
+        worldCtx.lineTo(1540 - state.camera.x, 2850 - state.camera.y);
         worldCtx.stroke();
         worldCtx.globalAlpha = 1;
 
@@ -2038,6 +2253,9 @@
         if (choice === "dark" && typeof state.activeDialogue.onDark === "function") {
           state.activeDialogue.onDark();
         }
+        if (choice === "trade" && typeof state.activeDialogue.onTrade === "function") {
+          state.activeDialogue.onTrade();
+        }
         closeDialogue();
         renderHud();
       };
@@ -2064,6 +2282,7 @@
 
       dom.choiceMycoBtn.addEventListener("click", () => handleChoice("myco"));
       dom.choiceDarkBtn.addEventListener("click", () => handleChoice("dark"));
+      dom.choiceTradeBtn.addEventListener("click", () => handleChoice("trade"));
       dom.closeDialogueBtn.addEventListener("click", closeDialogue);
       dom.cutsceneNextBtn.addEventListener("click", advanceCutscene);
       dom.cutsceneSkipBtn.addEventListener("click", closeCutscene);
@@ -2101,6 +2320,7 @@
 
       loadConfig();
       loadGame();
+      dom.choiceTradeBtn.style.display = "none";
       updateCamera();
       renderHud();
       drawWorld();
