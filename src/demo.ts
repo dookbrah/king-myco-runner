@@ -1,6 +1,6 @@
 import { MycoQuestEngine } from "./mycoQuestEngine";
 
-const summarize = (title: string, runData: ReturnType<MycoQuestEngine["generateRun"]) => {
+const summarize = (title: string, runData: ReturnType<MycoQuestEngine["generateRun"]>) => {
   console.log(`\n=== ${title} ===`);
   console.log(`Player: ${runData.profile.playerId}`);
   console.log(`Skill: ${runData.profile.skill.toFixed(2)} | Novelty: ${runData.profile.novelty.toFixed(2)}`);
