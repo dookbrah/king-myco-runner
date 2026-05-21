@@ -74,6 +74,18 @@
         gap: 10px;
         margin-top: 10px;
       }
+      .preset-grid {
+        margin-top: 12px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 10px;
+        align-items: end;
+      }
+      .preset-buttons {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
       .metric-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -163,6 +175,21 @@
           <button class="secondary" id="refreshHud">Refresh HUD</button>
           <button class="secondary" id="randomizeTelemetry">Randomize Telemetry</button>
         </div>
+        <div class="preset-grid">
+          <label
+            >Scenario Preset
+            <select id="presetSelect"></select>
+          </label>
+          <label
+            >Custom Preset Name
+            <input id="presetName" value="" placeholder="e.g. ruthless-sprinter" />
+          </label>
+          <div class="preset-buttons">
+            <button class="secondary" id="applyPreset">Apply Preset</button>
+            <button class="secondary" id="savePreset">Save Preset</button>
+            <button class="secondary" id="deletePreset">Delete Preset</button>
+          </div>
+        </div>
         <p class="status" id="statusText"></p>
       </section>
 
@@ -225,6 +252,130 @@
       };
 
       const state = { playerId: "" };
+      const PRESET_STORAGE_KEY = "mycoQuestDevPresets.v1";
+      const BUILTIN_PRESETS = [
+        {
+          id: "balanced-adventurer",
+          name: "Balanced Adventurer",
+          data: {
+            completedEncounters: 5,
+            failedEncounters: 1,
+            damageTaken: 28,
+            perfectActions: 7,
+            discoveryActions: 4,
+            riskyActions: 3,
+            sessionLengthSec: 640,
+            sporesCollected: 40,
+            compassionateActions: 4,
+            ruthlessActions: 1,
+            score: 1200,
+            mode: "myco-quest",
+            encounters: 5,
+            fireCasts: 10,
+            waterCasts: 8,
+            iceCasts: 5,
+            natureCasts: 2,
+            voidCasts: 1,
+            rituals: "mycelial-oath",
+          },
+        },
+        {
+          id: "ruthless-void-runner",
+          name: "Ruthless Void Runner",
+          data: {
+            completedEncounters: 6,
+            failedEncounters: 0,
+            damageTaken: 19,
+            perfectActions: 9,
+            discoveryActions: 2,
+            riskyActions: 8,
+            sessionLengthSec: 510,
+            sporesCollected: 68,
+            compassionateActions: 0,
+            ruthlessActions: 7,
+            score: 1725,
+            mode: "myco-quest",
+            encounters: 6,
+            fireCasts: 8,
+            waterCasts: 2,
+            iceCasts: 6,
+            natureCasts: 1,
+            voidCasts: 10,
+            rituals: "eclipse-ascension",
+          },
+        },
+        {
+          id: "compassionate-scholar",
+          name: "Compassionate Scholar",
+          data: {
+            completedEncounters: 5,
+            failedEncounters: 1,
+            damageTaken: 24,
+            perfectActions: 10,
+            discoveryActions: 9,
+            riskyActions: 1,
+            sessionLengthSec: 760,
+            sporesCollected: 54,
+            compassionateActions: 8,
+            ruthlessActions: 0,
+            score: 1650,
+            mode: "myco-quest",
+            encounters: 5,
+            fireCasts: 4,
+            waterCasts: 12,
+            iceCasts: 8,
+            natureCasts: 9,
+            voidCasts: 0,
+            rituals: "verdant-vow,mist-oath",
+          },
+        },
+        {
+          id: "speedrunner-boss-breaker",
+          name: "Speedrunner Boss Breaker",
+          data: {
+            completedEncounters: 7,
+            failedEncounters: 0,
+            damageTaken: 15,
+            perfectActions: 11,
+            discoveryActions: 2,
+            riskyActions: 5,
+            sessionLengthSec: 430,
+            sporesCollected: 73,
+            compassionateActions: 2,
+            ruthlessActions: 3,
+            score: 2050,
+            mode: "myco-quest",
+            encounters: 7,
+            fireCasts: 14,
+            waterCasts: 5,
+            iceCasts: 4,
+            natureCasts: 2,
+            voidCasts: 3,
+            rituals: "phoenix-lunge",
+          },
+        },
+      ];
+      const PRESET_FIELD_IDS = [
+        "completedEncounters",
+        "failedEncounters",
+        "damageTaken",
+        "perfectActions",
+        "discoveryActions",
+        "riskyActions",
+        "sessionLengthSec",
+        "sporesCollected",
+        "compassionateActions",
+        "ruthlessActions",
+        "score",
+        "mode",
+        "encounters",
+        "fireCasts",
+        "waterCasts",
+        "iceCasts",
+        "natureCasts",
+        "voidCasts",
+        "rituals",
+      ];
 
       const setStatus = (message, isError = false) => {
         const status = get("statusText");
@@ -245,6 +396,142 @@
           result["x-admin-key"] = get("adminKey").value.trim();
         }
         return result;
+      };
+
+      const getCustomPresets = () => {
+        try {
+          const raw = localStorage.getItem(PRESET_STORAGE_KEY);
+          if (!raw) {
+            return [];
+          }
+          const parsed = JSON.parse(raw);
+          if (!Array.isArray(parsed)) {
+            return [];
+          }
+          return parsed.filter((preset) => preset && typeof preset.id === "string" && typeof preset.name === "string" && preset.data && typeof preset.data === "object");
+        } catch {
+          return [];
+        }
+      };
+
+      const setCustomPresets = (presets) => {
+        localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(presets));
+      };
+
+      const listAllPresets = () => {
+        const custom = getCustomPresets().map((preset) => ({ ...preset, builtIn: false }));
+        const builtIn = BUILTIN_PRESETS.map((preset) => ({ ...preset, builtIn: true }));
+        return [...builtIn, ...custom];
+      };
+
+      const captureCurrentPresetData = () => {
+        const data = {};
+        for (const id of PRESET_FIELD_IDS) {
+          data[id] = get(id).value;
+        }
+        return data;
+      };
+
+      const applyPresetData = (data) => {
+        for (const id of PRESET_FIELD_IDS) {
+          if (Object.prototype.hasOwnProperty.call(data, id)) {
+            get(id).value = String(data[id]);
+          }
+        }
+      };
+
+      const populatePresetSelect = (selectedValue) => {
+        const select = get("presetSelect");
+        const all = listAllPresets();
+        const options = all
+          .map((preset) => {
+            const value = `${preset.builtIn ? "builtin" : "custom"}:${preset.id}`;
+            const labelPrefix = preset.builtIn ? "[built-in]" : "[custom]";
+            return `<option value="${value}">${labelPrefix} ${preset.name}</option>`;
+          })
+          .join("");
+        select.innerHTML = options;
+
+        if (all.length === 0) {
+          return;
+        }
+
+        const fallbackValue = `builtin:${BUILTIN_PRESETS[0].id}`;
+        const targetValue = selectedValue || select.value || fallbackValue;
+        const hasTarget = Array.from(select.options).some((option) => option.value === targetValue);
+        select.value = hasTarget ? targetValue : fallbackValue;
+      };
+
+      const getSelectedPreset = () => {
+        const raw = get("presetSelect").value;
+        const [scope, id] = raw.split(":");
+        if (!scope || !id) {
+          return null;
+        }
+
+        if (scope === "builtin") {
+          return BUILTIN_PRESETS.find((preset) => preset.id === id) || null;
+        }
+
+        return getCustomPresets().find((preset) => preset.id === id) || null;
+      };
+
+      const applySelectedPreset = () => {
+        const preset = getSelectedPreset();
+        if (!preset) {
+          throw new Error("Select a preset before applying.");
+        }
+        applyPresetData(preset.data);
+        get("presetName").value = preset.name;
+        setStatus(`Applied preset: ${preset.name}`);
+      };
+
+      const saveCurrentAsPreset = () => {
+        const rawName = get("presetName").value.trim();
+        if (!rawName) {
+          throw new Error("Enter a custom preset name before saving.");
+        }
+
+        const normalizedId = rawName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+        const presetId = normalizedId.length > 0 ? normalizedId : `preset-${Date.now()}`;
+
+        const current = getCustomPresets();
+        const data = captureCurrentPresetData();
+        const existingIndex = current.findIndex((preset) => preset.id === presetId);
+        if (existingIndex >= 0) {
+          current[existingIndex] = { id: presetId, name: rawName, data };
+        } else {
+          current.push({ id: presetId, name: rawName, data });
+        }
+
+        setCustomPresets(current);
+        const selected = `custom:${presetId}`;
+        populatePresetSelect(selected);
+        setStatus(`Saved preset: ${rawName}`);
+      };
+
+      const deleteSelectedCustomPreset = () => {
+        const raw = get("presetSelect").value;
+        const [scope, id] = raw.split(":");
+
+        if (scope !== "custom") {
+          throw new Error("Only custom presets can be deleted.");
+        }
+
+        const current = getCustomPresets();
+        const next = current.filter((preset) => preset.id !== id);
+        if (next.length === current.length) {
+          throw new Error("Selected custom preset was not found.");
+        }
+
+        setCustomPresets(next);
+        populatePresetSelect();
+        setStatus("Custom preset deleted.");
+      };
+
+      const initializePresets = () => {
+        populatePresetSelect(`builtin:${BUILTIN_PRESETS[0].id}`);
+        applySelectedPreset();
       };
 
       const renderRun = (run) => {
@@ -427,6 +714,20 @@
       get("recordSession").addEventListener("click", withErrorHandling(recordSession));
       get("refreshHud").addEventListener("click", withErrorHandling(refreshHud));
       get("randomizeTelemetry").addEventListener("click", randomizeTelemetry);
+      get("applyPreset").addEventListener("click", withErrorHandling(() => {
+        applySelectedPreset();
+      }));
+      get("savePreset").addEventListener("click", withErrorHandling(() => {
+        saveCurrentAsPreset();
+      }));
+      get("deletePreset").addEventListener("click", withErrorHandling(() => {
+        deleteSelectedCustomPreset();
+      }));
+      get("presetSelect").addEventListener("change", withErrorHandling(() => {
+        applySelectedPreset();
+      }));
+
+      initializePresets();
     </script>
   </body>
 </html>

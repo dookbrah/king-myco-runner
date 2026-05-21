@@ -259,6 +259,8 @@ npm run playground
 
 Then open `http://127.0.0.1:3000/dev/myco-quest` to drive gameplay calls and inspect morality/magic/spores progression with communication health in one screen.
 
+The dev UI includes built-in archetype presets (balanced, ruthless, compassionate, speedrunner) plus custom preset save/load/delete in browser localStorage.
+
 Useful playground env overrides:
 - `PLAYGROUND_PLAYER_ID` (default `dev-playground-player`)
 - `PLAYGROUND_SOURCE` (default `kingmyco.io`)
