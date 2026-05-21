@@ -1,0 +1,55 @@
+name: CI and Deploy Stub
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test-build:
+    name: Test and Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm run test
+
+      - name: Build project
+        run: npm run build
+
+      - name: Build Docker image
+        run: docker build -t kingmyco-runner:ci .
+
+  deploy-stub:
+    name: Deploy Stub
+    needs: test-build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Trigger deploy webhook when configured
+        env:
+          DEPLOY_WEBHOOK_URL: ${{ secrets.KINGMYCO_DEPLOY_WEBHOOK_URL }}
+        run: |
+          if [ -z "$DEPLOY_WEBHOOK_URL" ]; then
+            echo "No KINGMYCO_DEPLOY_WEBHOOK_URL secret set. Skipping deploy stub."
+            exit 0
+          fi
+
+          curl -fsSL -X POST "$DEPLOY_WEBHOOK_URL" \
+            -H "content-type: application/json" \
+            -d "{\"repository\":\"${GITHUB_REPOSITORY}\",\"ref\":\"${GITHUB_REF}\",\"sha\":\"${GITHUB_SHA}\"}"
+
+          echo "Deploy webhook triggered successfully."

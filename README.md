@@ -240,5 +240,48 @@ When configured, snapshots and events are mirrored to Postgres/Redis.
 - `npm run test` - unit tests
 - `npm run build` - TypeScript compile
 - `npm run start:api` - launch API server
+- `npm run start:api:prod` - run compiled API server
 - `npm run start:settlement-worker` - run automated Solana settlement loop
+- `npm run start:settlement-worker:prod` - run compiled settlement worker
 - `npm run start:heartbeat-worker` - run ecosystem heartbeat loop
+- `npm run start:heartbeat-worker:prod` - run compiled heartbeat worker
+
+
+## Production deployment (kingmyco.io)
+
+### 1) Prepare environment
+
+1. Copy env template: `cp .env.example .env`
+2. Fill production secrets in `.env` (admin key, source auth, treasury signer, webhook secrets).
+3. Ensure DNS for `kingmyco.io` points at your host/load balancer.
+
+### 2) Build and run with Docker Compose
+
+```bash
+docker compose up -d --build api heartbeat-worker
+```
+
+Optional settlement worker:
+
+```bash
+docker compose --profile settlement up -d settlement-worker
+```
+
+### 3) Verify services
+
+```bash
+curl http://127.0.0.1:3000/health
+curl -H "x-admin-key: $KINGMYCO_ADMIN_KEY" "http://127.0.0.1:3000/api/ecosystem/communication?windowMinutes=15&minEventsPerSource=1"
+```
+
+### 4) Reverse proxy / TLS
+
+Terminate TLS in your ingress/proxy (Nginx, Caddy, Cloudflare tunnel, etc.) and forward traffic to `api:3000`.
+Set host policy/rules so only `https://kingmyco.io` is publicly exposed.
+
+### CI/deploy stub
+
+A starter GitHub Actions workflow is provided at:
+- `.github/workflows/ci-deploy-stub.yml`
+
+It runs tests/build/docker build on PRs and main pushes, then optionally calls a deploy webhook if `KINGMYCO_DEPLOY_WEBHOOK_URL` secret is set.
