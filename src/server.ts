@@ -155,7 +155,7 @@ const start = async (): Promise<void> => {
       const parsedUrl = new URL(request.url ?? "/", "http://localhost");
       const pathname = parsedUrl.pathname;
 
-      if (method === "GET" && pathname === "/health") {
+      if (method === "GET" && (pathname === "/health" || pathname === "/api/health")) {
         return sendJson(response, 200, {
           status: "ok",
           service: "king-myco-ecosystem-hub",

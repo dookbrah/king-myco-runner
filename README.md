@@ -47,6 +47,7 @@ Myco Quest adaptive AI game-core + ecosystem backend for King Myco.
 
 ### Health
 - `GET /health`
+- `GET /api/health` (health alias behind /api proxy)
 - `GET /dev/myco-quest` (interactive dev UI)
 - `GET /api/dev/myco-quest` (interactive dev UI alias behind /api proxy)
 
