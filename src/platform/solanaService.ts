@@ -1,6 +1,5 @@
 import {
   Connection,
-  Keypair,
   LAMPORTS_PER_SOL,
   PublicKey,
   SystemProgram,
@@ -9,6 +8,10 @@ import {
 } from "@solana/web3.js";
 import nacl from "tweetnacl";
 import { randomUUID } from "node:crypto";
+import {
+  createTreasurySignerFromEnv,
+  resolveTreasuryPublicKeyFromEnv,
+} from "./treasurySigner";
 import {
   EcosystemSource,
   SolanaRewardTransferIntent,
@@ -99,43 +102,6 @@ const decodeSignature = (signature: string): Uint8Array => {
   return decodeBase58(normalized);
 };
 
-const decodeTreasurySecret = (rawSecret: string): Uint8Array => {
-  const trimmed = rawSecret.trim();
-  if (trimmed.length === 0) {
-    throw new Error("KINGMYCO_TREASURY_SECRET is empty");
-  }
-
-  if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
-    const parsed = JSON.parse(trimmed) as unknown;
-    if (!Array.isArray(parsed)) {
-      throw new Error("KINGMYCO_TREASURY_SECRET JSON must be an array");
-    }
-
-    const numbers = parsed.map((value) => Number(value));
-    if (numbers.some((value) => !Number.isInteger(value) || value < 0 || value > 255)) {
-      throw new Error("KINGMYCO_TREASURY_SECRET JSON array contains invalid byte values");
-    }
-
-    return new Uint8Array(numbers);
-  }
-
-  try {
-    const decoded = decodeBase58(trimmed);
-    if (decoded.length > 0) {
-      return decoded;
-    }
-  } catch {
-    // Ignore and fall back to base64 path.
-  }
-
-  const fromBase64 = Buffer.from(trimmed, "base64");
-  if (fromBase64.length > 0) {
-    return new Uint8Array(fromBase64);
-  }
-
-  throw new Error("Unable to decode KINGMYCO_TREASURY_SECRET");
-};
-
 export class SolanaService {
   readonly rpcUrl: string;
   private readonly connection: Connection;
@@ -202,13 +168,7 @@ export class SolanaService {
   async prepareSolTransfer(
     request: SolanaRewardTransferRequest,
   ): Promise<SolanaRewardTransferIntent> {
-    const treasuryAddress = process.env.KINGMYCO_TREASURY_WALLET;
-
-    if (!treasuryAddress) {
-      throw new Error("KINGMYCO_TREASURY_WALLET is required for transfer intents");
-    }
-
-    const treasuryPublicKey = this.parsePublicKey(treasuryAddress);
+    const treasuryPublicKey = resolveTreasuryPublicKeyFromEnv();
     const destinationPublicKey = this.parsePublicKey(request.destinationWallet);
 
     if (!Number.isInteger(request.lamports) || request.lamports <= 0) {
@@ -275,7 +235,7 @@ export class SolanaService {
   async submitPreparedTransferIntent(
     intent: SolanaRewardTransferIntent,
   ): Promise<{ txSignature: string }> {
-    const signer = this.getTreasurySigner();
+    const signer = createTreasurySignerFromEnv();
 
     if (signer.publicKey.toBase58() !== intent.treasuryWallet) {
       throw new Error(
@@ -297,9 +257,9 @@ export class SolanaService {
     }
 
     transaction.feePayer = signer.publicKey;
-    transaction.sign(signer);
+    const signed = await signer.signTransaction(transaction);
 
-    const raw = transaction.serialize();
+    const raw = signed.serialize();
     const txSignature = await this.connection.sendRawTransaction(raw, {
       skipPreflight: false,
       maxRetries: 3,
@@ -335,22 +295,6 @@ export class SolanaService {
     }
 
     return "pending";
-  }
-
-  private getTreasurySigner(): Keypair {
-    const rawSecret = process.env.KINGMYCO_TREASURY_SECRET;
-    if (!rawSecret) {
-      throw new Error("KINGMYCO_TREASURY_SECRET is required to submit transfers");
-    }
-
-    const bytes = decodeTreasurySecret(rawSecret);
-    if (bytes.length < 64) {
-      throw new Error(
-        "KINGMYCO_TREASURY_SECRET must decode to at least 64 bytes",
-      );
-    }
-
-    return Keypair.fromSecretKey(bytes.slice(0, 64));
   }
 
   private parsePublicKey(walletAddress: string): PublicKey {

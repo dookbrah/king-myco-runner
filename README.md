@@ -122,8 +122,12 @@ Example:
 ## Solana configuration
 
 - `SOLANA_RPC_URL` (default `https://api.mainnet-beta.solana.com`)
-- `KINGMYCO_TREASURY_WALLET` (required for reward transfer intent preparation)
-- `KINGMYCO_TREASURY_SECRET` (required for transfer submission in settlement worker)
+- `KINGMYCO_TREASURY_WALLET` (treasury fee payer wallet; required for remote signer mode)
+- `KINGMYCO_TREASURY_SIGNER_MODE` (`local-secret` or `remote-hsm`, default `local-secret`)
+- `KINGMYCO_TREASURY_SECRET` (local signer secret key; required in `local-secret` mode)
+- `KINGMYCO_TREASURY_SIGNER_ENDPOINT` (required in `remote-hsm` mode)
+- `KINGMYCO_TREASURY_SIGNER_BEARER_TOKEN` (optional auth token for remote signer endpoint)
+- `KINGMYCO_TREASURY_SIGNER_TIMEOUT_MS` (optional timeout for remote signer requests)
 - `KINGMYCO_SOLANA_CHALLENGE_TTL_MS` (optional challenge TTL)
 
 ## Live ops Web3 tuning fields
@@ -131,6 +135,27 @@ Example:
 - `sporeToLamportsRate`
 - `minSporesPerClaim`
 - `maxSporesPerClaim`
+
+## Remote signer contract (HSM/KMS gateway)
+
+When `KINGMYCO_TREASURY_SIGNER_MODE=remote-hsm`, the backend calls your signer endpoint with:
+
+```json
+{
+  "unsignedTransactionBase64": "...",
+  "treasuryWallet": "..."
+}
+```
+
+Expected response:
+
+```json
+{
+  "signedTransactionBase64": "..."
+}
+```
+
+The returned transaction must include a valid signature for `treasuryWallet`.
 
 ## Settlement worker
 
