@@ -392,6 +392,17 @@
               Run into houses, NPCs, or dungeons to activate events. Contact an enemy to enter turn battle.
             </p>
           </section>
+
+          <section class="panel">
+            <h3>Audio (32-bit style)</h3>
+            <p class="subtle">Static background visual mode is active. Enable music/SFX below.</p>
+            <div class="actions" style="margin-top: 6px">
+              <button id="audioEnableBtn" class="primary">Enable Music</button>
+              <button id="musicToggleBtn">Music: On</button>
+              <button id="sfxToggleBtn">SFX: On</button>
+            </div>
+            <p id="audioStateText" class="subtle" style="margin-top: 6px">Audio locked until first user interaction.</p>
+          </section>
         </aside>
       </section>
     </main>
@@ -484,6 +495,10 @@
         cutsceneMeta: document.getElementById("cutsceneMeta"),
         cutsceneNextBtn: document.getElementById("cutsceneNextBtn"),
         cutsceneSkipBtn: document.getElementById("cutsceneSkipBtn"),
+        audioEnableBtn: document.getElementById("audioEnableBtn"),
+        musicToggleBtn: document.getElementById("musicToggleBtn"),
+        sfxToggleBtn: document.getElementById("sfxToggleBtn"),
+        audioStateText: document.getElementById("audioStateText"),
       };
 
       const REGIONS = [
@@ -819,6 +834,18 @@
         battle: null,
         campaignSnapshot: null,
         enemies: [],
+        audio: {
+          initialized: false,
+          context: null,
+          masterGain: null,
+          musicGain: null,
+          sfxGain: null,
+          scheduler: null,
+          nextNoteTime: 0,
+          themeIndex: 0,
+          musicOn: true,
+          sfxOn: true,
+        },
         inventory: {
           mycoPotion: 2,
           manaDew: 1,
@@ -853,6 +880,143 @@
       const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
       const randomBetween = (min, max) => min + Math.random() * (max - min);
+
+      const THEME_SEQUENCE = [
+        261.63, 329.63, 392.0, 523.25,
+        392.0, 329.63, 293.66, 261.63,
+        220.0, 261.63, 329.63, 392.0,
+        349.23, 329.63, 293.66, 261.63,
+        293.66, 349.23, 440.0, 523.25,
+        440.0, 392.0, 349.23, 293.66,
+        261.63, 293.66, 329.63, 392.0,
+        329.63, 293.66, 261.63, 220.0,
+      ];
+
+      const updateAudioUi = () => {
+        dom.musicToggleBtn.textContent = `Music: ${state.audio.musicOn ? "On" : "Off"}`;
+        dom.sfxToggleBtn.textContent = `SFX: ${state.audio.sfxOn ? "On" : "Off"}`;
+        dom.audioStateText.textContent = state.audio.initialized
+          ? "Audio active: magical 32-bit synth enabled."
+          : "Audio locked until first user interaction.";
+      };
+
+      const buildGain = (ctx, gainValue, destination) => {
+        const gain = ctx.createGain();
+        gain.gain.value = gainValue;
+        gain.connect(destination);
+        return gain;
+      };
+
+      const scheduleTone = (ctx, destination, options) => {
+        const osc = ctx.createOscillator();
+        const amp = ctx.createGain();
+        osc.type = options.type ?? "square";
+        osc.frequency.setValueAtTime(options.frequency, options.start);
+        amp.gain.setValueAtTime(0.0001, options.start);
+        amp.gain.exponentialRampToValueAtTime(options.gain, options.start + 0.01);
+        amp.gain.exponentialRampToValueAtTime(0.0001, options.start + options.duration);
+        osc.connect(amp);
+        amp.connect(destination);
+        osc.start(options.start);
+        osc.stop(options.start + options.duration + 0.03);
+      };
+
+      const scheduleThemeWindow = () => {
+        if (!state.audio.initialized || !state.audio.musicOn) return;
+        const ctx = state.audio.context;
+        if (!ctx || ctx.state !== "running") return;
+        while (state.audio.nextNoteTime < ctx.currentTime + 0.7) {
+          const note = THEME_SEQUENCE[state.audio.themeIndex % THEME_SEQUENCE.length];
+          scheduleTone(ctx, state.audio.musicGain, {
+            frequency: note,
+            start: state.audio.nextNoteTime,
+            duration: 0.2,
+            gain: 0.04,
+            type: "square",
+          });
+          scheduleTone(ctx, state.audio.musicGain, {
+            frequency: note / 2,
+            start: state.audio.nextNoteTime,
+            duration: 0.22,
+            gain: 0.02,
+            type: "triangle",
+          });
+          state.audio.nextNoteTime += 0.24;
+          state.audio.themeIndex += 1;
+        }
+      };
+
+      const initAudio = async () => {
+        if (state.audio.initialized) {
+          if (state.audio.context?.state === "suspended") {
+            await state.audio.context.resume();
+          }
+          updateAudioUi();
+          return;
+        }
+        const AudioCtor = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtor) {
+          dom.audioStateText.textContent = "WebAudio not supported in this browser.";
+          return;
+        }
+        const ctx = new AudioCtor();
+        const master = buildGain(ctx, 0.8, ctx.destination);
+        const musicGain = buildGain(ctx, 0.9, master);
+        const sfxGain = buildGain(ctx, 1, master);
+        state.audio.context = ctx;
+        state.audio.masterGain = master;
+        state.audio.musicGain = musicGain;
+        state.audio.sfxGain = sfxGain;
+        state.audio.nextNoteTime = ctx.currentTime + 0.08;
+        state.audio.themeIndex = 0;
+        state.audio.scheduler = setInterval(scheduleThemeWindow, 120);
+        state.audio.initialized = true;
+        await ctx.resume();
+        updateAudioUi();
+      };
+
+      const playSfx = (kind) => {
+        if (!state.audio.initialized || !state.audio.sfxOn) return;
+        const ctx = state.audio.context;
+        if (!ctx || ctx.state !== "running") return;
+        const now = ctx.currentTime + 0.005;
+        const table = {
+          pickup: [740, 0.09, "square", 0.05],
+          clue: [620, 0.13, "triangle", 0.06],
+          talk: [420, 0.08, "triangle", 0.04],
+          battle: [180, 0.18, "sawtooth", 0.07],
+          win: [860, 0.18, "square", 0.06],
+          lose: [140, 0.22, "sawtooth", 0.06],
+          coin: [980, 0.08, "square", 0.055],
+          item: [560, 0.11, "triangle", 0.05],
+          error: [120, 0.12, "sawtooth", 0.045],
+        };
+        const [freq, duration, type, gain] = table[kind] ?? table.talk;
+        scheduleTone(ctx, state.audio.sfxGain, {
+          frequency: freq,
+          start: now,
+          duration,
+          gain,
+          type,
+        });
+      };
+
+      const toggleMusic = () => {
+        state.audio.musicOn = !state.audio.musicOn;
+        if (state.audio.musicOn && state.audio.initialized) {
+          state.audio.nextNoteTime = state.audio.context.currentTime + 0.05;
+          scheduleThemeWindow();
+        }
+        updateAudioUi();
+      };
+
+      const toggleSfx = () => {
+        state.audio.sfxOn = !state.audio.sfxOn;
+        if (state.audio.sfxOn) {
+          playSfx("coin");
+        }
+        updateAudioUi();
+      };
 
       const setStatus = (message, isError = false) => {
         dom.status.textContent = message;
@@ -1072,6 +1236,7 @@
         if (!state.progress.clues.has(clueId)) {
           state.progress.clues.add(clueId);
           setStatus(`Clue discovered: ${clueLabel}`);
+          playSfx("clue");
         }
       };
 
@@ -1110,6 +1275,7 @@
         dom.choiceTradeBtn.style.display = tradeEnabled ? "inline-block" : "none";
         dom.choiceTradeBtn.textContent = payload.tradeLabel ?? "Trade";
         dom.dialoguePanel.classList.add("active");
+        playSfx("talk");
       };
 
       const closeDialogue = () => {
@@ -1222,6 +1388,7 @@
         state.hero.spores -= price;
         state.inventory[itemType] += 1;
         setStatus(`Purchased ${labels[itemType]}.`);
+        playSfx("coin");
       };
 
       const useInventoryItem = (itemType) => {
@@ -1238,12 +1405,14 @@
             state.battle.battleLog.push(`King Myco used a potion for +${heal} HP.`);
           }
           setStatus(`Myco Potion used (+${heal} HP).`);
+          playSfx("item");
           return;
         }
         if (itemType === "manaDew") {
           state.inventory.manaDew -= 1;
           state.hero.magicBoostTurns = Math.max(state.hero.magicBoostTurns, 3);
           setStatus("Mana Dew activated: skill power boosted for 3 turns.");
+          playSfx("item");
           return;
         }
         if (itemType === "smokeBomb") {
@@ -1258,9 +1427,11 @@
             state.battle = null;
             state.encounterEnemyId = null;
             setStatus("Smoke Bomb success: escaped battle.");
+            playSfx("item");
             appendBattleLog("Escape succeeded.");
           } else {
             setStatus("Smoke Bomb failed! Enemy kept pressure.", true);
+            playSfx("error");
             appendBattleLog("Escape failed.");
           }
           return;
@@ -1305,12 +1476,14 @@
           const cost = npc.tradeCost ?? 0;
           if (state.hero.spores < cost) {
             setStatus(`${npc.name}: Bring ${cost} spores for this trade.`, true);
+            playSfx("error");
             return;
           }
           state.hero.spores -= cost;
           if (!trustful && Math.random() < 0.55) {
             state.lastAdvice = npc.adviceBad;
             setStatus(`${npc.name} gave a shady trade. Advice quality dropped.` , true);
+            playSfx("error");
             return;
           }
           const qty = npc.tradeQty ?? 1;
@@ -1320,6 +1493,7 @@
           if (npc.tradeItem === "goldenSpore") state.hero.goldenSpores += qty;
           state.lastAdvice = npc.adviceGood;
           setStatus(`${npc.name} trade complete. ${npc.adviceGood}`);
+          playSfx("coin");
         };
 
         return {
@@ -1451,6 +1625,7 @@
         if (nearbyGate && gateLocked(nearbyGate)) {
           state.lastAdvice = nearbyGate.hint;
           setStatus(`Gate sealed. ${nearbyGate.hint}`, true);
+          playSfx("error");
           return;
         }
 
@@ -1535,9 +1710,11 @@
           if (pickup.golden) {
             state.hero.goldenSpores += pickup.value;
             setStatus("Golden spore collected! Rare currency increased.");
+            playSfx("pickup");
           } else {
             grantSpores(pickup.value);
             setStatus(`Collected ${pickup.value} spores.`);
+            playSfx("pickup");
           }
         }
       };
@@ -1585,6 +1762,7 @@
         state.mode = "battle";
         state.encounterEnemyId = enemy.id;
         setStatus(`Enemy contact: ${getEnemyDisplayName(enemy.kind)}. Initiating turn battle...`);
+        playSfx("battle");
         appendBattleLog(`Encounter: ${getEnemyDisplayName(enemy.kind)}`);
 
         try {
@@ -1632,8 +1810,10 @@
             state.hero.goldenSpores += 1;
             markBossDefeat(enemy.kind);
             setStatus(`Boss defeated: ${getEnemyDisplayName(enemy.kind)}. Golden spore gained.`);
+            playSfx("win");
           } else {
             setStatus(`Victory! +${battle.rewardSpores ?? 0} spores.`);
+            playSfx("win");
           }
           if (enemy) {
             enemy.active = false;
@@ -1663,6 +1843,7 @@
           state.hero.x = 280;
           state.hero.y = 500;
           setStatus("Defeat in battle. You were restored at the Myco Kingdom shrine.", true);
+          playSfx("lose");
         }
         state.mode = "explore";
         state.encounterEnemyId = null;
@@ -1757,6 +1938,7 @@
           state.hero.spores -= 25;
           state.hero.attack += 1;
           setStatus("Attack upgraded.");
+          playSfx("coin");
         } else if (type === "defense") {
           if (state.hero.spores < 25) return setStatus("Need 25 spores for defense upgrade.", true);
           state.hero.spores -= 25;
@@ -1764,11 +1946,13 @@
           state.hero.maxHp += 5;
           state.hero.hp = Math.min(state.hero.maxHp, state.hero.hp + 5);
           setStatus("Defense upgraded.");
+          playSfx("coin");
         } else if (type === "magic") {
           if (state.hero.spores < 30) return setStatus("Need 30 spores for magic upgrade.", true);
           state.hero.spores -= 30;
           state.hero.magic += 1;
           setStatus("Magic upgraded.");
+          playSfx("coin");
         }
         renderHud();
       };
@@ -1937,7 +2121,7 @@
       const drawWorld = () => {
         worldCtx.fillStyle = "#040913";
         worldCtx.fillRect(0, 0, worldCanvas.width, worldCanvas.height);
-        const tilePhase = Math.floor(state.worldTime * 4) % 4;
+        const tilePhase = 0;
 
         const visible = (x, y, w, h) =>
           x + w >= state.camera.x &&
@@ -1945,7 +2129,7 @@
           x <= state.camera.x + worldCanvas.width &&
           y <= state.camera.y + worldCanvas.height;
 
-        // Regions with animated 32-bit tile shimmer
+        // Regions with static 32-bit tile detail (no background motion)
         for (const region of REGIONS) {
           if (!visible(region.x, region.y, region.w, region.h)) continue;
           const rx = region.x - state.camera.x;
@@ -1961,26 +2145,21 @@
             }
           }
 
-          // Water and chainland effects for richer ambience
-          if (region.id === "crimson-tide") {
-            worldCtx.globalAlpha = 0.2 + Math.sin(state.worldTime * 5) * 0.05;
-            worldCtx.fillStyle = "#67e8f9";
-            for (let i = 0; i < 11; i += 1) {
-              const waveY = ry + 30 + i * 100 + Math.sin(state.worldTime * 3 + i) * 8;
-              worldCtx.fillRect(rx + 10, waveY, region.w - 20, 4);
-            }
-            worldCtx.globalAlpha = 1;
+          // Static detail accents for richer ambience (no moving background)
+          worldCtx.globalAlpha = 0.22;
+          const detailColor =
+            region.id === "crimson-tide"
+              ? "#67e8f9"
+              : region.id === "solana-chainlands"
+                ? "#a78bfa"
+                : "#dbeafe";
+          worldCtx.fillStyle = detailColor;
+          for (let i = 0; i < 24; i += 1) {
+            const detailX = rx + 16 + ((i * 89 + region.x) % Math.max(40, region.w - 30));
+            const detailY = ry + 16 + ((i * 53 + region.y) % Math.max(40, region.h - 30));
+            worldCtx.fillRect(detailX, detailY, 4, 4);
           }
-          if (region.id === "solana-chainlands") {
-            worldCtx.globalAlpha = 0.18;
-            worldCtx.fillStyle = "#a78bfa";
-            for (let i = 0; i < 16; i += 1) {
-              const sparkX = rx + ((i * 67 + Math.floor(state.worldTime * 120)) % Math.max(60, region.w - 20));
-              const sparkY = ry + ((i * 49 + Math.floor(state.worldTime * 90)) % Math.max(60, region.h - 20));
-              worldCtx.fillRect(sparkX, sparkY, 6, 6);
-            }
-            worldCtx.globalAlpha = 1;
-          }
+          worldCtx.globalAlpha = 1;
 
           worldCtx.strokeStyle = "#0b1224";
           worldCtx.lineWidth = 3;
@@ -2028,7 +2207,7 @@
           if (!visible(pickup.x - 10, pickup.y - 10, 20, 20)) continue;
           const sx = pickup.x - state.camera.x;
           const sy = pickup.y - state.camera.y;
-          const twinkle = Math.sin(state.worldTime * 9 + pickup.x * 0.01 + pickup.y * 0.01);
+          const twinkle = 0.4;
           worldCtx.fillStyle = pickup.golden ? "#fbbf24" : "#22d3ee";
           worldCtx.fillRect(Math.round(sx - 6), Math.round(sy - 6), 12, 12);
           worldCtx.globalAlpha = 0.35 + (twinkle + 1) * 0.2;
@@ -2262,6 +2441,9 @@
 
       document.addEventListener("keydown", (event) => {
         const key = event.key.toLowerCase();
+        if (!state.audio.initialized && key !== "f5") {
+          initAudio();
+        }
         if (["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d", "shift"].includes(key)) {
           state.keys.add(key);
           event.preventDefault();
@@ -2286,6 +2468,16 @@
       dom.closeDialogueBtn.addEventListener("click", closeDialogue);
       dom.cutsceneNextBtn.addEventListener("click", advanceCutscene);
       dom.cutsceneSkipBtn.addEventListener("click", closeCutscene);
+
+      dom.audioEnableBtn.addEventListener("click", async () => {
+        await initAudio();
+      });
+      dom.musicToggleBtn.addEventListener("click", () => {
+        toggleMusic();
+      });
+      dom.sfxToggleBtn.addEventListener("click", () => {
+        toggleSfx();
+      });
 
       dom.syncBtn.addEventListener("click", syncCampaign);
       dom.saveBtn.addEventListener("click", () => {
@@ -2321,6 +2513,7 @@
       loadConfig();
       loadGame();
       dom.choiceTradeBtn.style.display = "none";
+      updateAudioUi();
       updateCamera();
       renderHud();
       drawWorld();
@@ -2331,6 +2524,13 @@
       setInterval(() => {
         requestAiCoaching();
       }, 50000);
+      window.addEventListener(
+        "pointerdown",
+        () => {
+          initAudio();
+        },
+        { once: true },
+      );
       setStatus("Prototype loaded. Explore the world and touch enemies to start turn battles.");
     </script>
   </body>
