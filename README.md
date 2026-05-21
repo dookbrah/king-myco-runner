@@ -285,6 +285,7 @@ curl -H "x-admin-key: dev-admin-key" "http://127.0.0.1:3000/api/dev/hud/<player-
 
 1. Copy env template: `cp .env.example .env`
 2. Fill production secrets in `.env` (admin key, source auth, treasury signer, webhook secrets).
+   - If frontend runs on `kingmyco.io` and API runs on a separate host/subdomain (for example `api.kingmyco.io`), set `KINGMYCO_CORS_ORIGINS` to include your frontend origin(s).
 3. Ensure DNS for `kingmyco.io` points at your host/load balancer.
 
 ### 2) Build and run with Docker Compose

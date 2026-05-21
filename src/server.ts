@@ -131,9 +131,67 @@ const assertAdminKey = (
   }
 };
 
+const DEFAULT_CORS_ORIGINS = [
+  "https://kingmyco.io",
+  "https://www.kingmyco.io",
+  "https://kingdom.kingmyco.com",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+];
+
+const parseCorsOrigins = (raw: string | undefined): string[] => {
+  if (!raw || raw.trim().length === 0) {
+    return [...DEFAULT_CORS_ORIGINS];
+  }
+
+  const parsed = raw
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+
+  return parsed.length > 0 ? parsed : [...DEFAULT_CORS_ORIGINS];
+};
+
+const resolveCorsOrigin = (
+  requestOrigin: string | undefined,
+  allowedOrigins: string[],
+): string | undefined => {
+  if (!requestOrigin || requestOrigin.trim().length === 0) {
+    return allowedOrigins.includes("*") ? "*" : undefined;
+  }
+
+  if (allowedOrigins.includes("*")) {
+    return requestOrigin;
+  }
+
+  return allowedOrigins.includes(requestOrigin) ? requestOrigin : undefined;
+};
+
+const applyCorsHeaders = (
+  request: IncomingMessage,
+  response: ServerResponse,
+  allowedOrigins: string[],
+): void => {
+  const requestOrigin = getHeader(request, "origin");
+  const allowOrigin = resolveCorsOrigin(requestOrigin, allowedOrigins);
+
+  if (!allowOrigin) {
+    return;
+  }
+
+  response.setHeader("access-control-allow-origin", allowOrigin);
+  response.setHeader("vary", "origin");
+  response.setHeader("access-control-allow-methods", "GET,POST,OPTIONS");
+  response.setHeader(
+    "access-control-allow-headers",
+    "content-type,x-admin-key,x-source-token,x-idempotency-key",
+  );
+};
+
 const start = async (): Promise<void> => {
   const statePath = process.env.KINGMYCO_STATE_PATH ?? "data/kingmyco-state.json";
   const adminKey = process.env.KINGMYCO_ADMIN_KEY ?? "dev-admin-key";
+  const corsAllowedOrigins = parseCorsOrigins(process.env.KINGMYCO_CORS_ORIGINS);
   const auth = SourceAuthService.fromEnv(process.env.KINGMYCO_SOURCE_AUTH_JSON);
   const verifier = new WebhookVerifier(
     process.env.KINGMYCO_TELEGRAM_WEBHOOK_SECRET,
@@ -154,6 +212,14 @@ const start = async (): Promise<void> => {
       const method = request.method ?? "GET";
       const parsedUrl = new URL(request.url ?? "/", "http://localhost");
       const pathname = parsedUrl.pathname;
+
+      applyCorsHeaders(request, response, corsAllowedOrigins);
+
+      if (method === "OPTIONS") {
+        response.statusCode = 204;
+        response.end();
+        return;
+      }
 
       if (method === "GET" && (pathname === "/health" || pathname === "/api/health")) {
         return sendJson(response, 200, {
