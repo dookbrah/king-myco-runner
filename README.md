@@ -91,10 +91,11 @@ Challenges are one-time and expire automatically.
 1. Verified player calls `POST /api/solana/rewards/claim` with `sporesToRedeem`.
 2. Optional idempotency protection: send `idempotencyKey` (or `x-idempotency-key`) to prevent duplicate debit on retries.
 3. Backend enforces live-ops claim guardrails (`claimCooldownSec`, `maxDailySporeRedeem`).
-4. Backend converts spores to lamports via `sporeToLamportsRate` in live ops.
-5. Backend creates unsigned transfer intent and debits spores immediately.
-6. Settlement service updates result using `POST /api/solana/rewards/status` or `POST /api/solana/rewards/process`.
-7. If status becomes `failed`, spores are automatically refunded (including daily cap ledger rollback).
+4. Backend applies redemption velocity throttles (wallet/hour, IP/hour, and unique-wallets-per-IP/day).
+5. Backend converts spores to lamports via `sporeToLamportsRate` in live ops.
+6. Backend creates unsigned transfer intent and debits spores immediately.
+7. Settlement service updates result using `POST /api/solana/rewards/status` or `POST /api/solana/rewards/process`.
+8. If status becomes `failed`, spores are automatically refunded (including daily cap ledger rollback).
 
 ## Security model
 
@@ -138,6 +139,9 @@ Example:
 - `maxSporesPerClaim`
 - `claimCooldownSec`
 - `maxDailySporeRedeem`
+- `maxClaimsPerHourPerWallet`
+- `maxClaimsPerHourPerIp`
+- `maxUniqueWalletsPerIpPerDay`
 
 ## Remote signer contract (HSM/KMS gateway)
 
@@ -176,6 +180,10 @@ Worker tuning env vars:
 Operator helper endpoints:
 - `GET /api/solana/rewards/intents?status=prepared&limit=20`
 - `POST /api/solana/rewards/process`
+
+Claim request metadata (optional):
+- `clientIp` in body (otherwise inferred from proxy headers/remote address)
+- `x-client-fingerprint` header or `clientFingerprint` body field
 
 ## Persistence options
 

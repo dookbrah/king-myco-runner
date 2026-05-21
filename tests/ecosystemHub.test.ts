@@ -499,4 +499,148 @@ describe("King Myco ecosystem integration", () => {
     ).rejects.toThrow(/Daily claim cap exceeded/);
   });
 
+  it("enforces wallet and IP claim velocity throttles", async () => {
+    const signerA = Keypair.generate();
+    const signerB = Keypair.generate();
+
+    await hub.updateLiveOps({
+      claimCooldownSec: 0,
+      maxDailySporeRedeem: 500000,
+      minSporesPerClaim: 100,
+      maxSporesPerClaim: 1000,
+      maxClaimsPerHourPerWallet: 1,
+      maxClaimsPerHourPerIp: 50,
+      maxUniqueWalletsPerIpPerDay: 10,
+    });
+
+    await hub.generateRun({
+      source: "kingmyco.io",
+      externalId: "velocity-player-a",
+      claims: { walletAddress: signerA.publicKey.toBase58() },
+    });
+
+    await hub.recordSession({
+      source: "kingmyco.io",
+      externalId: "velocity-player-a",
+      claims: { walletAddress: signerA.publicKey.toBase58() },
+      telemetry: {
+        playerId: "velocity-player-a",
+        completedEncounters: 12,
+        failedEncounters: 1,
+        damageTaken: 30,
+        perfectActions: 6,
+        discoveryActions: 3,
+        riskyActions: 4,
+        sessionLengthSec: 760,
+        usedElements: ["fire", "water"],
+        abandoned: false,
+      },
+      score: 21000,
+    });
+
+    const challengeA = await hub.createSolanaWalletChallenge({
+      source: "kingmyco.io",
+      externalId: "velocity-player-a",
+      claims: { walletAddress: signerA.publicKey.toBase58() },
+      walletAddress: signerA.publicKey.toBase58(),
+    });
+
+    const signatureA = nacl.sign.detached(
+      new TextEncoder().encode(challengeA.message),
+      signerA.secretKey,
+    );
+
+    await hub.verifySolanaWalletLink({
+      source: "kingmyco.io",
+      externalId: "velocity-player-a",
+      claims: { walletAddress: signerA.publicKey.toBase58() },
+      walletAddress: signerA.publicKey.toBase58(),
+      message: challengeA.message,
+      signature: Buffer.from(signatureA).toString("base64"),
+    });
+
+    await hub.claimSolanaRewards({
+      source: "kingmyco.io",
+      externalId: "velocity-player-a",
+      claims: { walletAddress: signerA.publicKey.toBase58() },
+      destinationWallet: signerA.publicKey.toBase58(),
+      sporesToRedeem: 120,
+      clientIp: "198.51.100.10",
+    });
+
+    await expect(
+      hub.claimSolanaRewards({
+        source: "kingmyco.io",
+        externalId: "velocity-player-a",
+        claims: { walletAddress: signerA.publicKey.toBase58() },
+        destinationWallet: signerA.publicKey.toBase58(),
+        sporesToRedeem: 120,
+        clientIp: "198.51.100.10",
+      }),
+    ).rejects.toThrow(/Wallet claim velocity exceeded/);
+
+    await hub.updateLiveOps({
+      maxClaimsPerHourPerWallet: 10,
+      maxClaimsPerHourPerIp: 50,
+      maxUniqueWalletsPerIpPerDay: 1,
+    });
+
+    await hub.generateRun({
+      source: "kingmyco.io",
+      externalId: "velocity-player-b",
+      claims: { walletAddress: signerB.publicKey.toBase58() },
+    });
+
+    await hub.recordSession({
+      source: "kingmyco.io",
+      externalId: "velocity-player-b",
+      claims: { walletAddress: signerB.publicKey.toBase58() },
+      telemetry: {
+        playerId: "velocity-player-b",
+        completedEncounters: 12,
+        failedEncounters: 0,
+        damageTaken: 24,
+        perfectActions: 7,
+        discoveryActions: 4,
+        riskyActions: 3,
+        sessionLengthSec: 810,
+        usedElements: ["fire", "water", "ice"],
+        abandoned: false,
+      },
+      score: 22800,
+    });
+
+    const challengeB = await hub.createSolanaWalletChallenge({
+      source: "kingmyco.io",
+      externalId: "velocity-player-b",
+      claims: { walletAddress: signerB.publicKey.toBase58() },
+      walletAddress: signerB.publicKey.toBase58(),
+    });
+
+    const signatureB = nacl.sign.detached(
+      new TextEncoder().encode(challengeB.message),
+      signerB.secretKey,
+    );
+
+    await hub.verifySolanaWalletLink({
+      source: "kingmyco.io",
+      externalId: "velocity-player-b",
+      claims: { walletAddress: signerB.publicKey.toBase58() },
+      walletAddress: signerB.publicKey.toBase58(),
+      message: challengeB.message,
+      signature: Buffer.from(signatureB).toString("base64"),
+    });
+
+    await expect(
+      hub.claimSolanaRewards({
+        source: "kingmyco.io",
+        externalId: "velocity-player-b",
+        claims: { walletAddress: signerB.publicKey.toBase58() },
+        destinationWallet: signerB.publicKey.toBase58(),
+        sporesToRedeem: 120,
+        clientIp: "198.51.100.10",
+      }),
+    ).rejects.toThrow(/IP wallet diversity limit exceeded/);
+  });
+
 });

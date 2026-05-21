@@ -248,6 +248,8 @@ export interface SolanaRewardClaimRequest extends IdentityLinkRequest {
   sporesToRedeem: number;
   memo?: string;
   idempotencyKey?: string;
+  clientIp?: string;
+  clientFingerprint?: string;
 }
 
 export interface SolanaRewardClaimReceipt {

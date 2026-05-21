@@ -478,6 +478,37 @@ export class KingMycoEcosystemHub {
     const todayKey = nowIso.slice(0, 10);
     const redeemedToday = claimLedger.dailyRedeemed[todayKey] ?? 0;
 
+    const velocity = this.repository.getClaimVelocitySnapshot({
+      walletAddress: request.destinationWallet,
+      clientIp: request.clientIp,
+      nowIso,
+    });
+
+    if (velocity.walletClaimsLastHour >= liveOps.maxClaimsPerHourPerWallet) {
+      throw new Error(
+        `Wallet claim velocity exceeded (${liveOps.maxClaimsPerHourPerWallet}/hour)`,
+      );
+    }
+
+    if (
+      request.clientIp &&
+      velocity.ipClaimsLastHour >= liveOps.maxClaimsPerHourPerIp
+    ) {
+      throw new Error(
+        `IP claim velocity exceeded (${liveOps.maxClaimsPerHourPerIp}/hour)`,
+      );
+    }
+
+    if (
+      request.clientIp &&
+      !velocity.ipHasWalletToday &&
+      velocity.uniqueWalletsForIpToday >= liveOps.maxUniqueWalletsPerIpPerDay
+    ) {
+      throw new Error(
+        `IP wallet diversity limit exceeded (${liveOps.maxUniqueWalletsPerIpPerDay} wallets/day)`,
+      );
+    }
+
     if (!Number.isInteger(sporesToRedeem) || sporesToRedeem <= 0) {
       throw new Error("sporesToRedeem must be a positive integer");
     }
@@ -527,6 +558,11 @@ export class KingMycoEcosystemHub {
     };
     this.repository.setWallet(playerId, updatedWallet);
     this.repository.applyClaimLedgerDelta(playerId, nowIso, sporesToRedeem);
+    this.repository.recordClaimVelocity({
+      walletAddress: request.destinationWallet,
+      clientIp: request.clientIp,
+      timestampIso: nowIso,
+    });
     this.repository.setTransferIntent(intent);
 
     if (idempotencyKey) {
@@ -549,6 +585,8 @@ export class KingMycoEcosystemHub {
         lamports,
         sporesDebited: sporesToRedeem,
         destinationWallet: intent.destinationWallet,
+        clientIpPresent: Boolean(request.clientIp),
+        clientFingerprintPresent: Boolean(request.clientFingerprint),
       },
     });
 
@@ -886,6 +924,8 @@ export class KingMycoEcosystemHub {
         antiExploitThreshold: merged.antiExploitThreshold,
         rewardMultiplier: merged.rewardMultiplier,
         sporeToLamportsRate: merged.sporeToLamportsRate,
+        claimCooldownSec: merged.claimCooldownSec,
+        maxDailySporeRedeem: merged.maxDailySporeRedeem,
       },
     });
 

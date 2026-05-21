@@ -88,6 +88,28 @@ const parseSource = (value: unknown): EcosystemSource => {
   return source as EcosystemSource;
 };
 
+const extractClientIp = (request: IncomingMessage): string | undefined => {
+  const forwarded = getHeader(request, "x-forwarded-for");
+  if (forwarded) {
+    const first = forwarded.split(",")[0]?.trim();
+    if (first) {
+      return first;
+    }
+  }
+
+  const realIp = getHeader(request, "x-real-ip");
+  if (realIp) {
+    return realIp;
+  }
+
+  const remote = request.socket.remoteAddress;
+  if (remote && remote.trim().length > 0) {
+    return remote;
+  }
+
+  return undefined;
+};
+
 const assertAdminKey = (
   request: IncomingMessage,
   adminKey: string,
@@ -280,6 +302,14 @@ const start = async (): Promise<void> => {
             typeof body.idempotencyKey === "string"
               ? body.idempotencyKey
               : getHeader(request, "x-idempotency-key"),
+          clientIp:
+            typeof body.clientIp === "string" && body.clientIp.trim().length > 0
+              ? body.clientIp
+              : extractClientIp(request),
+          clientFingerprint:
+            typeof body.clientFingerprint === "string"
+              ? body.clientFingerprint
+              : getHeader(request, "x-client-fingerprint"),
         } satisfies SolanaRewardClaimRequest);
 
         return sendJson(response, 200, receipt);

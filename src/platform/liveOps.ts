@@ -16,6 +16,9 @@ export interface LiveOpsConfig {
   maxSporesPerClaim: number;
   claimCooldownSec: number;
   maxDailySporeRedeem: number;
+  maxClaimsPerHourPerWallet: number;
+  maxClaimsPerHourPerIp: number;
+  maxUniqueWalletsPerIpPerDay: number;
 }
 
 export type DeepPartial<T> = {
@@ -52,6 +55,9 @@ export const DEFAULT_LIVE_OPS: LiveOpsConfig = {
   maxSporesPerClaim: 100000,
   claimCooldownSec: 45,
   maxDailySporeRedeem: 250000,
+  maxClaimsPerHourPerWallet: 8,
+  maxClaimsPerHourPerIp: 20,
+  maxUniqueWalletsPerIpPerDay: 6,
 };
 
 export const sanitizeLiveOpsConfig = (config: LiveOpsConfig): LiveOpsConfig => {
@@ -85,6 +91,15 @@ export const sanitizeLiveOpsConfig = (config: LiveOpsConfig): LiveOpsConfig => {
     maxSporesPerClaim: Math.round(clamp(config.maxSporesPerClaim, 1, 1000000000)),
     claimCooldownSec: Math.round(clamp(config.claimCooldownSec, 0, 86400)),
     maxDailySporeRedeem: Math.round(clamp(config.maxDailySporeRedeem, 1, 1000000000)),
+    maxClaimsPerHourPerWallet: Math.round(
+      clamp(config.maxClaimsPerHourPerWallet, 1, 10000),
+    ),
+    maxClaimsPerHourPerIp: Math.round(
+      clamp(config.maxClaimsPerHourPerIp, 1, 50000),
+    ),
+    maxUniqueWalletsPerIpPerDay: Math.round(
+      clamp(config.maxUniqueWalletsPerIpPerDay, 1, 5000),
+    ),
   };
 };
 

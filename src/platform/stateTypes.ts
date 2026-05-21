@@ -16,6 +16,12 @@ export interface SporeClaimLedger {
   dailyRedeemed: Record<string, number>;
 }
 
+export interface ClaimVelocityState {
+  walletClaimTimestamps: Record<string, string[]>;
+  ipClaimTimestamps: Record<string, string[]>;
+  ipWalletDaily: Record<string, string[]>;
+}
+
 export interface PersistentState {
   profiles: Record<string, PlayerProfile>;
   wallets: Record<string, PlayerWallet>;
@@ -31,6 +37,7 @@ export interface PersistentState {
   transferIntents: Record<string, SolanaRewardTransferIntent>;
   claimIdempotency: Record<string, SolanaClaimIdempotencyRecord>;
   claimLedgers: Record<string, SporeClaimLedger>;
+  claimVelocity: ClaimVelocityState;
 }
 
 export const createDefaultWallet = (): PlayerWallet => ({
@@ -62,4 +69,9 @@ export const normalizePersistentState = (
   transferIntents: raw?.transferIntents ?? {},
   claimIdempotency: raw?.claimIdempotency ?? {},
   claimLedgers: raw?.claimLedgers ?? {},
+  claimVelocity: {
+    walletClaimTimestamps: raw?.claimVelocity?.walletClaimTimestamps ?? {},
+    ipClaimTimestamps: raw?.claimVelocity?.ipClaimTimestamps ?? {},
+    ipWalletDaily: raw?.claimVelocity?.ipWalletDaily ?? {},
+  },
 });

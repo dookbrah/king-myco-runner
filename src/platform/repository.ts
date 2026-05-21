@@ -59,6 +59,9 @@ const challengeKey = (playerId: string, walletAddress: string): string => {
   return `${playerId}:${walletAddress.trim().toLowerCase()}`;
 };
 
+const CLAIM_HISTORY_KEEP_SEC = 72 * 60 * 60;
+const CLAIM_WINDOW_SEC = 60 * 60;
+
 export class KingMycoRepository {
   private constructor(
     private readonly filePath: string,
@@ -369,6 +372,99 @@ export class KingMycoRepository {
     ];
   }
 
+  getClaimVelocitySnapshot(input: {
+    walletAddress: string;
+    clientIp?: string;
+    nowIso: string;
+  }): {
+    walletClaimsLastHour: number;
+    ipClaimsLastHour: number;
+    uniqueWalletsForIpToday: number;
+    ipHasWalletToday: boolean;
+  } {
+    const walletKey = input.walletAddress.trim().toLowerCase();
+    const nowMs = Date.parse(input.nowIso);
+
+    const walletHistory = this.pruneClaimHistory(
+      this.state.claimVelocity.walletClaimTimestamps[walletKey] ?? [],
+      nowMs,
+    );
+    this.state.claimVelocity.walletClaimTimestamps[walletKey] = walletHistory;
+
+    let ipHistory: string[] = [];
+    let uniqueWalletsForIpToday = 0;
+    let ipHasWalletToday = false;
+
+    if (input.clientIp) {
+      const ipKey = input.clientIp.trim().toLowerCase();
+      ipHistory = this.pruneClaimHistory(
+        this.state.claimVelocity.ipClaimTimestamps[ipKey] ?? [],
+        nowMs,
+      );
+      this.state.claimVelocity.ipClaimTimestamps[ipKey] = ipHistory;
+
+      const dayKey = this.toUtcDayKey(input.nowIso);
+      const ipDayKey = this.createIpDayKey(ipKey, dayKey);
+      const walletSet = new Set(this.state.claimVelocity.ipWalletDaily[ipDayKey] ?? []);
+      uniqueWalletsForIpToday = walletSet.size;
+      ipHasWalletToday = walletSet.has(walletKey);
+    }
+
+    return {
+      walletClaimsLastHour: this.countHistoryInWindow(walletHistory, nowMs, CLAIM_WINDOW_SEC),
+      ipClaimsLastHour: this.countHistoryInWindow(ipHistory, nowMs, CLAIM_WINDOW_SEC),
+      uniqueWalletsForIpToday,
+      ipHasWalletToday,
+    };
+  }
+
+  recordClaimVelocity(input: {
+    walletAddress: string;
+    clientIp?: string;
+    timestampIso: string;
+  }): void {
+    const walletKey = input.walletAddress.trim().toLowerCase();
+    const nowMs = Date.parse(input.timestampIso);
+
+    const walletHistory = this.pruneClaimHistory(
+      this.state.claimVelocity.walletClaimTimestamps[walletKey] ?? [],
+      nowMs,
+    );
+    walletHistory.push(input.timestampIso);
+    this.state.claimVelocity.walletClaimTimestamps[walletKey] = walletHistory;
+
+    if (!input.clientIp) {
+      return;
+    }
+
+    const ipKey = input.clientIp.trim().toLowerCase();
+    const ipHistory = this.pruneClaimHistory(
+      this.state.claimVelocity.ipClaimTimestamps[ipKey] ?? [],
+      nowMs,
+    );
+    ipHistory.push(input.timestampIso);
+    this.state.claimVelocity.ipClaimTimestamps[ipKey] = ipHistory;
+
+    const dayKey = this.toUtcDayKey(input.timestampIso);
+    const ipDayKey = this.createIpDayKey(ipKey, dayKey);
+    const walletSet = new Set(this.state.claimVelocity.ipWalletDaily[ipDayKey] ?? []);
+    walletSet.add(walletKey);
+    this.state.claimVelocity.ipWalletDaily[ipDayKey] = Array.from(walletSet);
+
+    const oldDayPrefix = `${ipKey}:`;
+    const cutoffDay = this.toUtcDayKey(new Date(nowMs - 35 * 24 * 60 * 60 * 1000).toISOString());
+    for (const key of Object.keys(this.state.claimVelocity.ipWalletDaily)) {
+      if (!key.startsWith(oldDayPrefix)) {
+        continue;
+      }
+
+      const day = key.slice(oldDayPrefix.length);
+      if (day < cutoffDay) {
+        delete this.state.claimVelocity.ipWalletDaily[key];
+      }
+    }
+  }
+
   async appendEvent(event: PlatformEvent): Promise<void> {
     this.state.events.push(event);
     this.state.events = this.state.events.slice(-5000);
@@ -534,6 +630,42 @@ export class KingMycoRepository {
     }
 
     return date.toISOString().slice(0, 10);
+  }
+
+  private pruneClaimHistory(history: string[], nowMs: number): string[] {
+    const cutoffMs = nowMs - CLAIM_HISTORY_KEEP_SEC * 1000;
+    const pruned = history.filter((timestampIso) => {
+      const ts = Date.parse(timestampIso);
+      return !Number.isNaN(ts) && ts >= cutoffMs;
+    });
+
+    if (pruned.length <= 2000) {
+      return pruned;
+    }
+
+    return pruned.slice(-2000);
+  }
+
+  private countHistoryInWindow(
+    history: string[],
+    nowMs: number,
+    windowSec: number,
+  ): number {
+    const cutoffMs = nowMs - windowSec * 1000;
+    let count = 0;
+
+    for (const timestampIso of history) {
+      const ts = Date.parse(timestampIso);
+      if (!Number.isNaN(ts) && ts >= cutoffMs) {
+        count += 1;
+      }
+    }
+
+    return count;
+  }
+
+  private createIpDayKey(ip: string, dayKey: string): string {
+    return `${ip}:${dayKey}`;
   }
 
   private createClaimIdempotencyKey(
