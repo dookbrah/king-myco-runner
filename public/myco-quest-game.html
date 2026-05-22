@@ -475,6 +475,55 @@
       .hidden {
         display: none !important;
       }
+      body.battle-popup-active::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: 84;
+        background: rgba(2, 6, 23, 0.86);
+        backdrop-filter: blur(3px);
+      }
+      #panelBattle.battle-popup-active {
+        position: fixed;
+        inset: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)) 8px;
+        z-index: 85;
+        margin: 0;
+        display: grid;
+        grid-template-rows: auto auto minmax(220px, 1fr) auto auto;
+        gap: 8px;
+        padding: 14px;
+        border-width: 2px;
+        border-color: #4b71ad;
+        border-radius: 14px;
+        background: linear-gradient(180deg, rgba(8, 16, 34, 0.97), rgba(5, 10, 24, 0.98));
+        box-shadow: 0 28px 60px rgba(2, 6, 23, 0.68);
+        overflow: hidden;
+      }
+      #panelBattle.battle-popup-active h2 {
+        font-size: clamp(20px, 2.8vw, 28px);
+      }
+      #panelBattle.battle-popup-active .canvas-shell {
+        margin-top: 0 !important;
+        min-height: 220px;
+        height: 100%;
+      }
+      #panelBattle.battle-popup-active #battleCanvas {
+        height: min(56vh, 560px);
+        min-height: 220px;
+      }
+      #panelBattle.battle-popup-active .battle-controls {
+        margin-top: 0;
+      }
+      #panelBattle.battle-popup-active .log {
+        margin-top: 0;
+        max-height: min(28vh, 260px);
+      }
+      body.battle-popup-active .corner-menu,
+      body.battle-popup-active .mobile-controls,
+      body.battle-popup-active .hud-toggle-floating {
+        opacity: 0;
+        pointer-events: none;
+      }
       .hud-toggle-floating {
         position: fixed;
         top: max(8px, env(safe-area-inset-top));
@@ -602,6 +651,15 @@
         }
         .battle-controls {
           grid-template-columns: 1fr 1fr 1fr;
+        }
+        #panelBattle.battle-popup-active {
+          inset: max(6px, env(safe-area-inset-top)) 6px max(6px, env(safe-area-inset-bottom)) 6px;
+          padding: 10px;
+          grid-template-rows: auto auto minmax(180px, 1fr) auto auto;
+        }
+        #panelBattle.battle-popup-active #battleCanvas {
+          height: min(48vh, 380px);
+          min-height: 180px;
         }
         .mobile-pad {
           grid-template-columns: repeat(3, 44px);
@@ -2096,6 +2154,33 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
       };
 
+      const setBattlePopupActive = (active) => {
+        if (!dom.panelBattle) return;
+        const popupClass = "battle-popup-active";
+        const hasClass = dom.panelBattle.classList.contains(popupClass);
+        const expectedParent = active ? document.body : dom.rightMenuContent;
+        if (hasClass === active && dom.panelBattle.parentElement === expectedParent) return;
+
+        if (active) {
+          if (dom.panelBattle.parentElement !== document.body) {
+            document.body.appendChild(dom.panelBattle);
+          }
+          dom.panelBattle.classList.add(popupClass);
+          document.body.classList.add("battle-popup-active");
+        } else {
+          dom.panelBattle.classList.remove(popupClass);
+          document.body.classList.remove("battle-popup-active");
+          if (dom.rightMenuContent) {
+            if (dom.panelAudio && dom.panelAudio.parentElement === dom.rightMenuContent) {
+              dom.rightMenuContent.insertBefore(dom.panelBattle, dom.panelAudio);
+            } else {
+              dom.rightMenuContent.appendChild(dom.panelBattle);
+            }
+          }
+        }
+        resizeCanvases();
+      };
+
       const applyHudMode = () => {
         document.body.classList.toggle("minimal-hud", state.ui.minimalHud);
         if (dom.minimalHudBtn) {
@@ -3132,6 +3217,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             state.mode = "explore";
             state.battle = null;
             state.encounterEnemyId = null;
+            setBattlePopupActive(false);
+            resetBattleFx();
             setStatus("Smoke Bomb success: escaped battle.");
             playSfx("item");
             appendBattleLog("Escape succeeded.");
@@ -3749,6 +3836,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         state.pendingBattle = true;
         state.mode = "battle";
         state.encounterEnemyId = enemy.id;
+        setBattlePopupActive(true);
         resetBattleFx();
         showBossIntro(enemy);
         setStatus(`Enemy contact: ${getEnemyDisplayName(enemy.kind)}. Initiating turn battle...`);
@@ -3840,6 +3928,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
         state.mode = "explore";
         state.encounterEnemyId = null;
+        setBattlePopupActive(false);
         resetBattleFx();
         if (battle.status !== "active") {
           state.battle = null;
@@ -4954,6 +5043,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         dom.syncWeb3Btn.disabled = !connected;
         dom.mintSigilBtn.disabled = !connected;
 
+        const battleOverlayActive = state.mode === "battle" || state.pendingBattle;
+        setBattlePopupActive(battleOverlayActive);
         const battleActive = state.mode === "battle" && state.battle && state.battle.status === "active";
         dom.strikeBtn.disabled = !battleActive;
         dom.guardBtn.disabled = !battleActive;
