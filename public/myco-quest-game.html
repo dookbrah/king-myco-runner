@@ -1,0 +1,2958 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Myco Quest - Kingdom Overworld Prototype</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: "Trebuchet MS", "Segoe UI", Arial, sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: radial-gradient(circle at top, #1a2548 0%, #080d1c 62%);
+        color: #dbeafe;
+        overscroll-behavior: none;
+      }
+      main {
+        width: 100%;
+        margin: 0 auto;
+        padding: 10px;
+        display: grid;
+        gap: 10px;
+      }
+      .panel {
+        border: 1px solid #2f4678;
+        background: rgba(10, 18, 36, 0.92);
+        border-radius: 12px;
+        padding: 12px;
+      }
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+      h1 {
+        font-size: 24px;
+      }
+      h2 {
+        font-size: 18px;
+      }
+      h3 {
+        font-size: 15px;
+      }
+      .tiny {
+        font-size: 12px;
+        color: #a9c0e8;
+      }
+      .top-grid {
+        margin-top: 8px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: 8px;
+      }
+      label {
+        display: grid;
+        gap: 4px;
+        font-size: 12px;
+        color: #c6ddff;
+      }
+      input,
+      select,
+      button {
+        border: 1px solid #3c588f;
+        background: #0e1a34;
+        color: #eff6ff;
+        border-radius: 8px;
+        padding: 8px 10px;
+      }
+      button {
+        cursor: pointer;
+        font-weight: 700;
+      }
+      button.primary {
+        background: #1d4ed8;
+        border-color: #1e3a8a;
+      }
+      button.warn {
+        background: #8a2e1c;
+        border-color: #be482e;
+      }
+      button:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+      .actions {
+        margin-top: 8px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .status {
+        min-height: 20px;
+        margin-top: 8px;
+        color: #93c5fd;
+      }
+      .status.error {
+        color: #fda4af;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+      @media (max-width: 1160px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+      }
+      .canvas-shell {
+        border: 2px solid #365285;
+        border-radius: 10px;
+        overflow: hidden;
+        background: #040913;
+      }
+      canvas {
+        width: 100%;
+        display: block;
+        image-rendering: auto;
+      }
+      #worldCanvas {
+        height: calc(100vh - 260px);
+        max-height: none;
+        min-height: 560px;
+      }
+      .hint {
+        margin-top: 8px;
+        white-space: pre-wrap;
+        font-size: 13px;
+        color: #c7d2fe;
+      }
+      .hud-grid {
+        display: grid;
+        gap: 10px;
+      }
+      .stat-row {
+        display: grid;
+        grid-template-columns: 95px 1fr auto;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+      }
+      .bar-bg {
+        height: 12px;
+        border-radius: 999px;
+        background: #0b1224;
+        border: 1px solid #243861;
+        overflow: hidden;
+      }
+      .bar-fill {
+        height: 100%;
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .shop-grid {
+        margin-top: 8px;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+      .shop-grid button {
+        text-align: left;
+      }
+      .chip {
+        font-size: 11px;
+        border: 1px solid #355489;
+        border-radius: 999px;
+        padding: 3px 8px;
+        background: #0f1e3b;
+      }
+      .quest-list {
+        margin: 0;
+        padding-left: 18px;
+        display: grid;
+        gap: 6px;
+        font-size: 13px;
+      }
+      .quest-done {
+        color: #4ade80;
+      }
+      .battle-controls {
+        margin-top: 8px;
+        display: grid;
+        grid-template-columns: 1fr auto auto auto auto;
+        gap: 6px;
+      }
+      @media (max-width: 520px) {
+        .battle-controls {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      .log {
+        margin-top: 8px;
+        max-height: 180px;
+        overflow: auto;
+        background: #0a1326;
+        border: 1px solid #264170;
+        border-radius: 8px;
+        padding: 8px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 12px;
+        white-space: pre-wrap;
+      }
+      .dialogue {
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 18px;
+        width: min(860px, calc(100% - 24px));
+        border-radius: 12px;
+        border: 1px solid #3f5e97;
+        background: rgba(8, 14, 30, 0.96);
+        padding: 12px;
+        z-index: 20;
+        display: none;
+      }
+      .dialogue.active {
+        display: block;
+      }
+      .cutscene {
+        border-color: #6d28d9;
+        background: rgba(18, 8, 34, 0.95);
+      }
+      .dialogue h3 {
+        margin-bottom: 6px;
+      }
+      .dialogue p {
+        margin-bottom: 8px;
+        color: #e2e8f0;
+      }
+      .dialogue-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .subtle {
+        color: #9fb6dd;
+        font-size: 12px;
+      }
+      .corner-menu {
+        position: fixed;
+        top: 12px;
+        z-index: 30;
+        width: min(400px, 34vw);
+        max-height: calc(100vh - 24px);
+        overflow: auto;
+      }
+      .corner-menu.left {
+        left: 12px;
+      }
+      .corner-menu.right {
+        right: 12px;
+      }
+      .corner-menu details {
+        border: 1px solid #355487;
+        background: rgba(8, 15, 32, 0.95);
+        border-radius: 10px;
+        margin-bottom: 8px;
+        overflow: hidden;
+      }
+      .corner-menu summary {
+        cursor: pointer;
+        font-weight: 700;
+        padding: 8px 10px;
+        background: #0f1d39;
+      }
+      .corner-menu .panel {
+        margin: 8px;
+      }
+      .hidden {
+        display: none !important;
+      }
+      .hud-toggle-floating {
+        position: fixed;
+        top: max(8px, env(safe-area-inset-top));
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 40;
+        display: none;
+        border: 1px solid #3f5f99;
+        background: rgba(11, 25, 50, 0.95);
+        color: #eff6ff;
+        border-radius: 999px;
+        padding: 8px 12px;
+      }
+      body.minimal-hud main > section:first-child {
+        display: none;
+      }
+      body.minimal-hud .corner-menu {
+        display: none;
+      }
+      body.minimal-hud .hud-toggle-floating {
+        display: block;
+      }
+      body.minimal-hud #worldCanvas {
+        height: calc(100vh - 110px);
+        min-height: 260px;
+      }
+      .mobile-controls {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: max(10px, env(safe-area-inset-bottom));
+        z-index: 36;
+        display: none;
+        justify-content: space-between;
+        align-items: flex-end;
+        padding: 0 10px;
+        pointer-events: none;
+      }
+      .mobile-pad,
+      .mobile-actions {
+        pointer-events: auto;
+        display: grid;
+        gap: 6px;
+      }
+      .mobile-pad {
+        grid-template-columns: repeat(3, 50px);
+        grid-template-rows: repeat(3, 42px);
+      }
+      .mobile-actions {
+        grid-template-columns: repeat(2, minmax(56px, 72px));
+      }
+      .touch-btn {
+        border: 1px solid #3e639a;
+        border-radius: 10px;
+        background: rgba(12, 25, 49, 0.92);
+        color: #eef6ff;
+        font-size: 13px;
+        font-weight: 700;
+        touch-action: none;
+        min-height: 40px;
+      }
+      .touch-btn.active {
+        background: #1d4ed8;
+      }
+      .touch-spacer {
+        pointer-events: none;
+      }
+      @media (max-width: 1024px) {
+        h1 {
+          font-size: 20px;
+        }
+        #worldCanvas {
+          height: calc(100vh - 300px);
+          min-height: 420px;
+        }
+        .corner-menu {
+          width: min(46vw, 340px);
+          max-height: calc(100vh - 18px);
+        }
+      }
+      @media (hover: none) and (pointer: coarse) {
+        .mobile-controls {
+          display: flex;
+        }
+        .dialogue {
+          bottom: 112px;
+        }
+      }
+      @media (max-width: 760px) {
+        main {
+          padding: 6px;
+          gap: 6px;
+        }
+        .top-grid {
+          grid-template-columns: repeat(2, minmax(120px, 1fr));
+        }
+        #worldCanvas {
+          height: calc(100vh - 350px);
+          min-height: 280px;
+        }
+        .corner-menu {
+          top: 6px;
+          width: calc(50vw - 10px);
+          max-height: 46vh;
+        }
+        .corner-menu.left {
+          left: 6px;
+        }
+        .corner-menu.right {
+          right: 6px;
+        }
+        .corner-menu summary {
+          font-size: 12px;
+          padding: 7px 8px;
+        }
+        .corner-menu .panel {
+          margin: 6px;
+          padding: 8px;
+        }
+        .dialogue {
+          bottom: 112px;
+          width: calc(100% - 12px);
+          border-radius: 10px;
+          padding: 10px;
+        }
+        .battle-controls {
+          grid-template-columns: 1fr 1fr 1fr;
+        }
+        .mobile-pad {
+          grid-template-columns: repeat(3, 44px);
+          grid-template-rows: repeat(3, 38px);
+        }
+      }
+      @media (max-width: 950px) and (orientation: landscape) and (hover: none) and (pointer: coarse) {
+        #worldCanvas {
+          height: calc(100vh - 170px);
+          min-height: 210px;
+        }
+        .corner-menu {
+          width: min(36vw, 280px);
+          max-height: 56vh;
+        }
+        .dialogue {
+          bottom: 86px;
+        }
+        .mobile-controls {
+          bottom: max(4px, env(safe-area-inset-bottom));
+          padding: 0 6px;
+        }
+        .touch-btn {
+          min-height: 34px;
+          font-size: 12px;
+          padding: 6px 8px;
+        }
+        .mobile-actions {
+          grid-template-columns: repeat(3, minmax(52px, 66px));
+        }
+      }
+      a {
+        color: #93c5fd;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="panel">
+        <h1>Myco Quest - 32-bit Overworld + Contact Battle</h1>
+        <p class="tiny">
+          Inspiration blend: exploration adventure + creature encounters + turn RPG strategy. Move through regions, collect clues, unlock powers, and
+          challenge Dark Mycelius in the Solana Chainlands.
+          <a href="/dev/myco-quest" target="_blank" rel="noreferrer">Open Dev HUD</a>
+        </p>
+
+        <div class="top-grid">
+          <label>
+            API Base (optional)
+            <input id="apiBase" placeholder="https://api.kingmyco.io" />
+          </label>
+          <label>
+            Source
+            <input id="source" value="kingmyco.io" />
+          </label>
+          <label>
+            Player External ID
+            <input id="externalId" value="myco-player-01" />
+          </label>
+          <label>
+            X-Source-Token (optional)
+            <input id="sourceToken" placeholder="only if source auth enabled" />
+          </label>
+        </div>
+
+        <div class="actions">
+          <button id="syncBtn" class="primary">Sync Campaign</button>
+          <button id="saveBtn">Save Progress</button>
+          <button id="resetBtn" class="warn">Reset Local Progress</button>
+          <button id="minimalHudBtn">Minimal HUD: Off</button>
+        </div>
+        <p id="status" class="status"></p>
+      </section>
+
+      <section class="layout">
+        <article class="panel">
+          <h2>Kingdom Overworld (32-bit, Top-Down, Explorable)</h2>
+          <p class="subtle">Use WASD or Arrow keys to move. Press E to interact with NPCs, houses, caves, dungeons, and gates.</p>
+          <div class="canvas-shell" style="margin-top: 8px">
+            <canvas id="worldCanvas" width="960" height="540"></canvas>
+          </div>
+          <p id="regionHint" class="hint">Booting world...</p>
+        </article>
+
+        <aside id="hudAside" class="hud-grid">
+          <section id="panelStatus" class="panel">
+            <h2>King Myco Status</h2>
+            <div class="stat-row" style="margin-top: 8px">
+              <span>HP</span>
+              <div class="bar-bg"><div id="hpFill" class="bar-fill" style="background: #22c55e; width: 100%"></div></div>
+              <strong id="hpText">100 / 100</strong>
+            </div>
+            <div class="stat-row">
+              <span>Morality</span>
+              <div class="bar-bg"><div id="moralityFill" class="bar-fill" style="background: #8b5cf6; width: 50%"></div></div>
+              <strong id="moralityText">0</strong>
+            </div>
+            <div class="stat-row">
+              <span>Spores</span>
+              <div class="bar-bg"><div id="sporeFill" class="bar-fill" style="background: #06b6d4; width: 0%"></div></div>
+              <strong id="sporeText">0</strong>
+            </div>
+            <div class="stat-row">
+              <span>Golden</span>
+              <div class="bar-bg"><div id="goldFill" class="bar-fill" style="background: #fbbf24; width: 0%"></div></div>
+              <strong id="goldText">0</strong>
+            </div>
+
+            <div class="top-grid" style="margin-top: 8px">
+              <label>
+                Attack
+                <input id="attackStat" value="1" readonly />
+              </label>
+              <label>
+                Defense
+                <input id="defenseStat" value="1" readonly />
+              </label>
+              <label>
+                Magic
+                <input id="magicStat" value="1" readonly />
+              </label>
+            </div>
+
+            <div class="actions">
+              <button id="upgradeAttackBtn">+ Attack (25 spores)</button>
+              <button id="upgradeDefenseBtn">+ Defense (25 spores)</button>
+              <button id="upgradeMagicBtn">+ Magic (30 spores)</button>
+            </div>
+          </section>
+
+          <section id="panelStory" class="panel">
+            <h2>Story Phase + Clues</h2>
+            <ul id="questList" class="quest-list"></ul>
+            <p class="subtle" style="margin-top: 8px">Collected clues</p>
+            <div id="clueList" class="chips"></div>
+          </section>
+
+          <section id="panelInventory" class="panel">
+            <h2>Inventory + Shop</h2>
+            <p class="subtle">Spend spores to prep for battles and puzzle routes.</p>
+            <div id="inventoryList" class="chips" style="margin-top: 8px"></div>
+            <div class="shop-grid">
+              <button id="buyPotionBtn">Buy Myco Potion (15 spores)</button>
+              <button id="buyManaBtn">Buy Mana Dew (22 spores)</button>
+              <button id="buyBombBtn">Buy Smoke Bomb (28 spores)</button>
+              <button id="useManaBtn">Use Mana Dew</button>
+              <button id="useBombBtn">Use Smoke Bomb</button>
+            </div>
+            <p class="subtle" style="margin-top: 6px">Potion heals HP, Mana Dew boosts magic turns, Smoke Bomb can escape battle.</p>
+          </section>
+
+          <section id="panelBattle" class="panel">
+            <h2>Turn Battle</h2>
+            <div class="canvas-shell" style="margin-top: 8px">
+              <canvas id="battleCanvas" width="460" height="230"></canvas>
+            </div>
+            <p id="battleSummary" class="subtle" style="margin-top: 8px">No active battle. Touch an enemy in the overworld to engage.</p>
+            <div class="battle-controls">
+              <select id="elementSelect">
+                <option value="fire">Fire</option>
+                <option value="water">Water</option>
+                <option value="nature">Nature</option>
+                <option value="ice">Ice</option>
+                <option value="void">Void</option>
+              </select>
+              <button id="strikeBtn">Strike</button>
+              <button id="guardBtn">Guard</button>
+              <button id="skillBtn" class="primary">Skill</button>
+              <button id="itemBtn">Use Potion</button>
+            </div>
+            <div id="battleLog" class="log">No combat logs yet.</div>
+          </section>
+
+          <section id="panelControls" class="panel">
+            <h3>Controls</h3>
+            <p class="subtle">
+              Move: WASD / Arrow keys<br />
+              Interact: E<br />
+              Sprint: Hold Shift<br />
+              Cutscene Next: Space<br />
+              Run into houses, NPCs, or dungeons to activate events. Contact an enemy to enter turn battle.
+            </p>
+          </section>
+
+          <section id="panelAudio" class="panel">
+            <h3>Audio (32-bit style)</h3>
+            <p class="subtle">Static background visual mode is active. Enable music/SFX below.</p>
+            <div class="actions" style="margin-top: 6px">
+              <button id="audioEnableBtn" class="primary">Enable Music</button>
+              <button id="musicToggleBtn">Music: On</button>
+              <button id="sfxToggleBtn">SFX: On</button>
+            </div>
+            <p id="audioStateText" class="subtle" style="margin-top: 6px">Audio locked until first user interaction.</p>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+    <section class="corner-menu left">
+      <details open>
+        <summary>World + Story</summary>
+        <div id="leftMenuContent"></div>
+      </details>
+    </section>
+
+    <section class="corner-menu right">
+      <details open>
+        <summary>Character + Inventory + Battle + Audio</summary>
+        <div id="rightMenuContent"></div>
+      </details>
+    </section>
+
+    <button id="minimalHudFloating" class="hud-toggle-floating">Show HUD</button>
+
+    <section id="mobileControls" class="mobile-controls">
+      <div class="mobile-pad">
+        <span class="touch-spacer"></span>
+        <button class="touch-btn" data-key="arrowup">▲</button>
+        <button class="touch-btn" data-key="shift">RUN</button>
+        <button class="touch-btn" data-key="arrowleft">◀</button>
+        <span class="touch-spacer"></span>
+        <button class="touch-btn" data-key="arrowright">▶</button>
+        <span class="touch-spacer"></span>
+        <button class="touch-btn" data-key="arrowdown">▼</button>
+        <span class="touch-spacer"></span>
+      </div>
+      <div class="mobile-actions">
+        <button class="touch-btn" data-action="interact">Interact</button>
+        <button class="touch-btn" data-action="item">Potion</button>
+        <button class="touch-btn" data-action="strike">Strike</button>
+        <button class="touch-btn" data-action="guard">Guard</button>
+        <button class="touch-btn" data-action="skill">Skill</button>
+        <button class="touch-btn" data-action="sync">Sync</button>
+      </div>
+    </section>
+
+    <section id="dialoguePanel" class="dialogue">
+      <h3 id="dialogueTitle">Dialogue</h3>
+      <p id="dialogueBody">...</p>
+      <div class="dialogue-actions">
+        <button id="choiceMycoBtn" class="primary">Mycoside Choice</button>
+        <button id="choiceDarkBtn" class="warn">Darkside Choice</button>
+        <button id="choiceTradeBtn">Trade</button>
+        <button id="closeDialogueBtn">Close</button>
+      </div>
+    </section>
+
+    <section id="cutscenePanel" class="dialogue cutscene">
+      <h3 id="cutsceneTitle">Cutscene</h3>
+      <p id="cutsceneBody">...</p>
+      <p id="cutsceneMeta" class="subtle"></p>
+      <div class="dialogue-actions">
+        <button id="cutsceneNextBtn" class="primary">Next</button>
+        <button id="cutsceneSkipBtn">Skip</button>
+      </div>
+    </section>
+
+    <script>
+      const STORAGE_CONFIG_KEY = "mycoQuestPlayableConfig";
+      const STORAGE_STATE_KEY = "mycoQuestOverworldStateV2";
+      const TILE = 48;
+      const WORLD_WIDTH = 4600;
+      const WORLD_HEIGHT = 3200;
+      const BASE_MAX_HP = 126;
+
+      const worldCanvas = document.getElementById("worldCanvas");
+      const worldCtx = worldCanvas.getContext("2d");
+      const battleCanvas = document.getElementById("battleCanvas");
+      const battleCtx = battleCanvas.getContext("2d");
+      worldCtx.imageSmoothingEnabled = false;
+      battleCtx.imageSmoothingEnabled = false;
+
+      const dom = {
+        apiBase: document.getElementById("apiBase"),
+        source: document.getElementById("source"),
+        externalId: document.getElementById("externalId"),
+        sourceToken: document.getElementById("sourceToken"),
+        syncBtn: document.getElementById("syncBtn"),
+        saveBtn: document.getElementById("saveBtn"),
+        resetBtn: document.getElementById("resetBtn"),
+        minimalHudBtn: document.getElementById("minimalHudBtn"),
+        minimalHudFloating: document.getElementById("minimalHudFloating"),
+        status: document.getElementById("status"),
+        regionHint: document.getElementById("regionHint"),
+        hpFill: document.getElementById("hpFill"),
+        hpText: document.getElementById("hpText"),
+        moralityFill: document.getElementById("moralityFill"),
+        moralityText: document.getElementById("moralityText"),
+        sporeFill: document.getElementById("sporeFill"),
+        sporeText: document.getElementById("sporeText"),
+        goldFill: document.getElementById("goldFill"),
+        goldText: document.getElementById("goldText"),
+        attackStat: document.getElementById("attackStat"),
+        defenseStat: document.getElementById("defenseStat"),
+        magicStat: document.getElementById("magicStat"),
+        clueList: document.getElementById("clueList"),
+        questList: document.getElementById("questList"),
+        inventoryList: document.getElementById("inventoryList"),
+        battleSummary: document.getElementById("battleSummary"),
+        battleLog: document.getElementById("battleLog"),
+        elementSelect: document.getElementById("elementSelect"),
+        strikeBtn: document.getElementById("strikeBtn"),
+        guardBtn: document.getElementById("guardBtn"),
+        skillBtn: document.getElementById("skillBtn"),
+        itemBtn: document.getElementById("itemBtn"),
+        upgradeAttackBtn: document.getElementById("upgradeAttackBtn"),
+        upgradeDefenseBtn: document.getElementById("upgradeDefenseBtn"),
+        upgradeMagicBtn: document.getElementById("upgradeMagicBtn"),
+        buyPotionBtn: document.getElementById("buyPotionBtn"),
+        buyManaBtn: document.getElementById("buyManaBtn"),
+        buyBombBtn: document.getElementById("buyBombBtn"),
+        useManaBtn: document.getElementById("useManaBtn"),
+        useBombBtn: document.getElementById("useBombBtn"),
+        dialoguePanel: document.getElementById("dialoguePanel"),
+        dialogueTitle: document.getElementById("dialogueTitle"),
+        dialogueBody: document.getElementById("dialogueBody"),
+        choiceMycoBtn: document.getElementById("choiceMycoBtn"),
+        choiceDarkBtn: document.getElementById("choiceDarkBtn"),
+        choiceTradeBtn: document.getElementById("choiceTradeBtn"),
+        closeDialogueBtn: document.getElementById("closeDialogueBtn"),
+        cutscenePanel: document.getElementById("cutscenePanel"),
+        cutsceneTitle: document.getElementById("cutsceneTitle"),
+        cutsceneBody: document.getElementById("cutsceneBody"),
+        cutsceneMeta: document.getElementById("cutsceneMeta"),
+        cutsceneNextBtn: document.getElementById("cutsceneNextBtn"),
+        cutsceneSkipBtn: document.getElementById("cutsceneSkipBtn"),
+        audioEnableBtn: document.getElementById("audioEnableBtn"),
+        musicToggleBtn: document.getElementById("musicToggleBtn"),
+        sfxToggleBtn: document.getElementById("sfxToggleBtn"),
+        audioStateText: document.getElementById("audioStateText"),
+        leftMenuContent: document.getElementById("leftMenuContent"),
+        rightMenuContent: document.getElementById("rightMenuContent"),
+        hudAside: document.getElementById("hudAside"),
+        panelStatus: document.getElementById("panelStatus"),
+        panelStory: document.getElementById("panelStory"),
+        panelInventory: document.getElementById("panelInventory"),
+        panelBattle: document.getElementById("panelBattle"),
+        panelControls: document.getElementById("panelControls"),
+        panelAudio: document.getElementById("panelAudio"),
+        mobileControls: document.getElementById("mobileControls"),
+      };
+
+      const REGIONS = [
+        {
+          id: "myco-kingdom",
+          name: "Myco Kingdom",
+          x: 0,
+          y: 0,
+          w: 1400,
+          h: 1300,
+          colorA: "#2f6b3f",
+          colorB: "#234f32",
+          label: "Mushroom villages and the royal grove.",
+        },
+        {
+          id: "rougarou-fen",
+          name: "Rougarou Fen",
+          x: 1400,
+          y: 0,
+          w: 1200,
+          h: 1100,
+          colorA: "#56753f",
+          colorB: "#415a30",
+          label: "Howling marshes ruled by Rougarou.",
+        },
+        {
+          id: "tri-drake-peaks",
+          name: "Tri-Drake Peaks",
+          x: 2600,
+          y: 0,
+          w: 1200,
+          h: 1300,
+          colorA: "#545468",
+          colorB: "#414155",
+          label: "Ash mountains of the three-headed dragon.",
+        },
+        {
+          id: "crimson-tide",
+          name: "Crimson Tide Shelf",
+          x: 1400,
+          y: 1100,
+          w: 1400,
+          h: 1500,
+          colorA: "#14586d",
+          colorB: "#11485b",
+          label: "Coral caverns where the evil crab commands.",
+        },
+        {
+          id: "solana-chainlands",
+          name: "Solana Chainlands",
+          x: 2800,
+          y: 1300,
+          w: 1800,
+          h: 1700,
+          colorA: "#2f2a63",
+          colorB: "#251f45",
+          label: "Corrupted blockchain frontier of Dark Mycelius.",
+        },
+        {
+          id: "verdant-commons",
+          name: "Verdant Commons",
+          x: 0,
+          y: 1300,
+          w: 1400,
+          h: 1200,
+          colorA: "#2f7f58",
+          colorB: "#236043",
+          label: "Trade fields, hidden houses, and caravan trails.",
+        },
+        {
+          id: "obsidian-wilds",
+          name: "Obsidian Wilds",
+          x: 0,
+          y: 2500,
+          w: 2200,
+          h: 700,
+          colorA: "#3f434f",
+          colorB: "#2d313a",
+          label: "Fractured blackstone canyons crawling with rot scouts.",
+        },
+      ];
+
+      const GATES = [
+        {
+          id: "fen-to-drake",
+          x: 2588,
+          y: 420,
+          w: 24,
+          h: 180,
+          hint: "Need clue: Lunar Wolf Mark (from Fen villagers).",
+          isUnlocked: (state) => state.progress.clues.has("lunar-wolf-mark"),
+        },
+        {
+          id: "fen-to-crimson",
+          x: 1860,
+          y: 1088,
+          w: 220,
+          h: 24,
+          hint: "Defeat Rougarou to break the rot bramble.",
+          isUnlocked: (state) => state.progress.defeatedBosses.has("rougarou"),
+        },
+        {
+          id: "crimson-to-solana",
+          x: 2780,
+          y: 1760,
+          w: 24,
+          h: 220,
+          hint: "Need Abyss Pearl clue, magic level 3+, and dragon + crab victories.",
+          isUnlocked: (state) =>
+            state.progress.clues.has("abyss-pearl") &&
+            state.hero.magic >= 3 &&
+            state.progress.defeatedBosses.has("tri-drake") &&
+            state.progress.defeatedBosses.has("evil-crab"),
+        },
+        {
+          id: "commons-to-obsidian",
+          x: 1388,
+          y: 2488,
+          w: 220,
+          h: 24,
+          hint: "Need Trade Charter clue from Verdant caravans.",
+          isUnlocked: (state) => state.progress.clues.has("trade-charter"),
+        },
+      ];
+
+      const STRUCTURES = [
+        { id: "house-1", type: "house", x: 190, y: 180, w: 148, h: 110, name: "Sporecap Cottage", solid: true },
+        { id: "house-2", type: "house", x: 440, y: 270, w: 138, h: 100, name: "Healer Hut", solid: true },
+        { id: "house-3", type: "house", x: 760, y: 170, w: 152, h: 114, name: "Elder Archive", solid: true },
+        { id: "house-4", type: "house", x: 360, y: 1540, w: 150, h: 108, name: "Commons Trade Hall", solid: true },
+        { id: "house-5", type: "house", x: 950, y: 1760, w: 160, h: 112, name: "Caravan Inn", solid: true },
+        { id: "cave-1", type: "cave", x: 1470, y: 340, w: 134, h: 98, name: "Fen Echo Cave", solid: true },
+        { id: "cave-2", type: "cave", x: 320, y: 2670, w: 150, h: 108, name: "Obsidian Rift Cave", solid: true },
+        { id: "dungeon-1", type: "dungeon", x: 2870, y: 300, w: 176, h: 132, name: "Drake Bastion", solid: true },
+        { id: "dungeon-2", type: "dungeon", x: 1660, y: 1810, w: 176, h: 130, name: "Crimson Reef Vault", solid: true },
+        { id: "dungeon-3", type: "dungeon", x: 3240, y: 1840, w: 210, h: 142, name: "Chain Crypt", solid: true },
+        { id: "dungeon-4", type: "dungeon", x: 1190, y: 2670, w: 188, h: 130, name: "Obsidian Trial Den", solid: true },
+        { id: "shrine-1", type: "shrine", x: 920, y: 700, w: 90, h: 90, name: "Myco Shrine", solid: false },
+        { id: "shrine-2", type: "shrine", x: 1960, y: 1450, w: 90, h: 90, name: "Tidal Rune Shrine", solid: false },
+        { id: "shrine-3", type: "shrine", x: 630, y: 2320, w: 90, h: 90, name: "Commons Memory Shrine", solid: false },
+      ];
+
+      const NPCS = [
+        {
+          id: "elder-myca",
+          name: "Elder Myca",
+          x: 800,
+          y: 360,
+          clueId: "royal-oath",
+          clueLabel: "Royal Oath Fragment",
+          tradeItem: "mycoPotion",
+          tradeCost: 16,
+          tradeQty: 1,
+          adviceGood: "Trust the villagers first. Compassion reveals hidden shrine paths.",
+          adviceBad: "Charge east immediately. You will hit elite packs before you're ready.",
+          mycoText: "You choose compassion. The kingdom still believes in you, King Myco.",
+          darkText: "Power without purpose feeds the rot. Do not forget who you protect.",
+          intro: "Your crown dims, but your spirit can relight the kingdom. Seek clues to restore your sorcery.",
+        },
+        {
+          id: "fen-scout",
+          name: "Fen Scout Rill",
+          x: 1600,
+          y: 440,
+          clueId: "lunar-wolf-mark",
+          clueLabel: "Lunar Wolf Mark",
+          tradeItem: "smokeBomb",
+          tradeCost: 26,
+          tradeQty: 1,
+          adviceGood: "Rougarou feints left, then lunges right. Guard on turn two.",
+          adviceBad: "Never guard in Fen fights. Pure offense always works. (It doesn't.)",
+          mycoText: "You protected the marsh families. Take this mark and pass the drake gate.",
+          darkText: "Fear wins this moment, but fear always asks for more.",
+          intro: "Rougarou hunts by moon scent. Read his trails and you'll survive the Fen.",
+        },
+        {
+          id: "drake-hermit",
+          name: "Hermit Cindr",
+          x: 3060,
+          y: 560,
+          clueId: "drake-ember",
+          clueLabel: "Drake Ember Sigil",
+          tradeItem: "manaDew",
+          tradeCost: 24,
+          tradeQty: 1,
+          adviceGood: "Cycle elements in drake fights to break scale resistance.",
+          adviceBad: "Use only one element. The dragon will adapt and punish that.",
+          mycoText: "You solved the ash-rune puzzle. This sigil can pierce scale warding.",
+          darkText: "You ripped the answer by force. It works, but leaves a scar on your path.",
+          intro: "Three heads, three lies. Only a balanced flame can shatter the dragon ward.",
+        },
+        {
+          id: "reef-oracle",
+          name: "Oracle Neri",
+          x: 1880,
+          y: 1480,
+          clueId: "abyss-pearl",
+          clueLabel: "Abyss Pearl Cipher",
+          tradeItem: "mycoPotion",
+          tradeCost: 18,
+          tradeQty: 2,
+          adviceGood: "Evil Crab's shell is weakest after it defends. Strike then skill.",
+          adviceBad: "Crab armor never breaks, so run forever. (Bad advice.)",
+          mycoText: "Tides answer your patience. The pearl reveals corrupted chain routes.",
+          darkText: "You bent the tide with rage. The cipher still works, but the waters remember.",
+          intro: "The evil crab hides between currents. Read this cipher to open the Solana tide lock.",
+        },
+        {
+          id: "chain-smith",
+          name: "Chain Smith Vox",
+          x: 3380,
+          y: 2140,
+          clueId: "solana-anchor",
+          clueLabel: "Solana Anchor Key",
+          tradeItem: "smokeBomb",
+          tradeCost: 30,
+          tradeQty: 1,
+          adviceGood: "Dark Mycelius alternates pressure. Guard every third turn to survive spikes.",
+          adviceBad: "Dark Mycelius cannot hit through guard; just stall. (False.)",
+          mycoText: "You chose to rebuild, not consume. The anchor key is yours.",
+          darkText: "You cracked my forge for speed. You have the key, but not my trust.",
+          intro: "Dark Mycelius bends corrupted blocks. Anchor your will before you face him.",
+        },
+        {
+          id: "commons-merchant",
+          name: "Merchant Poro",
+          x: 520,
+          y: 1710,
+          clueId: "trade-charter",
+          clueLabel: "Trade Charter",
+          tradeItem: "goldenSpore",
+          tradeCost: 42,
+          tradeQty: 1,
+          adviceGood: "Treat villagers fairly and they reveal safe house routes through new regions.",
+          adviceBad: "Scam everyone now and you'll still get their best clues. (You won't.)",
+          mycoText: "Fair dealing travels faster than rumors. Take this trade charter.",
+          darkText: "You bargained with threats. The charter is real, but your reputation sinks.",
+          intro: "Commons caravans know every road. Trade honestly and you'll unlock the long routes.",
+        },
+      ];
+
+      const BASE_ENEMIES = [
+        { id: "slime-1", kind: "rot-spore", x: 620, y: 820, lane: "speed", boss: false, region: "myco-kingdom" },
+        { id: "slime-2", kind: "mold-raider", x: 1060, y: 930, lane: "precision", boss: false, region: "myco-kingdom" },
+        { id: "fen-1", kind: "fen-stalker", x: 1700, y: 670, lane: "survival", boss: false, region: "rougarou-fen" },
+        { id: "fen-2", kind: "rot-jackal", x: 2280, y: 760, lane: "speed", boss: false, region: "rougarou-fen" },
+        { id: "boss-rougarou", kind: "rougarou", x: 2040, y: 320, lane: "survival", boss: true, region: "rougarou-fen" },
+        { id: "drake-1", kind: "ember-drone", x: 2860, y: 760, lane: "precision", boss: false, region: "tri-drake-peaks" },
+        { id: "drake-2", kind: "ash-ripper", x: 3500, y: 860, lane: "tactical", boss: false, region: "tri-drake-peaks" },
+        { id: "boss-drake", kind: "tri-drake", x: 3260, y: 360, lane: "tactical", boss: true, region: "tri-drake-peaks" },
+        { id: "reef-1", kind: "shell-rot", x: 1540, y: 1860, lane: "puzzle", boss: false, region: "crimson-tide" },
+        { id: "reef-2", kind: "spine-fin", x: 2580, y: 1940, lane: "survival", boss: false, region: "crimson-tide" },
+        { id: "boss-crab", kind: "evil-crab", x: 2140, y: 1360, lane: "tactical", boss: true, region: "crimson-tide" },
+        { id: "chain-1", kind: "block-wraith", x: 3080, y: 1580, lane: "precision", boss: false, region: "solana-chainlands" },
+        { id: "chain-2", kind: "ledger-specter", x: 4100, y: 1960, lane: "puzzle", boss: false, region: "solana-chainlands" },
+        { id: "boss-dark", kind: "dark-mycelius", x: 3780, y: 2320, lane: "tactical", boss: true, region: "solana-chainlands" },
+        { id: "commons-1", kind: "thorn-bandit", x: 840, y: 2060, lane: "speed", boss: false, region: "verdant-commons" },
+        { id: "commons-2", kind: "spore-thief", x: 1180, y: 1580, lane: "precision", boss: false, region: "verdant-commons" },
+        { id: "obsidian-1", kind: "basalt-hound", x: 620, y: 2860, lane: "survival", boss: false, region: "obsidian-wilds" },
+        { id: "obsidian-2", kind: "void-miner", x: 1780, y: 2960, lane: "tactical", boss: false, region: "obsidian-wilds" },
+      ];
+
+      const PICKUPS = [
+        { id: "spore-1", x: 380, y: 660, value: 12, golden: false },
+        { id: "spore-2", x: 1220, y: 980, value: 14, golden: false },
+        { id: "spore-3", x: 1520, y: 210, value: 16, golden: false },
+        { id: "spore-4", x: 1890, y: 920, value: 20, golden: false },
+        { id: "spore-5", x: 2960, y: 820, value: 18, golden: false },
+        { id: "spore-6", x: 1760, y: 2040, value: 20, golden: false },
+        { id: "spore-7", x: 2580, y: 2240, value: 24, golden: false },
+        { id: "spore-8", x: 980, y: 1880, value: 20, golden: false },
+        { id: "spore-9", x: 1660, y: 2860, value: 26, golden: false },
+        { id: "spore-10", x: 3880, y: 2460, value: 28, golden: false },
+        { id: "gold-1", x: 980, y: 580, value: 1, golden: true },
+        { id: "gold-2", x: 3240, y: 460, value: 1, golden: true },
+        { id: "gold-3", x: 3340, y: 2280, value: 1, golden: true },
+        { id: "gold-4", x: 1160, y: 2740, value: 1, golden: true },
+      ];
+
+      const CUTSCENES = {
+        prologue: {
+          title: "The Crown Falls",
+          pages: [
+            "Dark Mycelius corrupted the kingdom roots. King Myco's sorcery shattered into scattered clues.",
+            "Villages now hide from Rougarou, the Three-Headed Dragon, and the Evil Crab warbands.",
+            "Restore your powers, gather allies, and push into the Solana Chainlands for the final confrontation.",
+          ],
+        },
+        fenUnlocked: {
+          title: "Fen Route Open",
+          pages: [
+            "The Fen gate weakens as clues align. Marsh paths now adapt to your morality choices.",
+            "Compassion route: safer support NPCs. Dark route: harder enemies with richer drops.",
+          ],
+        },
+        solanaReady: {
+          title: "Chainlands Threshold",
+          pages: [
+            "Dragon and crab lieutenants are down. Your magic resonates with the Abyss Pearl cipher.",
+            "A final gate opens into corrupted blocks where Dark Mycelius forges his rot protocols.",
+          ],
+        },
+        epilogue: {
+          title: "Kingdom Rewritten",
+          pages: [
+            "The final battle is done, but your morality now defines the kingdom's future simulation.",
+            "Your AI-backed path remains unique: villages, encounters, and clue routes continue to diverge.",
+          ],
+        },
+      };
+
+      const state = {
+        mode: "explore",
+        pendingBattle: false,
+        worldTime: 0,
+        camera: { x: 0, y: 0 },
+        keys: new Set(),
+        aiDirective: "The kingdom listens to your choices.",
+        aiDirectiveAt: 0,
+        aiRemoteDirectiveAt: 0,
+        activeDialogue: null,
+        contactLockUntil: 0,
+        contactLatch: null,
+        lastAdvice: "Earn trust in each region to receive reliable guidance.",
+        ui: {
+          minimalHud: false,
+        },
+        cutscene: {
+          active: false,
+          id: null,
+          page: 0,
+          pages: [],
+          title: "",
+        },
+        encounterEnemyId: null,
+        battleMode: "none",
+        battle: null,
+        campaignSnapshot: null,
+        enemies: [],
+        audio: {
+          initialized: false,
+          context: null,
+          masterGain: null,
+          musicGain: null,
+          sfxGain: null,
+          scheduler: null,
+          nextNoteTime: 0,
+          themeIndex: 0,
+          musicOn: true,
+          sfxOn: true,
+        },
+        inventory: {
+          mycoPotion: 2,
+          manaDew: 1,
+          smokeBomb: 0,
+        },
+        progress: {
+          clues: new Set(),
+          defeatedBosses: new Set(),
+          interactedNpcs: new Set(),
+          solvedStructures: new Set(),
+          collectedPickups: new Set(),
+          cutscenesSeen: new Set(),
+        },
+        hero: {
+          x: 280,
+          y: 500,
+          w: 30,
+          h: 34,
+          speed: 188,
+          hp: BASE_MAX_HP,
+          maxHp: BASE_MAX_HP,
+          attack: 1,
+          defense: 1,
+          magic: 1,
+          morality: 0,
+          spores: 0,
+          goldenSpores: 0,
+          magicBoostTurns: 0,
+        },
+      };
+
+      const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+      const randomBetween = (min, max) => min + Math.random() * (max - min);
+
+      const THEME_SEQUENCE = [
+        261.63, 329.63, 392.0, 523.25,
+        392.0, 329.63, 293.66, 261.63,
+        220.0, 261.63, 329.63, 392.0,
+        349.23, 329.63, 293.66, 261.63,
+        293.66, 349.23, 440.0, 523.25,
+        440.0, 392.0, 349.23, 293.66,
+        261.63, 293.66, 329.63, 392.0,
+        329.63, 293.66, 261.63, 220.0,
+      ];
+
+      const updateAudioUi = () => {
+        dom.musicToggleBtn.textContent = `Music: ${state.audio.musicOn ? "On" : "Off"}`;
+        dom.sfxToggleBtn.textContent = `SFX: ${state.audio.sfxOn ? "On" : "Off"}`;
+        dom.audioStateText.textContent = state.audio.initialized
+          ? "Audio active: magical 32-bit synth enabled."
+          : "Audio locked until first user interaction.";
+      };
+
+      const setupCornerMenus = () => {
+        const left = dom.leftMenuContent;
+        const right = dom.rightMenuContent;
+        if (!left || !right) return;
+        if (dom.panelStory) left.appendChild(dom.panelStory);
+        if (dom.panelControls) left.appendChild(dom.panelControls);
+        if (dom.panelStatus) right.appendChild(dom.panelStatus);
+        if (dom.panelInventory) right.appendChild(dom.panelInventory);
+        if (dom.panelBattle) right.appendChild(dom.panelBattle);
+        if (dom.panelAudio) right.appendChild(dom.panelAudio);
+        if (dom.hudAside) {
+          dom.hudAside.classList.add("hidden");
+        }
+      };
+
+      const applyHudMode = () => {
+        document.body.classList.toggle("minimal-hud", state.ui.minimalHud);
+        if (dom.minimalHudBtn) {
+          dom.minimalHudBtn.textContent = `Minimal HUD: ${state.ui.minimalHud ? "On" : "Off"}`;
+        }
+        if (dom.minimalHudFloating) {
+          dom.minimalHudFloating.textContent = state.ui.minimalHud ? "Show HUD" : "Hide HUD";
+        }
+      };
+
+      const toggleMinimalHud = (forceValue) => {
+        if (typeof forceValue === "boolean") {
+          state.ui.minimalHud = forceValue;
+        } else {
+          state.ui.minimalHud = !state.ui.minimalHud;
+        }
+        applyHudMode();
+        saveConfig();
+        resizeCanvases();
+        updateCamera();
+      };
+
+      const clearContactLatchIfFar = () => {
+        if (!state.contactLatch) return;
+        if (state.contactLatch.type === "npc") {
+          const npc = NPCS.find((entry) => entry.id === state.contactLatch.id);
+          if (!npc || dist(state.hero.x, state.hero.y, npc.x, npc.y) > 58) {
+            state.contactLatch = null;
+          }
+          return;
+        }
+        if (state.contactLatch.type === "structure") {
+          const structure = STRUCTURES.find((entry) => entry.id === state.contactLatch.id);
+          if (
+            !structure ||
+            dist(state.hero.x, state.hero.y, structure.x + structure.w / 2, structure.y + structure.h / 2) > 66
+          ) {
+            state.contactLatch = null;
+          }
+        }
+      };
+
+      const resizeCanvases = () => {
+        const dpr = Math.min(2, window.devicePixelRatio || 1);
+        const worldRect = worldCanvas.getBoundingClientRect();
+        const worldW = Math.max(320, Math.round(worldRect.width * dpr));
+        const worldH = Math.max(220, Math.round(worldRect.height * dpr));
+        if (worldCanvas.width !== worldW || worldCanvas.height !== worldH) {
+          worldCanvas.width = worldW;
+          worldCanvas.height = worldH;
+          updateCamera();
+        }
+
+        const battleRect = battleCanvas.getBoundingClientRect();
+        const battleW = Math.max(260, Math.round(battleRect.width * dpr));
+        const battleH = Math.max(140, Math.round((battleRect.width * 0.5) * dpr));
+        if (battleCanvas.width !== battleW || battleCanvas.height !== battleH) {
+          battleCanvas.width = battleW;
+          battleCanvas.height = battleH;
+        }
+      };
+
+      const setVirtualKey = (key, isDown, buttonEl) => {
+        const normalized = key.toLowerCase();
+        if (isDown) {
+          state.keys.add(normalized);
+          if (buttonEl) buttonEl.classList.add("active");
+        } else {
+          state.keys.delete(normalized);
+          if (buttonEl) buttonEl.classList.remove("active");
+        }
+      };
+
+      const setupMobileControls = () => {
+        if (!dom.mobileControls) return;
+        const keyButtons = dom.mobileControls.querySelectorAll("[data-key]");
+        keyButtons.forEach((button) => {
+          const key = button.getAttribute("data-key");
+          if (!key) return;
+          const down = (event) => {
+            event.preventDefault();
+            if (!state.audio.initialized) {
+              initAudio();
+            }
+            setVirtualKey(key, true, button);
+          };
+          const up = (event) => {
+            event.preventDefault();
+            setVirtualKey(key, false, button);
+          };
+          button.addEventListener("pointerdown", down);
+          button.addEventListener("pointerup", up);
+          button.addEventListener("pointercancel", up);
+          button.addEventListener("pointerleave", up);
+        });
+
+        const actionButtons = dom.mobileControls.querySelectorAll("[data-action]");
+        actionButtons.forEach((button) => {
+          const action = button.getAttribute("data-action");
+          if (!action) return;
+          button.addEventListener("click", (event) => {
+            event.preventDefault();
+            if (!state.audio.initialized) {
+              initAudio();
+            }
+            if (action === "interact") {
+              interact();
+              return;
+            }
+            if (action === "item") {
+              useInventoryItem("mycoPotion");
+              return;
+            }
+            if (action === "strike") {
+              playTurn("strike");
+              return;
+            }
+            if (action === "guard") {
+              playTurn("guard");
+              return;
+            }
+            if (action === "skill") {
+              playTurn("skill");
+              return;
+            }
+            if (action === "sync") {
+              syncCampaign();
+            }
+          });
+        });
+      };
+
+      const buildGain = (ctx, gainValue, destination) => {
+        const gain = ctx.createGain();
+        gain.gain.value = gainValue;
+        gain.connect(destination);
+        return gain;
+      };
+
+      const scheduleTone = (ctx, destination, options) => {
+        const osc = ctx.createOscillator();
+        const amp = ctx.createGain();
+        osc.type = options.type ?? "square";
+        osc.frequency.setValueAtTime(options.frequency, options.start);
+        amp.gain.setValueAtTime(0.0001, options.start);
+        amp.gain.exponentialRampToValueAtTime(options.gain, options.start + 0.01);
+        amp.gain.exponentialRampToValueAtTime(0.0001, options.start + options.duration);
+        osc.connect(amp);
+        amp.connect(destination);
+        osc.start(options.start);
+        osc.stop(options.start + options.duration + 0.03);
+      };
+
+      const scheduleThemeWindow = () => {
+        if (!state.audio.initialized || !state.audio.musicOn) return;
+        const ctx = state.audio.context;
+        if (!ctx || ctx.state !== "running") return;
+        while (state.audio.nextNoteTime < ctx.currentTime + 0.7) {
+          const note = THEME_SEQUENCE[state.audio.themeIndex % THEME_SEQUENCE.length];
+          scheduleTone(ctx, state.audio.musicGain, {
+            frequency: note,
+            start: state.audio.nextNoteTime,
+            duration: 0.2,
+            gain: 0.04,
+            type: "square",
+          });
+          scheduleTone(ctx, state.audio.musicGain, {
+            frequency: note / 2,
+            start: state.audio.nextNoteTime,
+            duration: 0.22,
+            gain: 0.02,
+            type: "triangle",
+          });
+          state.audio.nextNoteTime += 0.24;
+          state.audio.themeIndex += 1;
+        }
+      };
+
+      const initAudio = async () => {
+        if (state.audio.initialized) {
+          if (state.audio.context?.state === "suspended") {
+            await state.audio.context.resume();
+          }
+          updateAudioUi();
+          return;
+        }
+        const AudioCtor = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtor) {
+          dom.audioStateText.textContent = "WebAudio not supported in this browser.";
+          return;
+        }
+        const ctx = new AudioCtor();
+        const master = buildGain(ctx, 0.8, ctx.destination);
+        const musicGain = buildGain(ctx, 0.9, master);
+        const sfxGain = buildGain(ctx, 1, master);
+        state.audio.context = ctx;
+        state.audio.masterGain = master;
+        state.audio.musicGain = musicGain;
+        state.audio.sfxGain = sfxGain;
+        state.audio.nextNoteTime = ctx.currentTime + 0.08;
+        state.audio.themeIndex = 0;
+        state.audio.scheduler = setInterval(scheduleThemeWindow, 120);
+        state.audio.initialized = true;
+        await ctx.resume();
+        updateAudioUi();
+      };
+
+      const playSfx = (kind) => {
+        if (!state.audio.initialized || !state.audio.sfxOn) return;
+        const ctx = state.audio.context;
+        if (!ctx || ctx.state !== "running") return;
+        const now = ctx.currentTime + 0.005;
+        const table = {
+          pickup: [740, 0.09, "square", 0.05],
+          clue: [620, 0.13, "triangle", 0.06],
+          talk: [420, 0.08, "triangle", 0.04],
+          battle: [180, 0.18, "sawtooth", 0.07],
+          win: [860, 0.18, "square", 0.06],
+          lose: [140, 0.22, "sawtooth", 0.06],
+          coin: [980, 0.08, "square", 0.055],
+          item: [560, 0.11, "triangle", 0.05],
+          error: [120, 0.12, "sawtooth", 0.045],
+        };
+        const [freq, duration, type, gain] = table[kind] ?? table.talk;
+        scheduleTone(ctx, state.audio.sfxGain, {
+          frequency: freq,
+          start: now,
+          duration,
+          gain,
+          type,
+        });
+      };
+
+      const toggleMusic = () => {
+        state.audio.musicOn = !state.audio.musicOn;
+        if (state.audio.musicOn && state.audio.initialized) {
+          state.audio.nextNoteTime = state.audio.context.currentTime + 0.05;
+          scheduleThemeWindow();
+        }
+        updateAudioUi();
+      };
+
+      const toggleSfx = () => {
+        state.audio.sfxOn = !state.audio.sfxOn;
+        if (state.audio.sfxOn) {
+          playSfx("coin");
+        }
+        updateAudioUi();
+      };
+
+      const setStatus = (message, isError = false) => {
+        dom.status.textContent = message;
+        dom.status.className = isError ? "status error" : "status";
+      };
+
+      const appendBattleLog = (message) => {
+        const lines = dom.battleLog.textContent === "No combat logs yet." ? [] : dom.battleLog.textContent.split("\n").filter(Boolean);
+        lines.push(message);
+        dom.battleLog.textContent = lines.slice(-14).join("\n");
+      };
+
+      const saveConfig = () => {
+        localStorage.setItem(
+          STORAGE_CONFIG_KEY,
+          JSON.stringify({
+            apiBase: dom.apiBase.value.trim(),
+            source: dom.source.value.trim(),
+            externalId: dom.externalId.value.trim(),
+            sourceToken: dom.sourceToken.value,
+            minimalHud: state.ui.minimalHud,
+          }),
+        );
+      };
+
+      const loadConfig = () => {
+        try {
+          const raw = localStorage.getItem(STORAGE_CONFIG_KEY);
+          if (!raw) return;
+          const parsed = JSON.parse(raw);
+          if (typeof parsed.apiBase === "string") dom.apiBase.value = parsed.apiBase;
+          if (typeof parsed.source === "string") dom.source.value = parsed.source;
+          if (typeof parsed.externalId === "string") dom.externalId.value = parsed.externalId;
+          if (typeof parsed.sourceToken === "string") dom.sourceToken.value = parsed.sourceToken;
+          if (typeof parsed.minimalHud === "boolean") state.ui.minimalHud = parsed.minimalHud;
+        } catch (error) {
+          console.warn("config load failed", error);
+        }
+      };
+
+      const saveGame = () => {
+        const payload = {
+          hero: state.hero,
+          clues: Array.from(state.progress.clues),
+          defeatedBosses: Array.from(state.progress.defeatedBosses),
+          interactedNpcs: Array.from(state.progress.interactedNpcs),
+          solvedStructures: Array.from(state.progress.solvedStructures),
+          collectedPickups: Array.from(state.progress.collectedPickups),
+          cutscenesSeen: Array.from(state.progress.cutscenesSeen),
+          inventory: state.inventory,
+          lastAdvice: state.lastAdvice,
+          enemyStates: state.enemies.map((enemy) => ({
+            id: enemy.id,
+            active: enemy.active,
+            respawnAt: enemy.respawnAt ?? null,
+            x: enemy.x,
+            y: enemy.y,
+          })),
+        };
+        localStorage.setItem(STORAGE_STATE_KEY, JSON.stringify(payload));
+      };
+
+      const loadGame = () => {
+        try {
+          const raw = localStorage.getItem(STORAGE_STATE_KEY);
+          if (!raw) return;
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === "object") {
+            if (parsed.hero && typeof parsed.hero === "object") {
+              state.hero = {
+                ...state.hero,
+                ...parsed.hero,
+              };
+              state.hero.hp = clamp(state.hero.hp, 1, state.hero.maxHp);
+            }
+            for (const clue of parsed.clues ?? []) {
+              if (typeof clue === "string") state.progress.clues.add(clue);
+            }
+            for (const boss of parsed.defeatedBosses ?? []) {
+              if (typeof boss === "string") state.progress.defeatedBosses.add(boss);
+            }
+            for (const npc of parsed.interactedNpcs ?? []) {
+              if (typeof npc === "string") state.progress.interactedNpcs.add(npc);
+            }
+            for (const id of parsed.solvedStructures ?? []) {
+              if (typeof id === "string") state.progress.solvedStructures.add(id);
+            }
+            for (const id of parsed.collectedPickups ?? []) {
+              if (typeof id === "string") state.progress.collectedPickups.add(id);
+            }
+            for (const id of parsed.cutscenesSeen ?? []) {
+              if (typeof id === "string") state.progress.cutscenesSeen.add(id);
+            }
+            if (parsed.inventory && typeof parsed.inventory === "object") {
+              state.inventory = {
+                ...state.inventory,
+                ...parsed.inventory,
+              };
+            }
+            if (typeof parsed.lastAdvice === "string") {
+              state.lastAdvice = parsed.lastAdvice;
+            }
+            for (const enemyState of parsed.enemyStates ?? []) {
+              if (!enemyState || typeof enemyState !== "object") continue;
+              const enemy = state.enemies.find((entry) => entry.id === enemyState.id);
+              if (!enemy) continue;
+              enemy.active = Boolean(enemyState.active);
+              if (typeof enemyState.respawnAt === "number") {
+                enemy.respawnAt = enemyState.respawnAt;
+              }
+              if (typeof enemyState.x === "number" && typeof enemyState.y === "number") {
+                enemy.x = enemyState.x;
+                enemy.y = enemyState.y;
+              }
+            }
+          }
+        } catch (error) {
+          console.warn("game load failed", error);
+        }
+      };
+
+      const clearGame = () => {
+        localStorage.removeItem(STORAGE_STATE_KEY);
+      };
+
+      const withApiBase = (path) => {
+        const trimmed = dom.apiBase.value.trim().replace(/\/$/, "");
+        return `${trimmed}${path}`;
+      };
+
+      const requestBase = () => ({
+        source: dom.source.value.trim() || "kingmyco.io",
+        externalId: dom.externalId.value.trim() || "myco-player-01",
+      });
+
+      const callApi = async (path, body) => {
+        saveConfig();
+        const headers = { "content-type": "application/json" };
+        const token = dom.sourceToken.value.trim();
+        if (token.length > 0) headers["x-source-token"] = token;
+        const response = await fetch(withApiBase(path), {
+          method: "POST",
+          headers,
+          body: JSON.stringify(body),
+        });
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(`${response.status} ${response.statusText}: ${text}`);
+        }
+        return response.json();
+      };
+
+      const createEnemyState = () =>
+        BASE_ENEMIES.map((enemy) => ({
+          ...enemy,
+          active: true,
+          wanderDirX: randomBetween(-1, 1),
+          wanderDirY: randomBetween(-1, 1),
+          directionShiftAt: Date.now() + randomBetween(1200, 3400),
+          respawnAt: null,
+        }));
+
+      state.enemies = createEnemyState();
+
+      const intersectsRect = (a, b) =>
+        a.x < b.x + b.w &&
+        a.x + a.w > b.x &&
+        a.y < b.y + b.h &&
+        a.y + a.h > b.y;
+
+      const getHeroRect = (x = state.hero.x, y = state.hero.y) => ({
+        x: x - state.hero.w / 2,
+        y: y - state.hero.h / 2,
+        w: state.hero.w,
+        h: state.hero.h,
+      });
+
+      const dist = (x1, y1, x2, y2) => Math.hypot(x2 - x1, y2 - y1);
+
+      const getRegionForPoint = (x, y) =>
+        REGIONS.find((region) => x >= region.x && x <= region.x + region.w && y >= region.y && y <= region.y + region.h);
+
+      const gateLocked = (gate) => !gate.isUnlocked(state);
+
+      const staticObstacles = [
+        { x: 1180, y: 360, w: 90, h: 360 },
+        { x: 1320, y: 620, w: 44, h: 420 },
+        { x: 1620, y: 1260, w: 320, h: 92 },
+        { x: 2820, y: 1120, w: 320, h: 92 },
+        { x: 2300, y: 2580, w: 360, h: 80 },
+      ];
+
+      const isBlocked = (nextX, nextY) => {
+        const heroRect = getHeroRect(nextX, nextY);
+        if (heroRect.x < 0 || heroRect.y < 0 || heroRect.x + heroRect.w > WORLD_WIDTH || heroRect.y + heroRect.h > WORLD_HEIGHT) {
+          return true;
+        }
+
+        for (const structure of STRUCTURES) {
+          if (!structure.solid) continue;
+          if (intersectsRect(heroRect, structure)) return true;
+        }
+        for (const wall of staticObstacles) {
+          if (intersectsRect(heroRect, wall)) return true;
+        }
+        for (const gate of GATES) {
+          if (!gateLocked(gate)) continue;
+          if (intersectsRect(heroRect, gate)) return true;
+        }
+        return false;
+      };
+
+      const updateCamera = () => {
+        state.camera.x = clamp(state.hero.x - worldCanvas.width / 2, 0, WORLD_WIDTH - worldCanvas.width);
+        state.camera.y = clamp(state.hero.y - worldCanvas.height / 2, 0, WORLD_HEIGHT - worldCanvas.height);
+      };
+
+      const addClue = (clueId, clueLabel) => {
+        if (!state.progress.clues.has(clueId)) {
+          state.progress.clues.add(clueId);
+          setStatus(`Clue discovered: ${clueLabel}`);
+          playSfx("clue");
+        }
+      };
+
+      const markBossDefeat = (enemyKind) => {
+        if (enemyKind === "rougarou") state.progress.defeatedBosses.add("rougarou");
+        if (enemyKind === "tri-drake") state.progress.defeatedBosses.add("tri-drake");
+        if (enemyKind === "evil-crab") state.progress.defeatedBosses.add("evil-crab");
+        if (enemyKind === "dark-mycelius") state.progress.defeatedBosses.add("dark-mycelius");
+      };
+
+      const getEnemyDisplayName = (kind) => {
+        const map = {
+          "rot-spore": "Rot Spore",
+          "mold-raider": "Mold Raider",
+          "fen-stalker": "Fen Stalker",
+          "rot-jackal": "Rot Jackal",
+          rougarou: "Rougarou",
+          "ember-drone": "Ember Drone",
+          "tri-drake": "Three-Headed Dragon",
+          "shell-rot": "Shell Rot",
+          "spine-fin": "Spine Fin",
+          "evil-crab": "Evil Crab",
+          "block-wraith": "Block Wraith",
+          "dark-mycelius": "Dark Mycelius",
+        };
+        return map[kind] ?? kind;
+      };
+
+      const openDialogue = (payload) => {
+        state.activeDialogue = payload;
+        dom.dialogueTitle.textContent = payload.title;
+        dom.dialogueBody.textContent = payload.body;
+        dom.choiceMycoBtn.textContent = payload.mycoLabel ?? "Mycoside Choice";
+        dom.choiceDarkBtn.textContent = payload.darkLabel ?? "Darkside Choice";
+        const tradeEnabled = typeof payload.onTrade === "function";
+        dom.choiceTradeBtn.style.display = tradeEnabled ? "inline-block" : "none";
+        dom.choiceTradeBtn.textContent = payload.tradeLabel ?? "Trade";
+        dom.dialoguePanel.classList.add("active");
+        playSfx("talk");
+      };
+
+      const closeDialogue = () => {
+        state.activeDialogue = null;
+        state.contactLockUntil = Date.now() + 1200;
+        dom.choiceTradeBtn.style.display = "none";
+        dom.dialoguePanel.classList.remove("active");
+      };
+
+      const applyMorality = (delta) => {
+        state.hero.morality = clamp(state.hero.morality + delta, -100, 100);
+      };
+
+      const grantSpores = (amount) => {
+        state.hero.spores = Math.max(0, state.hero.spores + amount);
+      };
+
+      const openCutscene = (cutsceneId) => {
+        if (state.progress.cutscenesSeen.has(cutsceneId)) return;
+        const scene = CUTSCENES[cutsceneId];
+        if (!scene) return;
+        state.progress.cutscenesSeen.add(cutsceneId);
+        state.cutscene = {
+          active: true,
+          id: cutsceneId,
+          page: 0,
+          pages: [...scene.pages],
+          title: scene.title,
+        };
+        state.mode = "cutscene";
+        dom.cutscenePanel.classList.add("active");
+        renderCutscene();
+      };
+
+      const closeCutscene = () => {
+        state.cutscene.active = false;
+        state.cutscene.id = null;
+        state.cutscene.page = 0;
+        state.cutscene.pages = [];
+        state.cutscene.title = "";
+        dom.cutscenePanel.classList.remove("active");
+        if (state.mode === "cutscene") {
+          state.mode = "explore";
+        }
+      };
+
+      const renderCutscene = () => {
+        if (!state.cutscene.active) return;
+        dom.cutsceneTitle.textContent = state.cutscene.title;
+        dom.cutsceneBody.textContent = state.cutscene.pages[state.cutscene.page] ?? "...";
+        dom.cutsceneMeta.textContent = `Scene ${state.cutscene.page + 1} / ${state.cutscene.pages.length}`;
+      };
+
+      const advanceCutscene = () => {
+        if (!state.cutscene.active) return;
+        if (state.cutscene.page < state.cutscene.pages.length - 1) {
+          state.cutscene.page += 1;
+          renderCutscene();
+          return;
+        }
+        closeCutscene();
+      };
+
+      const checkCutsceneTriggers = () => {
+        if (state.cutscene.active || state.activeDialogue || state.mode === "battle") return;
+        if (!state.progress.cutscenesSeen.has("prologue")) {
+          openCutscene("prologue");
+          return;
+        }
+        if (
+          state.progress.defeatedBosses.has("rougarou") &&
+          !state.progress.cutscenesSeen.has("fenUnlocked")
+        ) {
+          openCutscene("fenUnlocked");
+          return;
+        }
+        if (
+          state.progress.defeatedBosses.has("tri-drake") &&
+          state.progress.defeatedBosses.has("evil-crab") &&
+          state.progress.clues.has("abyss-pearl") &&
+          !state.progress.cutscenesSeen.has("solanaReady")
+        ) {
+          openCutscene("solanaReady");
+          return;
+        }
+        if (
+          state.progress.defeatedBosses.has("dark-mycelius") &&
+          !state.progress.cutscenesSeen.has("epilogue")
+        ) {
+          openCutscene("epilogue");
+        }
+      };
+
+      const tryBuyItem = (itemType) => {
+        const prices = {
+          mycoPotion: 15,
+          manaDew: 22,
+          smokeBomb: 28,
+        };
+        const labels = {
+          mycoPotion: "Myco Potion",
+          manaDew: "Mana Dew",
+          smokeBomb: "Smoke Bomb",
+        };
+        const price = prices[itemType];
+        if (!price) return;
+        if (state.hero.spores < price) {
+          setStatus(`Need ${price} spores for ${labels[itemType]}.`, true);
+          return;
+        }
+        state.hero.spores -= price;
+        state.inventory[itemType] += 1;
+        setStatus(`Purchased ${labels[itemType]}.`);
+        playSfx("coin");
+      };
+
+      const useInventoryItem = (itemType) => {
+        if (state.inventory[itemType] <= 0) {
+          setStatus("Item unavailable in inventory.", true);
+          return;
+        }
+        if (itemType === "mycoPotion") {
+          state.inventory.mycoPotion -= 1;
+          const heal = 28 + state.hero.magic * 2;
+          state.hero.hp = Math.min(state.hero.maxHp, state.hero.hp + heal);
+          if (state.battle?.player) {
+            state.battle.player.hp = Math.min(state.battle.player.maxHp, state.battle.player.hp + heal);
+            state.battle.battleLog.push(`King Myco used a potion for +${heal} HP.`);
+          }
+          setStatus(`Myco Potion used (+${heal} HP).`);
+          playSfx("item");
+          return;
+        }
+        if (itemType === "manaDew") {
+          state.inventory.manaDew -= 1;
+          state.hero.magicBoostTurns = Math.max(state.hero.magicBoostTurns, 3);
+          setStatus("Mana Dew activated: skill power boosted for 3 turns.");
+          playSfx("item");
+          return;
+        }
+        if (itemType === "smokeBomb") {
+          state.inventory.smokeBomb -= 1;
+          if (state.mode !== "battle" || !state.battle || state.battle.status !== "active") {
+            setStatus("Smoke Bomb can only be used in battle.", true);
+            return;
+          }
+          const escaped = Math.random() < 0.7;
+          if (escaped) {
+            state.mode = "explore";
+            state.battle = null;
+            state.encounterEnemyId = null;
+            setStatus("Smoke Bomb success: escaped battle.");
+            playSfx("item");
+            appendBattleLog("Escape succeeded.");
+          } else {
+            setStatus("Smoke Bomb failed! Enemy kept pressure.", true);
+            playSfx("error");
+            appendBattleLog("Escape failed.");
+          }
+          return;
+        }
+      };
+
+      const requestAiCoaching = async () => {
+        const now = Date.now();
+        if (now - state.aiRemoteDirectiveAt < 45000) return;
+        state.aiRemoteDirectiveAt = now;
+        try {
+          const profilePulse = `morality=${state.hero.morality}, clues=${state.progress.clues.size}, bosses=${state.progress.defeatedBosses.size}, spores=${state.hero.spores}`;
+          const coaching = await callApi("/api/mycoai/coach", {
+            ...requestBase(),
+            prompt: `Myco Quest overworld directive (${profilePulse}). Give one concise narrative gameplay directive for next 60 seconds.`,
+          });
+          const recommendation = Array.isArray(coaching?.recommendations)
+            ? coaching.recommendations.find((entry) => typeof entry === "string")
+            : null;
+          if (recommendation) {
+            state.aiDirective = `AI Coach: ${recommendation}`;
+          }
+        } catch (_error) {
+          // Optional enhancement; local loop continues when auth/scope is unavailable.
+        }
+      };
+
+      const buildNpcEncounter = (npc, alreadySpoken) => {
+        const alignment = state.hero.morality >= 20 ? "myco" : state.hero.morality <= -20 ? "dark" : "balanced";
+        const bossCount = state.progress.defeatedBosses.size;
+        const clueCount = state.progress.clues.size;
+        let body = npc.intro;
+        if (alreadySpoken) {
+          body = `${npc.name}: I can already feel your ${alignment} aura changing the routes ahead.`;
+        } else if (bossCount >= 2) {
+          body = `${npc.intro} You already crushed ${bossCount} lieutenants; now tactics matter more than raw force.`;
+        } else if (clueCount >= 3) {
+          body = `${npc.intro} Clue density is high — puzzle routes now open if you read the signs.`;
+        }
+
+        const applyTrade = (trustful) => {
+          const cost = npc.tradeCost ?? 0;
+          if (state.hero.spores < cost) {
+            setStatus(`${npc.name}: Bring ${cost} spores for this trade.`, true);
+            playSfx("error");
+            return;
+          }
+          state.hero.spores -= cost;
+          if (!trustful && Math.random() < 0.55) {
+            state.lastAdvice = npc.adviceBad;
+            setStatus(`${npc.name} gave a shady trade. Advice quality dropped.` , true);
+            playSfx("error");
+            return;
+          }
+          const qty = npc.tradeQty ?? 1;
+          if (npc.tradeItem === "mycoPotion") state.inventory.mycoPotion += qty;
+          if (npc.tradeItem === "manaDew") state.inventory.manaDew += qty;
+          if (npc.tradeItem === "smokeBomb") state.inventory.smokeBomb += qty;
+          if (npc.tradeItem === "goldenSpore") state.hero.goldenSpores += qty;
+          state.lastAdvice = npc.adviceGood;
+          setStatus(`${npc.name} trade complete. ${npc.adviceGood}`);
+          playSfx("coin");
+        };
+
+        return {
+          title: npc.name,
+          body,
+          mycoLabel: alignment === "dark" ? "Treat Kindly (+morality)" : "Mycoside Path (+morality)",
+          darkLabel: alignment === "myco" ? "Treat Rudely (-morality)" : "Darkside Path (-morality)",
+          tradeLabel: `Trade (${npc.tradeCost ?? 0} spores)`,
+          onMyco: () => {
+            applyMorality(8 + Math.floor(clueCount / 2));
+            grantSpores(16 + bossCount * 2);
+            state.lastAdvice = npc.adviceGood;
+            if (Math.random() < 0.25) {
+              state.inventory.mycoPotion += 1;
+            }
+            addClue(npc.clueId, npc.clueLabel);
+            state.progress.interactedNpcs.add(npc.id);
+            setStatus(`${npc.mycoText} Advice: ${npc.adviceGood}`);
+          },
+          onDark: () => {
+            applyMorality(-10 - Math.floor(bossCount / 2));
+            state.hero.attack += 1;
+            state.lastAdvice = npc.adviceBad;
+            if (Math.random() < 0.45) {
+              state.inventory.smokeBomb += 1;
+            }
+            addClue(npc.clueId, npc.clueLabel);
+            state.progress.interactedNpcs.add(npc.id);
+            setStatus(`${npc.darkText} Advice: ${npc.adviceBad}`);
+          },
+          onTrade: () => {
+            const trustful = state.hero.morality >= -10;
+            applyTrade(trustful);
+          },
+        };
+      };
+
+      const buildStructureEncounter = (nearbyStructure) => {
+        const solved = state.progress.solvedStructures.has(nearbyStructure.id);
+        return {
+          title: nearbyStructure.name,
+          body: solved
+            ? "You already solved this location's challenge. The echoes still guide your path."
+            : nearbyStructure.type === "shrine"
+              ? "A rune puzzle asks: 'What restores magic faster than conquest?'"
+              : nearbyStructure.type === "dungeon"
+                ? "A locked sigil puzzle blocks the inner chamber."
+                : nearbyStructure.type === "house"
+                  ? "A household asks for aid and offers local intelligence in return."
+                  : "A villager asks for aid against roaming rot packs.",
+          mycoLabel: solved ? "Close" : "Resolve peacefully",
+          darkLabel: solved ? "Close" : "Force through",
+          onMyco: () => {
+            if (!solved) {
+              state.progress.solvedStructures.add(nearbyStructure.id);
+              applyMorality(7);
+              if (nearbyStructure.type === "shrine") {
+                state.hero.magic += 1;
+              }
+              if (nearbyStructure.type === "dungeon") {
+                grantSpores(32);
+                addClue("dungeon-rune", "Ancient Dungeon Rune");
+              }
+              if (nearbyStructure.type === "house") {
+                state.hero.hp = state.hero.maxHp;
+                state.lastAdvice = "House allies marked safer paths on your map.";
+              }
+              setStatus(`${nearbyStructure.name} completed. Your balanced path strengthens Myco magic.`);
+            }
+          },
+          onDark: () => {
+            if (!solved) {
+              state.progress.solvedStructures.add(nearbyStructure.id);
+              applyMorality(-9);
+              state.hero.attack += 1;
+              grantSpores(18);
+              state.lastAdvice = "Rushed tactics unlocked riskier shortcuts with stronger enemies.";
+              setStatus(`${nearbyStructure.name} was forced open. You gained speed, but the realm darkened.`);
+            }
+          },
+        };
+      };
+
+      const checkActiveContacts = () => {
+        if (state.activeDialogue || state.cutscene.active || state.mode !== "explore") return;
+        const now = Date.now();
+        if (now < state.contactLockUntil) return;
+
+        const bumpNpc = NPCS.find((npc) => dist(state.hero.x, state.hero.y, npc.x, npc.y) < 34);
+        if (bumpNpc) {
+          if (state.contactLatch?.type === "npc" && state.contactLatch.id === bumpNpc.id) {
+            return;
+          }
+          state.contactLockUntil = now + 1600;
+          state.contactLatch = { type: "npc", id: bumpNpc.id };
+          const alreadySpoken = state.progress.interactedNpcs.has(bumpNpc.id);
+          openDialogue(buildNpcEncounter(bumpNpc, alreadySpoken));
+          return;
+        }
+
+        const bumpStructure = STRUCTURES.find(
+          (entry) => dist(state.hero.x, state.hero.y, entry.x + entry.w / 2, entry.y + entry.h / 2) < 44,
+        );
+        if (bumpStructure) {
+          if (state.contactLatch?.type === "structure" && state.contactLatch.id === bumpStructure.id) {
+            return;
+          }
+          state.contactLockUntil = now + 1600;
+          state.contactLatch = { type: "structure", id: bumpStructure.id };
+          openDialogue(buildStructureEncounter(bumpStructure));
+        }
+      };
+
+      const interact = () => {
+        if (state.activeDialogue || state.cutscene.active || state.mode === "cutscene") {
+          return;
+        }
+        if (state.mode === "battle") {
+          setStatus("You are in battle. Finish the turn encounter first.", true);
+          return;
+        }
+
+        const nearbyNpc = NPCS.find((npc) => dist(state.hero.x, state.hero.y, npc.x, npc.y) < 82);
+        if (nearbyNpc) {
+          const alreadySpoken = state.progress.interactedNpcs.has(nearbyNpc.id);
+          openDialogue(buildNpcEncounter(nearbyNpc, alreadySpoken));
+          return;
+        }
+
+        const nearbyStructure = STRUCTURES.find((entry) => dist(state.hero.x, state.hero.y, entry.x + entry.w / 2, entry.y + entry.h / 2) < 88);
+        if (nearbyStructure) {
+          openDialogue(buildStructureEncounter(nearbyStructure));
+          return;
+        }
+
+        const nearbyGate = GATES.find((gate) => dist(state.hero.x, state.hero.y, gate.x + gate.w / 2, gate.y + gate.h / 2) < 92);
+        if (nearbyGate && gateLocked(nearbyGate)) {
+          state.lastAdvice = nearbyGate.hint;
+          setStatus(`Gate sealed. ${nearbyGate.hint}`, true);
+          playSfx("error");
+          return;
+        }
+
+        setStatus("No interaction target nearby.");
+      };
+
+      const updateDirective = () => {
+        const now = Date.now();
+        if (now - state.aiDirectiveAt < 9000) return;
+        state.aiDirectiveAt = now;
+        const region = getRegionForPoint(state.hero.x, state.hero.y);
+        const options = [];
+        options.push(`Region pulse: ${region?.name ?? "Unknown lands"} reshapes around your actions.`);
+        options.push(`AI director: ${state.progress.clues.size} clues gathered; new enemy paths are mutating.`);
+        options.push(`Inventory pulse: potion ${state.inventory.mycoPotion}, dew ${state.inventory.manaDew}, bomb ${state.inventory.smokeBomb}.`);
+        if (state.hero.morality >= 35) {
+          options.push("Mycoside influence surges. Villagers reveal safer routes.");
+        } else if (state.hero.morality <= -35) {
+          options.push("Darkside influence rises. Enemies grow bolder but rewards spike.");
+        } else {
+          options.push("Balance state: both light and shadow routes remain open.");
+        }
+        if (state.progress.defeatedBosses.has("dark-mycelius")) {
+          options.push("Dark Mycelius has fallen, but chain corruption still flickers in distant nodes.");
+        }
+        state.aiDirective = options[Math.floor(Math.random() * options.length)];
+      };
+
+      const updateEnemies = (dt) => {
+        const now = Date.now();
+        const regionSpeed = {
+          "myco-kingdom": 34,
+          "rougarou-fen": 42,
+          "tri-drake-peaks": 40,
+          "crimson-tide": 38,
+          "solana-chainlands": 46,
+          "verdant-commons": 35,
+          "obsidian-wilds": 39,
+        };
+        const darkPressure = state.hero.morality < 0 ? Math.min(0.35, Math.abs(state.hero.morality) / 260) : 0;
+        for (const enemy of state.enemies) {
+          if (!enemy.active) {
+            if (enemy.respawnAt && now >= enemy.respawnAt && !enemy.boss) {
+              enemy.active = true;
+              enemy.respawnAt = null;
+            }
+            continue;
+          }
+          if (enemy.directionShiftAt <= now) {
+            enemy.wanderDirX = randomBetween(-1, 1);
+            enemy.wanderDirY = randomBetween(-1, 1);
+            enemy.directionShiftAt = now + randomBetween(1000, 3200);
+          }
+
+          const speed = (enemy.boss ? 26 : (regionSpeed[enemy.region] ?? 36)) * (1 + darkPressure);
+          const nextX = enemy.x + enemy.wanderDirX * speed * dt;
+          const nextY = enemy.y + enemy.wanderDirY * speed * dt;
+          const enemyRect = { x: nextX - 18, y: nextY - 18, w: 36, h: 36 };
+          if (
+            enemyRect.x < 0 ||
+            enemyRect.y < 0 ||
+            enemyRect.x + enemyRect.w > WORLD_WIDTH ||
+            enemyRect.y + enemyRect.h > WORLD_HEIGHT ||
+            STRUCTURES.some((structure) => structure.solid && intersectsRect(enemyRect, structure))
+          ) {
+            enemy.wanderDirX *= -1;
+            enemy.wanderDirY *= -1;
+          } else {
+            enemy.x = nextX;
+            enemy.y = nextY;
+          }
+        }
+      };
+
+      const updatePickups = () => {
+        const heroRect = getHeroRect();
+        for (const pickup of PICKUPS) {
+          if (state.progress.collectedPickups.has(pickup.id)) continue;
+          const pickupRect = { x: pickup.x - 10, y: pickup.y - 10, w: 20, h: 20 };
+          if (!intersectsRect(heroRect, pickupRect)) continue;
+          state.progress.collectedPickups.add(pickup.id);
+          if (pickup.golden) {
+            state.hero.goldenSpores += pickup.value;
+            setStatus("Golden spore collected! Rare currency increased.");
+            playSfx("pickup");
+          } else {
+            grantSpores(pickup.value);
+            setStatus(`Collected ${pickup.value} spores.`);
+            playSfx("pickup");
+          }
+        }
+      };
+
+      const laneForEnemy = (enemy) => enemy.lane ?? "tactical";
+
+      const createLocalBattle = (enemy) => {
+        const heroHpPool = Math.max(74, state.hero.maxHp + state.hero.defense * 8);
+        const enemyBase = enemy.boss ? 96 : 56;
+        const enemyHp = enemyBase + (enemy.boss ? state.hero.magic * 6 : state.hero.attack * 3);
+        return {
+          battleId: `local-${Date.now()}`,
+          playerId: requestBase().externalId,
+          regionId: enemy.region,
+          encounterLane: laneForEnemy(enemy),
+          status: "active",
+          turnNumber: 1,
+          player: {
+            id: "player",
+            name: "King Myco",
+            hp: Math.min(heroHpPool, state.hero.hp + 10),
+            maxHp: heroHpPool,
+            guard: 0,
+            elementAffinity: "nature",
+          },
+          enemy: {
+            id: enemy.id,
+            name: getEnemyDisplayName(enemy.kind),
+            hp: enemyHp,
+            maxHp: enemyHp,
+            guard: 0,
+            elementAffinity: "void",
+          },
+          lastAction: undefined,
+          battleLog: [`Encounter started with ${getEnemyDisplayName(enemy.kind)}.`],
+          startedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          rewardSpores: enemy.boss ? 78 : 26,
+        };
+      };
+
+      const engageEnemy = async (enemy) => {
+        if (state.pendingBattle || state.mode === "battle") return;
+        state.pendingBattle = true;
+        state.mode = "battle";
+        state.encounterEnemyId = enemy.id;
+        setStatus(`Enemy contact: ${getEnemyDisplayName(enemy.kind)}. Initiating turn battle...`);
+        playSfx("battle");
+        appendBattleLog(`Encounter: ${getEnemyDisplayName(enemy.kind)}`);
+
+        try {
+          const receipt = await callApi("/api/rpg/battle/start", {
+            ...requestBase(),
+            preferredLane: laneForEnemy(enemy),
+          });
+          state.battle = receipt.battle;
+          state.battleMode = "api";
+          dom.battleSummary.textContent = `API battle active in lane ${receipt.battle.encounterLane}.`;
+          appendBattleLog("Battle provider: API");
+        } catch (error) {
+          console.warn("api battle start failed", error);
+          state.battle = createLocalBattle(enemy);
+          state.battleMode = "local";
+          dom.battleSummary.textContent = `API unavailable, switched to local battle sim (${state.battle.encounterLane}).`;
+          appendBattleLog("Battle provider: local fallback");
+        } finally {
+          state.pendingBattle = false;
+        }
+      };
+
+      const checkEnemyContact = async () => {
+        if (state.mode === "battle" || state.pendingBattle) return;
+        for (const enemy of state.enemies) {
+          if (!enemy.active) continue;
+          if (dist(state.hero.x, state.hero.y, enemy.x, enemy.y) < (enemy.boss ? 32 : 27)) {
+            await engageEnemy(enemy);
+            return;
+          }
+        }
+      };
+
+      const processBattleEnd = (battle) => {
+        const enemy = state.enemies.find((entry) => entry.id === state.encounterEnemyId);
+        if (battle.player && typeof battle.player.hp === "number") {
+          state.hero.hp = clamp(Math.round(battle.player.hp), 0, state.hero.maxHp);
+        }
+        if (battle.status === "won") {
+          if (state.hero.hp <= 0) {
+            state.hero.hp = Math.max(1, Math.floor(state.hero.maxHp * 0.2));
+          }
+          grantSpores(battle.rewardSpores ?? 0);
+          if (enemy?.boss) {
+            state.hero.goldenSpores += 1;
+            markBossDefeat(enemy.kind);
+            setStatus(`Boss defeated: ${getEnemyDisplayName(enemy.kind)}. Golden spore gained.`);
+            playSfx("win");
+          } else {
+            setStatus(`Victory! +${battle.rewardSpores ?? 0} spores.`);
+            playSfx("win");
+          }
+          if (enemy) {
+            enemy.active = false;
+            enemy.respawnAt = enemy.boss ? Date.now() + 999999999 : Date.now() + 45000;
+          }
+          if (enemy?.kind === "dark-mycelius") {
+            openDialogue({
+              title: "Dark Mycelius Defeated",
+              body: "You reclaimed your crown flame. The Solana corruption retreats, and the kingdom enters restoration phase.",
+              mycoLabel: "Seal the chain with mercy",
+              darkLabel: "Bind the chain with force",
+              onMyco: () => {
+                applyMorality(14);
+                addClue("restoration-seed", "Restoration Seed");
+                setStatus("Mercy path selected. Cooperative endgame content unlocked.");
+              },
+              onDark: () => {
+                applyMorality(-16);
+                state.hero.attack += 1;
+                setStatus("Force path selected. Hard-mode branch unlocked.");
+              },
+            });
+          }
+        } else if (battle.status === "lost") {
+          applyMorality(-6);
+          state.hero.hp = state.hero.maxHp;
+          state.hero.x = 280;
+          state.hero.y = 500;
+          setStatus("Defeat in battle. You were restored at the Myco Kingdom shrine.", true);
+          playSfx("lose");
+        }
+        state.mode = "explore";
+        state.encounterEnemyId = null;
+        if (battle.status !== "active") {
+          state.battle = null;
+        }
+      };
+
+      const resolveLocalTurn = (kind, element) => {
+        if (!state.battle || state.battle.status !== "active") return;
+        const battle = state.battle;
+        battle.lastAction = kind === "skill" ? { kind, element } : { kind };
+        const randomRoll = () => randomBetween(0.84, 1.24);
+        let playerDamage = 0;
+        if (kind === "strike") {
+          playerDamage = Math.round((10 + state.hero.attack * 4) * randomRoll());
+        } else if (kind === "guard") {
+          battle.player.guard = Math.min(24, battle.player.guard + 12 + state.hero.defense * 2);
+        } else if (kind === "skill") {
+          const elementBonus = element === "void" ? 1.15 : element === "nature" ? 1.1 : 1;
+          const boost = state.hero.magicBoostTurns > 0 ? 1.28 : 1;
+          playerDamage = Math.round((12 + state.hero.magic * 5) * elementBonus * boost * randomRoll());
+        }
+
+        if (playerDamage > 0) {
+          const mitigated = Math.max(2, playerDamage - battle.enemy.guard);
+          battle.enemy.hp = Math.max(0, battle.enemy.hp - mitigated);
+          battle.enemy.guard = Math.max(0, battle.enemy.guard - Math.round(playerDamage * 0.6));
+          battle.battleLog.push(`King Myco dealt ${mitigated} damage.`);
+        } else {
+          battle.battleLog.push("King Myco braces for impact.");
+        }
+
+        if (battle.enemy.hp <= 0) {
+          battle.status = "won";
+          battle.updatedAt = new Date().toISOString();
+          return;
+        }
+
+        const enemyDamageBase = 8 + (battle.encounterLane === "survival" ? 5 : 0) + randomBetween(0, 6);
+        const mitigatedEnemy = Math.max(1, Math.round(enemyDamageBase - state.hero.defense * 1.4 - battle.player.guard * 0.35));
+        battle.player.hp = Math.max(0, battle.player.hp - mitigatedEnemy);
+        battle.player.guard = Math.max(0, battle.player.guard - 10);
+        battle.enemy.guard = Math.min(16, battle.enemy.guard + 4);
+        battle.battleLog.push(`${battle.enemy.name} hits for ${mitigatedEnemy}.`);
+
+        if (battle.player.hp <= 0) {
+          battle.status = "lost";
+        }
+
+        if (state.hero.magicBoostTurns > 0) {
+          state.hero.magicBoostTurns -= 1;
+        }
+
+        battle.turnNumber += 1;
+        battle.updatedAt = new Date().toISOString();
+      };
+
+      const playTurn = async (kind) => {
+        if (!state.battle || state.battle.status !== "active") {
+          setStatus("No active battle turn to resolve.", true);
+          return;
+        }
+        const element = dom.elementSelect.value;
+        if (state.battleMode === "api") {
+          try {
+            const action = kind === "skill" ? { kind, element } : { kind };
+            const receipt = await callApi("/api/rpg/battle/turn", {
+              ...requestBase(),
+              action,
+            });
+            state.battle = receipt.battle;
+            appendBattleLog(`API turn ${receipt.battle.turnNumber}: ${kind}`);
+          } catch (error) {
+            setStatus(String(error), true);
+            return;
+          }
+        } else {
+          resolveLocalTurn(kind, element);
+          appendBattleLog(`Local turn ${state.battle.turnNumber}: ${kind}`);
+        }
+
+        if (state.battle.status !== "active") {
+          processBattleEnd(state.battle);
+        }
+        renderHud();
+      };
+
+      const tryUpgrade = (type) => {
+        if (type === "attack") {
+          if (state.hero.spores < 25) return setStatus("Need 25 spores for attack upgrade.", true);
+          state.hero.spores -= 25;
+          state.hero.attack += 1;
+          setStatus("Attack upgraded.");
+          playSfx("coin");
+        } else if (type === "defense") {
+          if (state.hero.spores < 25) return setStatus("Need 25 spores for defense upgrade.", true);
+          state.hero.spores -= 25;
+          state.hero.defense += 1;
+          state.hero.maxHp += 5;
+          state.hero.hp = Math.min(state.hero.maxHp, state.hero.hp + 5);
+          setStatus("Defense upgraded.");
+          playSfx("coin");
+        } else if (type === "magic") {
+          if (state.hero.spores < 30) return setStatus("Need 30 spores for magic upgrade.", true);
+          state.hero.spores -= 30;
+          state.hero.magic += 1;
+          setStatus("Magic upgraded.");
+          playSfx("coin");
+        }
+        renderHud();
+      };
+
+      const moveHero = (dt) => {
+        let xAxis = 0;
+        let yAxis = 0;
+        if (state.keys.has("arrowup") || state.keys.has("w")) yAxis -= 1;
+        if (state.keys.has("arrowdown") || state.keys.has("s")) yAxis += 1;
+        if (state.keys.has("arrowleft") || state.keys.has("a")) xAxis -= 1;
+        if (state.keys.has("arrowright") || state.keys.has("d")) xAxis += 1;
+        if (xAxis === 0 && yAxis === 0) return;
+
+        const mag = Math.hypot(xAxis, yAxis) || 1;
+        const sprint = state.keys.has("shift");
+        const speed = state.hero.speed * (sprint ? 1.34 : 1);
+        const vx = (xAxis / mag) * speed * dt;
+        const vy = (yAxis / mag) * speed * dt;
+
+        const nextX = state.hero.x + vx;
+        if (!isBlocked(nextX, state.hero.y)) {
+          state.hero.x = nextX;
+        }
+        const nextY = state.hero.y + vy;
+        if (!isBlocked(state.hero.x, nextY)) {
+          state.hero.y = nextY;
+        }
+      };
+
+      const update = async (dt) => {
+        state.worldTime += dt;
+        if (state.activeDialogue) return;
+        if (state.cutscene.active || state.mode === "cutscene") return;
+        if (state.mode === "battle") return;
+        moveHero(dt);
+        updateEnemies(dt);
+        updatePickups();
+        clearContactLatchIfFar();
+        checkActiveContacts();
+        if (state.activeDialogue) {
+          updateCamera();
+          return;
+        }
+        updateDirective();
+        await checkEnemyContact();
+        updateCamera();
+        checkCutsceneTriggers();
+      };
+
+      const drawPixelCharacter = (ctx, screenX, screenY) => {
+        const x = Math.round(screenX);
+        const y = Math.round(screenY + Math.sin(state.worldTime * 8) * 1.2);
+        // Crown
+        ctx.fillStyle = "#facc15";
+        ctx.fillRect(x - 6, y - 22, 12, 4);
+        ctx.fillRect(x - 4, y - 25, 2, 3);
+        ctx.fillRect(x, y - 27, 2, 5);
+        ctx.fillRect(x + 4, y - 25, 2, 3);
+        // Red mushroom cap
+        ctx.fillStyle = "#dc2626";
+        ctx.fillRect(x - 10, y - 18, 20, 7);
+        // Face mask
+        ctx.fillStyle = "#111827";
+        ctx.fillRect(x - 7, y - 11, 14, 9);
+        // Green eyes
+        ctx.fillStyle = "#22c55e";
+        ctx.fillRect(x - 4, y - 8, 2, 2);
+        ctx.fillRect(x + 2, y - 8, 2, 2);
+        // Purple robe
+        ctx.fillStyle = "#7c3aed";
+        ctx.fillRect(x - 9, y - 1, 18, 14);
+        ctx.fillStyle = "#5b21b6";
+        ctx.fillRect(x - 7, y + 4, 14, 9);
+        // Staff
+        ctx.fillStyle = "#92400e";
+        ctx.fillRect(x + 12, y - 8, 2, 18);
+        ctx.fillStyle = "#22c55e";
+        ctx.fillRect(x + 10, y - 12, 6, 4);
+      };
+
+      const drawNpc = (ctx, npc, screenX, screenY) => {
+        const x = Math.round(screenX);
+        const y = Math.round(screenY);
+        ctx.fillStyle = "#0f172a";
+        ctx.fillRect(x - 9, y - 14, 18, 19);
+        ctx.fillStyle = "#34d399";
+        ctx.fillRect(x - 6, y - 11, 12, 5);
+        ctx.fillStyle = "#f8fafc";
+        ctx.fillRect(x - 4, y - 5, 2, 2);
+        ctx.fillRect(x + 2, y - 5, 2, 2);
+      };
+
+      const drawEnemy = (ctx, enemy, screenX, screenY) => {
+        const x = Math.round(screenX);
+        const y = Math.round(screenY + Math.sin(state.worldTime * 6 + enemy.x * 0.01) * 1.5);
+        const regionPalette = {
+          "myco-kingdom": ["#ef4444", "#fca5a5"],
+          "rougarou-fen": ["#84cc16", "#365314"],
+          "tri-drake-peaks": ["#f97316", "#7c2d12"],
+          "crimson-tide": ["#06b6d4", "#0c4a6e"],
+          "solana-chainlands": ["#a78bfa", "#4c1d95"],
+          "verdant-commons": ["#22c55e", "#166534"],
+          "obsidian-wilds": ["#a1a1aa", "#27272a"],
+        };
+        const [base, accent] = regionPalette[enemy.region] ?? ["#f97316", "#7c2d12"];
+
+        if (enemy.region === "crimson-tide") {
+          ctx.fillStyle = base;
+          ctx.fillRect(x - 11, y - 7, 22, 14);
+          ctx.fillStyle = accent;
+          ctx.fillRect(x - 15, y - 3, 4, 4);
+          ctx.fillRect(x + 11, y - 3, 4, 4);
+        } else if (enemy.region === "tri-drake-peaks") {
+          ctx.fillStyle = base;
+          ctx.fillRect(x - 10, y - 10, 20, 20);
+          ctx.fillStyle = accent;
+          ctx.fillRect(x - 16, y - 6, 6, 6);
+          ctx.fillRect(x + 10, y - 6, 6, 6);
+        } else if (enemy.region === "solana-chainlands") {
+          ctx.fillStyle = base;
+          ctx.fillRect(x - 10, y - 10, 20, 20);
+          ctx.fillStyle = accent;
+          ctx.fillRect(x - 6, y - 6, 12, 12);
+        } else {
+          ctx.fillStyle = base;
+          ctx.fillRect(x - 10, y - 10, 20, 20);
+          ctx.fillStyle = accent;
+          ctx.fillRect(x - 12, y + 4, 24, 3);
+        }
+
+        ctx.fillStyle = "#0f172a";
+        ctx.fillRect(x - 4, y - 4, 3, 3);
+        ctx.fillRect(x + 1, y - 4, 3, 3);
+        if (enemy.boss) {
+          ctx.strokeStyle = "#f8fafc";
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x - 14, y - 14, 28, 28);
+        }
+      };
+
+      const drawStructure = (ctx, structure, sx, sy) => {
+        if (structure.type === "house") {
+          ctx.fillStyle = "#9a3412";
+          ctx.fillRect(sx, sy + 20, structure.w, structure.h - 20);
+          ctx.fillStyle = "#7c2d12";
+          ctx.fillRect(sx - 8, sy + 8, structure.w + 16, 20);
+        } else if (structure.type === "cave") {
+          ctx.fillStyle = "#334155";
+          ctx.fillRect(sx, sy, structure.w, structure.h);
+          ctx.fillStyle = "#111827";
+          ctx.fillRect(sx + 20, sy + 22, structure.w - 40, structure.h - 30);
+        } else if (structure.type === "dungeon") {
+          ctx.fillStyle = "#3f3f46";
+          ctx.fillRect(sx, sy, structure.w, structure.h);
+          ctx.fillStyle = "#6d28d9";
+          ctx.fillRect(sx + 8, sy + 8, structure.w - 16, 10);
+          ctx.fillStyle = "#111827";
+          ctx.fillRect(sx + 24, sy + 34, structure.w - 48, structure.h - 46);
+        } else if (structure.type === "shrine") {
+          ctx.fillStyle = "#0f766e";
+          ctx.fillRect(sx, sy, structure.w, structure.h);
+          ctx.fillStyle = "#facc15";
+          ctx.fillRect(sx + 28, sy + 20, 22, 22);
+        }
+      };
+
+      const drawWorld = () => {
+        worldCtx.fillStyle = "#040913";
+        worldCtx.fillRect(0, 0, worldCanvas.width, worldCanvas.height);
+        const tilePhase = 0;
+
+        const visible = (x, y, w, h) =>
+          x + w >= state.camera.x &&
+          y + h >= state.camera.y &&
+          x <= state.camera.x + worldCanvas.width &&
+          y <= state.camera.y + worldCanvas.height;
+
+        // Regions with static 32-bit tile detail (no background motion)
+        for (const region of REGIONS) {
+          if (!visible(region.x, region.y, region.w, region.h)) continue;
+          const rx = region.x - state.camera.x;
+          const ry = region.y - state.camera.y;
+          worldCtx.fillStyle = region.colorA;
+          worldCtx.fillRect(rx, ry, region.w, region.h);
+          worldCtx.fillStyle = region.colorB;
+          for (let y = 0; y < region.h; y += TILE) {
+            for (let x = 0; x < region.w; x += TILE) {
+              if (((x / TILE) + (y / TILE) + tilePhase) % 4 === 0) {
+                worldCtx.fillRect(rx + x, ry + y, TILE, TILE);
+              }
+            }
+          }
+
+          // Static detail accents for richer ambience (no moving background)
+          worldCtx.globalAlpha = 0.22;
+          const detailColor =
+            region.id === "crimson-tide"
+              ? "#67e8f9"
+              : region.id === "solana-chainlands"
+                ? "#a78bfa"
+                : "#dbeafe";
+          worldCtx.fillStyle = detailColor;
+          for (let i = 0; i < 24; i += 1) {
+            const detailX = rx + 16 + ((i * 89 + region.x) % Math.max(40, region.w - 30));
+            const detailY = ry + 16 + ((i * 53 + region.y) % Math.max(40, region.h - 30));
+            worldCtx.fillRect(detailX, detailY, 4, 4);
+          }
+          worldCtx.globalAlpha = 1;
+
+          worldCtx.strokeStyle = "#0b1224";
+          worldCtx.lineWidth = 3;
+          worldCtx.strokeRect(rx, ry, region.w, region.h);
+          worldCtx.fillStyle = "#f8fafc";
+          worldCtx.font = "16px sans-serif";
+          worldCtx.fillText(region.name, rx + 12, ry + 26);
+        }
+
+        // Roads
+        worldCtx.strokeStyle = "#cbd5e1";
+        worldCtx.lineWidth = 6;
+        worldCtx.globalAlpha = 0.22;
+        worldCtx.beginPath();
+        worldCtx.moveTo(300 - state.camera.x, 500 - state.camera.y);
+        worldCtx.lineTo(1640 - state.camera.x, 420 - state.camera.y);
+        worldCtx.lineTo(3180 - state.camera.x, 360 - state.camera.y);
+        worldCtx.moveTo(1700 - state.camera.x, 1090 - state.camera.y);
+        worldCtx.lineTo(1960 - state.camera.x, 1860 - state.camera.y);
+        worldCtx.lineTo(3080 - state.camera.x, 1880 - state.camera.y);
+        worldCtx.moveTo(690 - state.camera.x, 1320 - state.camera.y);
+        worldCtx.lineTo(740 - state.camera.x, 2380 - state.camera.y);
+        worldCtx.lineTo(1540 - state.camera.x, 2850 - state.camera.y);
+        worldCtx.stroke();
+        worldCtx.globalAlpha = 1;
+
+        // Static obstacles
+        worldCtx.fillStyle = "#243b63";
+        for (const obstacle of staticObstacles) {
+          if (!visible(obstacle.x, obstacle.y, obstacle.w, obstacle.h)) continue;
+          worldCtx.fillRect(obstacle.x - state.camera.x, obstacle.y - state.camera.y, obstacle.w, obstacle.h);
+        }
+
+        // Gate barriers
+        for (const gate of GATES) {
+          if (!visible(gate.x, gate.y, gate.w, gate.h)) continue;
+          const unlocked = gate.isUnlocked(state);
+          worldCtx.fillStyle = unlocked ? "#16a34a" : "#991b1b";
+          worldCtx.fillRect(gate.x - state.camera.x, gate.y - state.camera.y, gate.w, gate.h);
+        }
+
+        // Pickups
+        for (const pickup of PICKUPS) {
+          if (state.progress.collectedPickups.has(pickup.id)) continue;
+          if (!visible(pickup.x - 10, pickup.y - 10, 20, 20)) continue;
+          const sx = pickup.x - state.camera.x;
+          const sy = pickup.y - state.camera.y;
+          const twinkle = 0.4;
+          worldCtx.fillStyle = pickup.golden ? "#fbbf24" : "#22d3ee";
+          worldCtx.fillRect(Math.round(sx - 6), Math.round(sy - 6), 12, 12);
+          worldCtx.globalAlpha = 0.35 + (twinkle + 1) * 0.2;
+          worldCtx.fillStyle = "#ffffff";
+          worldCtx.fillRect(Math.round(sx - 2), Math.round(sy - 2), 4, 4);
+          worldCtx.globalAlpha = 1;
+        }
+
+        // Structures
+        for (const structure of STRUCTURES) {
+          if (!visible(structure.x, structure.y, structure.w, structure.h)) continue;
+          drawStructure(worldCtx, structure, Math.round(structure.x - state.camera.x), Math.round(structure.y - state.camera.y));
+        }
+
+        // NPCs
+        for (const npc of NPCS) {
+          if (!visible(npc.x - 14, npc.y - 16, 28, 30)) continue;
+          drawNpc(worldCtx, npc, npc.x - state.camera.x, npc.y - state.camera.y);
+        }
+
+        // Enemies
+        for (const enemy of state.enemies) {
+          if (!enemy.active) continue;
+          if (!visible(enemy.x - 18, enemy.y - 18, 36, 36)) continue;
+          drawEnemy(worldCtx, enemy, enemy.x - state.camera.x, enemy.y - state.camera.y);
+        }
+
+        // Player
+        drawPixelCharacter(worldCtx, state.hero.x - state.camera.x, state.hero.y - state.camera.y);
+
+        // Mini-map
+        const miniW = 190;
+        const miniH = 120;
+        const miniX = worldCanvas.width - miniW - 12;
+        const miniY = 10;
+        worldCtx.fillStyle = "rgba(4, 10, 22, 0.8)";
+        worldCtx.fillRect(miniX, miniY, miniW, miniH);
+        worldCtx.strokeStyle = "#3f5d95";
+        worldCtx.strokeRect(miniX, miniY, miniW, miniH);
+        const sx = miniW / WORLD_WIDTH;
+        const sy = miniH / WORLD_HEIGHT;
+        for (const region of REGIONS) {
+          worldCtx.fillStyle = region.colorA;
+          worldCtx.fillRect(miniX + region.x * sx, miniY + region.y * sy, region.w * sx, region.h * sy);
+        }
+        worldCtx.fillStyle = "#f8fafc";
+        worldCtx.fillRect(miniX + state.hero.x * sx - 2, miniY + state.hero.y * sy - 2, 4, 4);
+      };
+
+      const drawBattleScene = () => {
+        battleCtx.fillStyle = "#050a15";
+        battleCtx.fillRect(0, 0, battleCanvas.width, battleCanvas.height);
+        battleCtx.fillStyle = "#1f3357";
+        battleCtx.fillRect(0, 170, battleCanvas.width, 60);
+
+        if (!state.battle) {
+          battleCtx.fillStyle = "#93c5fd";
+          battleCtx.font = "16px sans-serif";
+          battleCtx.fillText("No active battle", 20, 36);
+          return;
+        }
+
+        const battle = state.battle;
+        const laneColor = {
+          speed: "#38bdf8",
+          precision: "#67e8f9",
+          survival: "#fb923c",
+          puzzle: "#c084fc",
+          tactical: "#facc15",
+        }[battle.encounterLane] ?? "#60a5fa";
+        battleCtx.fillStyle = laneColor;
+        battleCtx.fillRect(0, 0, battleCanvas.width, 10);
+
+        battleCtx.fillStyle = "#f8fafc";
+        battleCtx.font = "14px sans-serif";
+        battleCtx.fillText(`Lane: ${battle.encounterLane} | Turn: ${battle.turnNumber}`, 12, 28);
+
+        battleCtx.fillStyle = "#2563eb";
+        battleCtx.fillRect(70, 84, 56, 56);
+        battleCtx.fillStyle = "#ef4444";
+        battleCtx.fillRect(330, 84, 56, 56);
+
+        battleCtx.fillStyle = "#dbeafe";
+        battleCtx.fillText(battle.player.name, 58, 76);
+        battleCtx.fillText(battle.enemy.name, 312, 76);
+
+        const drawBar = (x, y, width, ratio, color) => {
+          battleCtx.fillStyle = "#0f172a";
+          battleCtx.fillRect(x, y, width, 12);
+          battleCtx.fillStyle = color;
+          battleCtx.fillRect(x, y, Math.floor(width * clamp(ratio, 0, 1)), 12);
+          battleCtx.strokeStyle = "#1e293b";
+          battleCtx.strokeRect(x, y, width, 12);
+        };
+
+        drawBar(20, 146, 150, battle.player.maxHp > 0 ? battle.player.hp / battle.player.maxHp : 0, "#22c55e");
+        drawBar(292, 146, 150, battle.enemy.maxHp > 0 ? battle.enemy.hp / battle.enemy.maxHp : 0, "#22c55e");
+        battleCtx.fillStyle = "#cbd5e1";
+        battleCtx.font = "12px sans-serif";
+        battleCtx.fillText(`HP ${battle.player.hp}/${battle.player.maxHp} | Guard ${battle.player.guard}`, 20, 164);
+        battleCtx.fillText(`HP ${battle.enemy.hp}/${battle.enemy.maxHp} | Guard ${battle.enemy.guard}`, 292, 164);
+
+        battleCtx.fillStyle = battle.status === "won" ? "#4ade80" : battle.status === "lost" ? "#fb7185" : "#cbd5e1";
+        battleCtx.font = "15px sans-serif";
+        battleCtx.fillText(`Status: ${battle.status.toUpperCase()}`, 14, 204);
+      };
+
+      const renderHud = () => {
+        const hpRatio = state.hero.maxHp > 0 ? state.hero.hp / state.hero.maxHp : 0;
+        dom.hpFill.style.width = `${Math.floor(clamp(hpRatio, 0, 1) * 100)}%`;
+        dom.hpText.textContent = `${state.hero.hp} / ${state.hero.maxHp}`;
+
+        const moralityPercent = Math.floor(((state.hero.morality + 100) / 200) * 100);
+        dom.moralityFill.style.width = `${moralityPercent}%`;
+        dom.moralityFill.style.background = state.hero.morality >= 0 ? "#22c55e" : "#f43f5e";
+        dom.moralityText.textContent = state.hero.morality >= 0 ? `Mycoside +${state.hero.morality}` : `Darkside ${state.hero.morality}`;
+
+        dom.sporeFill.style.width = `${clamp(state.hero.spores / 240, 0, 1) * 100}%`;
+        dom.sporeText.textContent = String(state.hero.spores);
+        dom.goldFill.style.width = `${clamp(state.hero.goldenSpores / 8, 0, 1) * 100}%`;
+        dom.goldText.textContent = String(state.hero.goldenSpores);
+
+        dom.attackStat.value = String(state.hero.attack);
+        dom.defenseStat.value = String(state.hero.defense);
+        dom.magicStat.value = String(state.hero.magic + (state.hero.magicBoostTurns > 0 ? 1 : 0));
+
+        dom.inventoryList.innerHTML = [
+          `<span class="chip">Myco Potion x${state.inventory.mycoPotion}</span>`,
+          `<span class="chip">Mana Dew x${state.inventory.manaDew}</span>`,
+          `<span class="chip">Smoke Bomb x${state.inventory.smokeBomb}</span>`,
+          `<span class="chip">Magic Boost Turns: ${state.hero.magicBoostTurns}</span>`,
+        ].join("");
+
+        const clueLabels = [];
+        for (const npc of NPCS) {
+          if (state.progress.clues.has(npc.clueId)) clueLabels.push(npc.clueLabel);
+        }
+        if (state.progress.clues.has("dungeon-rune")) clueLabels.push("Ancient Dungeon Rune");
+        if (state.progress.clues.has("restoration-seed")) clueLabels.push("Restoration Seed");
+        dom.clueList.innerHTML = clueLabels.length
+          ? clueLabels.map((label) => `<span class="chip">${label}</span>`).join("")
+          : `<span class="chip">No clues yet</span>`;
+
+        const questEntries = [
+          {
+            text: "Gather village intel and recover the Lunar Wolf Mark.",
+            done: state.progress.clues.has("lunar-wolf-mark"),
+          },
+          {
+            text: "Defeat Rougarou to clear the Fen rot gate.",
+            done: state.progress.defeatedBosses.has("rougarou"),
+          },
+          {
+            text: "Defeat the Three-Headed Dragon and recover the Drake Ember Sigil.",
+            done: state.progress.defeatedBosses.has("tri-drake") && state.progress.clues.has("drake-ember"),
+          },
+          {
+            text: "Defeat Evil Crab and claim the Abyss Pearl Cipher.",
+            done: state.progress.defeatedBosses.has("evil-crab") && state.progress.clues.has("abyss-pearl"),
+          },
+          {
+            text: "Reach Solana Chainlands and defeat Dark Mycelius.",
+            done: state.progress.defeatedBosses.has("dark-mycelius"),
+          },
+        ];
+        dom.questList.innerHTML = questEntries
+          .map((entry) => `<li class="${entry.done ? "quest-done" : ""}">${entry.done ? "✓ " : ""}${entry.text}</li>`)
+          .join("");
+
+        const region = getRegionForPoint(state.hero.x, state.hero.y);
+        dom.regionHint.textContent = `Current region: ${region?.name ?? "Unknown"}\n${region?.label ?? ""}\nAI directive: ${state.aiDirective}`;
+
+        const battleActive = state.mode === "battle" && state.battle && state.battle.status === "active";
+        dom.strikeBtn.disabled = !battleActive;
+        dom.guardBtn.disabled = !battleActive;
+        dom.skillBtn.disabled = !battleActive;
+        dom.itemBtn.disabled = !battleActive || state.inventory.mycoPotion <= 0;
+
+        if (state.battle) {
+          const lastAction = state.battle.lastAction
+            ? `${state.battle.lastAction.kind}${state.battle.lastAction.element ? ` (${state.battle.lastAction.element})` : ""}`
+            : "none";
+          dom.battleSummary.textContent = `Battle source: ${state.battleMode}. Last action: ${lastAction}. Encounter lane: ${state.battle.encounterLane}.`;
+          if (state.battle.battleLog?.length) {
+            dom.battleLog.textContent = state.battle.battleLog.slice(-14).join("\n");
+          }
+        } else {
+          dom.battleSummary.textContent = "No active battle. Touch an enemy in the overworld to engage.";
+        }
+      };
+
+      const syncCampaign = async () => {
+        setStatus("Syncing with RPG campaign API...");
+        try {
+          const snapshot = await callApi("/api/rpg/map", requestBase());
+          state.campaignSnapshot = snapshot;
+          setStatus(`Campaign synced. API region: ${snapshot.currentRegion?.name ?? "unknown"}`);
+        } catch (error) {
+          setStatus(`Campaign sync failed: ${String(error)} (local play still works)`, true);
+        }
+        checkCutsceneTriggers();
+        requestAiCoaching();
+      };
+
+      const frameLoop = async (timestamp) => {
+        if (!frameLoop.last) frameLoop.last = timestamp;
+        const dt = Math.min(0.05, (timestamp - frameLoop.last) / 1000);
+        frameLoop.last = timestamp;
+        await update(dt);
+        drawWorld();
+        drawBattleScene();
+        renderHud();
+        requestAnimationFrame(frameLoop);
+      };
+      frameLoop.last = 0;
+
+      const handleChoice = (choice) => {
+        if (!state.activeDialogue) return;
+        if (choice === "myco" && typeof state.activeDialogue.onMyco === "function") {
+          state.activeDialogue.onMyco();
+        }
+        if (choice === "dark" && typeof state.activeDialogue.onDark === "function") {
+          state.activeDialogue.onDark();
+        }
+        if (choice === "trade" && typeof state.activeDialogue.onTrade === "function") {
+          state.activeDialogue.onTrade();
+        }
+        closeDialogue();
+        renderHud();
+      };
+
+      document.addEventListener("keydown", (event) => {
+        const key = event.key.toLowerCase();
+        if (!state.audio.initialized && key !== "f5") {
+          initAudio();
+        }
+        if (["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d", "shift"].includes(key)) {
+          state.keys.add(key);
+          event.preventDefault();
+        }
+        if (key === "e") {
+          interact();
+          event.preventDefault();
+        }
+        if (key === " " && state.cutscene.active) {
+          advanceCutscene();
+          event.preventDefault();
+        }
+      });
+
+      document.addEventListener("keyup", (event) => {
+        state.keys.delete(event.key.toLowerCase());
+      });
+
+      dom.choiceMycoBtn.addEventListener("click", () => handleChoice("myco"));
+      dom.choiceDarkBtn.addEventListener("click", () => handleChoice("dark"));
+      dom.choiceTradeBtn.addEventListener("click", () => handleChoice("trade"));
+      dom.closeDialogueBtn.addEventListener("click", closeDialogue);
+      dom.cutsceneNextBtn.addEventListener("click", advanceCutscene);
+      dom.cutsceneSkipBtn.addEventListener("click", closeCutscene);
+
+      dom.audioEnableBtn.addEventListener("click", async () => {
+        await initAudio();
+      });
+      dom.musicToggleBtn.addEventListener("click", () => {
+        toggleMusic();
+      });
+      dom.sfxToggleBtn.addEventListener("click", () => {
+        toggleSfx();
+      });
+
+      dom.syncBtn.addEventListener("click", syncCampaign);
+      dom.minimalHudBtn.addEventListener("click", () => {
+        toggleMinimalHud();
+      });
+      dom.minimalHudFloating.addEventListener("click", () => {
+        toggleMinimalHud(false);
+      });
+      dom.saveBtn.addEventListener("click", () => {
+        saveGame();
+        setStatus("Local progress saved.");
+      });
+      dom.resetBtn.addEventListener("click", () => {
+        clearGame();
+        location.reload();
+      });
+
+      dom.strikeBtn.addEventListener("click", () => playTurn("strike"));
+      dom.guardBtn.addEventListener("click", () => playTurn("guard"));
+      dom.skillBtn.addEventListener("click", () => playTurn("skill"));
+      dom.itemBtn.addEventListener("click", () => useInventoryItem("mycoPotion"));
+
+      dom.buyPotionBtn.addEventListener("click", () => tryBuyItem("mycoPotion"));
+      dom.buyManaBtn.addEventListener("click", () => tryBuyItem("manaDew"));
+      dom.buyBombBtn.addEventListener("click", () => tryBuyItem("smokeBomb"));
+      dom.useManaBtn.addEventListener("click", () => useInventoryItem("manaDew"));
+      dom.useBombBtn.addEventListener("click", () => useInventoryItem("smokeBomb"));
+
+      dom.upgradeAttackBtn.addEventListener("click", () => tryUpgrade("attack"));
+      dom.upgradeDefenseBtn.addEventListener("click", () => tryUpgrade("defense"));
+      dom.upgradeMagicBtn.addEventListener("click", () => tryUpgrade("magic"));
+
+      [dom.apiBase, dom.source, dom.externalId, dom.sourceToken].forEach((input) => {
+        input.addEventListener("change", saveConfig);
+      });
+
+      window.addEventListener("beforeunload", saveGame);
+      window.addEventListener("resize", () => {
+        resizeCanvases();
+      });
+
+      loadConfig();
+      loadGame();
+      setupCornerMenus();
+      setupMobileControls();
+      dom.choiceTradeBtn.style.display = "none";
+      applyHudMode();
+      updateAudioUi();
+      resizeCanvases();
+      updateCamera();
+      renderHud();
+      drawWorld();
+      drawBattleScene();
+      requestAnimationFrame(frameLoop);
+      syncCampaign();
+      checkCutsceneTriggers();
+      setInterval(() => {
+        requestAiCoaching();
+      }, 50000);
+      window.addEventListener(
+        "pointerdown",
+        () => {
+          initAudio();
+        },
+        { once: true },
+      );
+      setStatus("Prototype loaded. Explore the world and touch enemies to start turn battles.");
+    </script>
+  </body>
+</html>

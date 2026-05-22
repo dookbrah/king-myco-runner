@@ -1,0 +1,1098 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Myco Quest Dev HUD</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      }
+      body {
+        margin: 0;
+        background: #0b1020;
+        color: #dbeafe;
+      }
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 24px;
+        display: grid;
+        gap: 16px;
+      }
+      .card {
+        background: #111933;
+        border: 1px solid #1f2b4d;
+        border-radius: 10px;
+        padding: 14px;
+      }
+      h1,
+      h2 {
+        margin: 0 0 12px;
+      }
+      h1 {
+        font-size: 24px;
+      }
+      h2 {
+        font-size: 18px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 10px;
+      }
+      label {
+        display: grid;
+        gap: 6px;
+        font-size: 13px;
+        color: #bfdbfe;
+      }
+      input,
+      select,
+      button,
+      textarea {
+        border: 1px solid #2e3d65;
+        border-radius: 8px;
+        background: #0f1730;
+        color: #e2e8f0;
+        padding: 8px 10px;
+      }
+      button {
+        background: #2563eb;
+        border-color: #1d4ed8;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button.secondary {
+        background: #1f2937;
+        border-color: #374151;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 10px;
+      }
+      .preset-grid {
+        margin-top: 12px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 10px;
+        align-items: end;
+      }
+      .preset-buttons {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 10px;
+      }
+      .metric {
+        background: #0f1730;
+        border: 1px solid #253356;
+        border-radius: 8px;
+        padding: 10px;
+      }
+      .metric p {
+        margin: 4px 0;
+      }
+      pre {
+        background: #0f1730;
+        border: 1px solid #253356;
+        border-radius: 8px;
+        padding: 10px;
+        overflow: auto;
+        max-height: 320px;
+      }
+      .status {
+        min-height: 20px;
+        color: #93c5fd;
+      }
+      .error {
+        color: #fca5a5;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="card">
+        <h1>Myco Quest Dev Playground + HUD</h1>
+        <p style="margin: 6px 0 0; font-size: 13px">Want the visual game screen? <a href="/game/myco-quest" target="_blank" rel="noreferrer">Open Myco Quest Playable View</a></p>
+        <div class="grid">
+          <label
+            >API Base URL
+            <input id="apiBase" value="" placeholder="same-origin when empty" />
+          </label>
+          <label
+            >Source
+            <select id="source">
+              <option>kingmyco.io</option>
+              <option>kingdom.kingmyco.com</option>
+              <option>mycokingdom_bot</option>
+              <option>mycoai_bot</option>
+              <option>openclaw</option>
+            </select>
+          </label>
+          <label
+            >External ID
+            <input id="externalId" value="dev-ui-player" />
+          </label>
+          <label
+            >Source Token (optional)
+            <input id="sourceToken" value="" />
+          </label>
+          <label
+            >Admin Key (for HUD)
+            <input id="adminKey" value="dev-admin-key" />
+          </label>
+          <label
+            >Player ID (auto-populates)
+            <input id="playerId" value="" />
+          </label>
+          <label
+            >Encounter Count
+            <input id="encounters" type="number" min="1" max="15" value="5" />
+          </label>
+          <label
+            >Seed (optional)
+            <input id="seed" value="" />
+          </label>
+          <label
+            >HUD Window Minutes
+            <input id="windowMinutes" type="number" min="1" value="30" />
+          </label>
+          <label
+            >HUD Min Events Per Source
+            <input id="minEventsPerSource" type="number" min="1" value="1" />
+          </label>
+        </div>
+        <div class="actions">
+          <button id="generateRun">Generate Run</button>
+          <button id="recordSession">Record Session</button>
+          <button class="secondary" id="refreshHud">Refresh HUD</button>
+          <button class="secondary" id="randomizeTelemetry">Randomize Telemetry</button>
+        </div>
+        <div class="preset-grid">
+          <label
+            >Scenario Preset
+            <select id="presetSelect"></select>
+          </label>
+          <label
+            >Custom Preset Name
+            <input id="presetName" value="" placeholder="e.g. ruthless-sprinter" />
+          </label>
+          <div class="preset-buttons">
+            <button class="secondary" id="applyPreset">Apply Preset</button>
+            <button class="secondary" id="savePreset">Save Preset</button>
+            <button class="secondary" id="deletePreset">Delete Preset</button>
+          </div>
+          <label style="grid-column: 1 / -1"
+            >Preset JSON Import/Export
+            <textarea
+              id="presetJson"
+              rows="8"
+              placeholder='{"version":1,"presets":[{"name":"example","data":{...}}]}'
+            ></textarea>
+          </label>
+          <div class="preset-buttons" style="grid-column: 1 / -1">
+            <button class="secondary" id="exportPresets">Export JSON</button>
+            <button class="secondary" id="importPresets">Import JSON</button>
+            <button class="secondary" id="downloadPresets">Download JSON</button>
+            <button class="secondary" id="uploadPresets">Upload JSON</button>
+            <input id="presetFile" type="file" accept=".json,application/json" style="display:none" />
+          </div>
+        </div>
+        <p class="status" id="statusText"></p>
+      </section>
+
+      <section class="card">
+        <h2>Session Telemetry Controls</h2>
+        <div class="grid">
+          <label>Completed Encounters <input id="completedEncounters" type="number" value="5" /></label>
+          <label>Failed Encounters <input id="failedEncounters" type="number" value="1" /></label>
+          <label>Damage Taken <input id="damageTaken" type="number" value="28" /></label>
+          <label>Perfect Actions <input id="perfectActions" type="number" value="7" /></label>
+          <label>Discovery Actions <input id="discoveryActions" type="number" value="4" /></label>
+          <label>Risky Actions <input id="riskyActions" type="number" value="3" /></label>
+          <label>Session Length (sec) <input id="sessionLengthSec" type="number" value="640" /></label>
+          <label>Spores Collected <input id="sporesCollected" type="number" value="40" /></label>
+          <label>Compassionate Actions <input id="compassionateActions" type="number" value="4" /></label>
+          <label>Ruthless Actions <input id="ruthlessActions" type="number" value="1" /></label>
+          <label>Score (optional) <input id="score" type="number" value="1200" /></label>
+          <label>Mode <input id="mode" value="myco-quest" /></label>
+        </div>
+        <div class="grid" style="margin-top: 10px">
+          <label>Fire Casts <input id="fireCasts" type="number" value="10" /></label>
+          <label>Water Casts <input id="waterCasts" type="number" value="8" /></label>
+          <label>Ice Casts <input id="iceCasts" type="number" value="5" /></label>
+          <label>Nature Casts <input id="natureCasts" type="number" value="2" /></label>
+          <label>Void Casts <input id="voidCasts" type="number" value="1" /></label>
+          <label style="grid-column: span 2"
+            >Rituals Completed (comma-separated)
+            <input id="rituals" value="mycelial-oath" />
+          </label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Live Progress Metrics</h2>
+        <div class="metric-grid">
+          <div class="metric"><p><strong>Morality</strong></p><p id="morality">-</p></div>
+          <div class="metric"><p><strong>Spores Collected</strong></p><p id="sporesCollectedTotal">-</p></div>
+          <div class="metric"><p><strong>Wallet Spores</strong></p><p id="walletSpores">-</p></div>
+          <div class="metric"><p><strong>Learned Magic</strong></p><p id="learnedMagicCount">-</p></div>
+          <div class="metric"><p><strong>All Sources Active</strong></p><p id="allSourcesActive">-</p></div>
+          <div class="metric"><p><strong>Active Sources</strong></p><p id="activeSourceCount">-</p></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Run Encounters</h2>
+        <pre id="runOutput">No run generated yet.</pre>
+      </section>
+
+      <section class="card">
+        <h2>RPG Map + Turn Battle</h2>
+        <div class="grid">
+          <label
+            >Travel Destination
+            <select id="rpgDestination"></select>
+          </label>
+          <label
+            >Turn Action
+            <select id="rpgActionKind">
+              <option value="strike">strike</option>
+              <option value="guard">guard</option>
+              <option value="skill">skill</option>
+            </select>
+          </label>
+          <label
+            >Action Element
+            <select id="rpgActionElement">
+              <option value="">(none)</option>
+              <option value="fire">fire</option>
+              <option value="water">water</option>
+              <option value="ice">ice</option>
+              <option value="nature">nature</option>
+              <option value="void">void</option>
+            </select>
+          </label>
+        </div>
+        <div class="actions">
+          <button class="secondary" id="loadRpgMap">Load RPG Map</button>
+          <button class="secondary" id="travelRpgRegion">Travel Region</button>
+          <button class="secondary" id="startRpgBattle">Start Battle</button>
+          <button class="secondary" id="playRpgTurn">Play Turn</button>
+        </div>
+        <pre id="rpgMapOutput">No RPG map loaded yet.</pre>
+        <pre id="rpgBattleOutput">No battle started yet.</pre>
+      </section>
+
+      <section class="card">
+        <h2>HUD Payload</h2>
+        <pre id="hudOutput">No HUD loaded yet.</pre>
+      </section>
+    </main>
+    <script>
+      const get = (id) => document.getElementById(id);
+      const parseNumber = (id, fallback = 0) => {
+        const value = Number(get(id).value);
+        return Number.isFinite(value) ? value : fallback;
+      };
+
+      const state = { playerId: "", rpgMap: null, rpgBattle: null };
+      const PRESET_STORAGE_KEY = "mycoQuestDevPresets.v1";
+      const PRESET_EXPORT_VERSION = 1;
+      const BUILTIN_PRESETS = [
+        {
+          id: "balanced-adventurer",
+          name: "Balanced Adventurer",
+          data: {
+            completedEncounters: 5,
+            failedEncounters: 1,
+            damageTaken: 28,
+            perfectActions: 7,
+            discoveryActions: 4,
+            riskyActions: 3,
+            sessionLengthSec: 640,
+            sporesCollected: 40,
+            compassionateActions: 4,
+            ruthlessActions: 1,
+            score: 1200,
+            mode: "myco-quest",
+            encounters: 5,
+            fireCasts: 10,
+            waterCasts: 8,
+            iceCasts: 5,
+            natureCasts: 2,
+            voidCasts: 1,
+            rituals: "mycelial-oath",
+          },
+        },
+        {
+          id: "ruthless-void-runner",
+          name: "Ruthless Void Runner",
+          data: {
+            completedEncounters: 6,
+            failedEncounters: 0,
+            damageTaken: 19,
+            perfectActions: 9,
+            discoveryActions: 2,
+            riskyActions: 8,
+            sessionLengthSec: 510,
+            sporesCollected: 68,
+            compassionateActions: 0,
+            ruthlessActions: 7,
+            score: 1725,
+            mode: "myco-quest",
+            encounters: 6,
+            fireCasts: 8,
+            waterCasts: 2,
+            iceCasts: 6,
+            natureCasts: 1,
+            voidCasts: 10,
+            rituals: "eclipse-ascension",
+          },
+        },
+        {
+          id: "compassionate-scholar",
+          name: "Compassionate Scholar",
+          data: {
+            completedEncounters: 5,
+            failedEncounters: 1,
+            damageTaken: 24,
+            perfectActions: 10,
+            discoveryActions: 9,
+            riskyActions: 1,
+            sessionLengthSec: 760,
+            sporesCollected: 54,
+            compassionateActions: 8,
+            ruthlessActions: 0,
+            score: 1650,
+            mode: "myco-quest",
+            encounters: 5,
+            fireCasts: 4,
+            waterCasts: 12,
+            iceCasts: 8,
+            natureCasts: 9,
+            voidCasts: 0,
+            rituals: "verdant-vow,mist-oath",
+          },
+        },
+        {
+          id: "speedrunner-boss-breaker",
+          name: "Speedrunner Boss Breaker",
+          data: {
+            completedEncounters: 7,
+            failedEncounters: 0,
+            damageTaken: 15,
+            perfectActions: 11,
+            discoveryActions: 2,
+            riskyActions: 5,
+            sessionLengthSec: 430,
+            sporesCollected: 73,
+            compassionateActions: 2,
+            ruthlessActions: 3,
+            score: 2050,
+            mode: "myco-quest",
+            encounters: 7,
+            fireCasts: 14,
+            waterCasts: 5,
+            iceCasts: 4,
+            natureCasts: 2,
+            voidCasts: 3,
+            rituals: "phoenix-lunge",
+          },
+        },
+      ];
+      const PRESET_FIELD_IDS = [
+        "completedEncounters",
+        "failedEncounters",
+        "damageTaken",
+        "perfectActions",
+        "discoveryActions",
+        "riskyActions",
+        "sessionLengthSec",
+        "sporesCollected",
+        "compassionateActions",
+        "ruthlessActions",
+        "score",
+        "mode",
+        "encounters",
+        "fireCasts",
+        "waterCasts",
+        "iceCasts",
+        "natureCasts",
+        "voidCasts",
+        "rituals",
+      ];
+
+      const setStatus = (message, isError = false) => {
+        const status = get("statusText");
+        status.textContent = message;
+        status.className = isError ? "status error" : "status";
+      };
+
+      const baseUrl = () => get("apiBase").value.trim().replace(/\/+$/, "");
+      const apiUrl = (path) => `${baseUrl()}${path}`;
+
+      const headers = ({ includeAdmin = false } = {}) => {
+        const result = { "content-type": "application/json" };
+        const sourceToken = get("sourceToken").value.trim();
+        if (sourceToken) {
+          result["x-source-token"] = sourceToken;
+        }
+        if (includeAdmin) {
+          result["x-admin-key"] = get("adminKey").value.trim();
+        }
+        return result;
+      };
+
+      const getCustomPresets = () => {
+        try {
+          const raw = localStorage.getItem(PRESET_STORAGE_KEY);
+          if (!raw) {
+            return [];
+          }
+          const parsed = JSON.parse(raw);
+          if (!Array.isArray(parsed)) {
+            return [];
+          }
+          return parsed.filter((preset) => preset && typeof preset.id === "string" && typeof preset.name === "string" && preset.data && typeof preset.data === "object");
+        } catch {
+          return [];
+        }
+      };
+
+      const setCustomPresets = (presets) => {
+        localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(presets));
+      };
+
+      const listAllPresets = () => {
+        const custom = getCustomPresets().map((preset) => ({ ...preset, builtIn: false }));
+        const builtIn = BUILTIN_PRESETS.map((preset) => ({ ...preset, builtIn: true }));
+        return [...builtIn, ...custom];
+      };
+
+      const normalizePresetId = (value) => {
+        const normalized = String(value || "")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)/g, "");
+        return normalized.length > 0 ? normalized : "";
+      };
+
+      const captureCurrentPresetData = () => {
+        const data = {};
+        for (const id of PRESET_FIELD_IDS) {
+          data[id] = get(id).value;
+        }
+        return data;
+      };
+
+      const applyPresetData = (data) => {
+        for (const id of PRESET_FIELD_IDS) {
+          if (Object.prototype.hasOwnProperty.call(data, id)) {
+            get(id).value = String(data[id]);
+          }
+        }
+      };
+
+      const populatePresetSelect = (selectedValue) => {
+        const select = get("presetSelect");
+        const all = listAllPresets();
+        const options = all
+          .map((preset) => {
+            const value = `${preset.builtIn ? "builtin" : "custom"}:${preset.id}`;
+            const labelPrefix = preset.builtIn ? "[built-in]" : "[custom]";
+            return `<option value="${value}">${labelPrefix} ${preset.name}</option>`;
+          })
+          .join("");
+        select.innerHTML = options;
+
+        if (all.length === 0) {
+          return;
+        }
+
+        const fallbackValue = `builtin:${BUILTIN_PRESETS[0].id}`;
+        const targetValue = selectedValue || select.value || fallbackValue;
+        const hasTarget = Array.from(select.options).some((option) => option.value === targetValue);
+        select.value = hasTarget ? targetValue : fallbackValue;
+      };
+
+      const getSelectedPreset = () => {
+        const raw = get("presetSelect").value;
+        const [scope, id] = raw.split(":");
+        if (!scope || !id) {
+          return null;
+        }
+
+        if (scope === "builtin") {
+          return BUILTIN_PRESETS.find((preset) => preset.id === id) || null;
+        }
+
+        return getCustomPresets().find((preset) => preset.id === id) || null;
+      };
+
+      const applySelectedPreset = () => {
+        const preset = getSelectedPreset();
+        if (!preset) {
+          throw new Error("Select a preset before applying.");
+        }
+        applyPresetData(preset.data);
+        get("presetName").value = preset.name;
+        setStatus(`Applied preset: ${preset.name}`);
+      };
+
+      const saveCurrentAsPreset = () => {
+        const rawName = get("presetName").value.trim();
+        if (!rawName) {
+          throw new Error("Enter a custom preset name before saving.");
+        }
+
+        const normalizedId = normalizePresetId(rawName);
+        const presetId = normalizedId.length > 0 ? normalizedId : `preset-${Date.now()}`;
+
+        const current = getCustomPresets();
+        const data = captureCurrentPresetData();
+        const existingIndex = current.findIndex((preset) => preset.id === presetId);
+        if (existingIndex >= 0) {
+          current[existingIndex] = { id: presetId, name: rawName, data };
+        } else {
+          current.push({ id: presetId, name: rawName, data });
+        }
+
+        setCustomPresets(current);
+        const selected = `custom:${presetId}`;
+        populatePresetSelect(selected);
+        setStatus(`Saved preset: ${rawName}`);
+      };
+
+      const buildPresetExportPayload = () => {
+        return {
+          version: PRESET_EXPORT_VERSION,
+          exportedAt: new Date().toISOString(),
+          presets: getCustomPresets(),
+        };
+      };
+
+      const exportPresetsToJsonText = () => {
+        return JSON.stringify(buildPresetExportPayload(), null, 2);
+      };
+
+      const exportPresetsToTextarea = () => {
+        const json = exportPresetsToJsonText();
+        get("presetJson").value = json;
+        setStatus(`Exported ${getCustomPresets().length} custom preset(s) to JSON.`);
+        return json;
+      };
+
+      const downloadPresetsJson = () => {
+        const json = exportPresetsToJsonText();
+        get("presetJson").value = json;
+
+        const blob = new Blob([json], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = "myco-quest-presets.json";
+        anchor.click();
+        URL.revokeObjectURL(url);
+
+        setStatus("Preset JSON downloaded.");
+      };
+
+      const normalizeImportedPresets = (rawPresets) => {
+        const normalized = [];
+
+        rawPresets.forEach((preset, index) => {
+          if (!preset || typeof preset !== "object" || !preset.data || typeof preset.data !== "object") {
+            return;
+          }
+
+          const name = typeof preset.name === "string" ? preset.name.trim() : "";
+          if (!name) {
+            return;
+          }
+
+          const idSource =
+            typeof preset.id === "string" && preset.id.trim().length > 0
+              ? preset.id
+              : name;
+          const id = normalizePresetId(idSource) || `imported-${Date.now()}-${index}`;
+
+          const cleanData = {};
+          for (const fieldId of PRESET_FIELD_IDS) {
+            if (Object.prototype.hasOwnProperty.call(preset.data, fieldId)) {
+              cleanData[fieldId] = preset.data[fieldId];
+            }
+          }
+
+          normalized.push({ id, name, data: cleanData });
+        });
+
+        return normalized;
+      };
+
+      const importPresetsFromJsonText = (raw) => {
+        const trimmed = String(raw || "").trim();
+        if (!trimmed) {
+          throw new Error("Paste preset JSON before importing.");
+        }
+
+        const parsed = JSON.parse(trimmed);
+        const importedArray = Array.isArray(parsed)
+          ? parsed
+          : Array.isArray(parsed.presets)
+            ? parsed.presets
+            : [];
+
+        const imported = normalizeImportedPresets(importedArray);
+        if (imported.length === 0) {
+          throw new Error("No valid presets found in provided JSON.");
+        }
+
+        const mergedMap = new Map(getCustomPresets().map((preset) => [preset.id, preset]));
+        for (const preset of imported) {
+          mergedMap.set(preset.id, preset);
+        }
+
+        const merged = Array.from(mergedMap.values());
+        setCustomPresets(merged);
+
+        const selected = `custom:${imported[0].id}`;
+        populatePresetSelect(selected);
+        applySelectedPreset();
+        setStatus(`Imported ${imported.length} preset(s). Total custom presets: ${merged.length}.`);
+      };
+
+      const handlePresetFileUpload = async () => {
+        const input = get("presetFile");
+        const [file] = input.files || [];
+        if (!file) {
+          return;
+        }
+
+        const content = await file.text();
+        get("presetJson").value = content;
+        importPresetsFromJsonText(content);
+        input.value = "";
+      };
+
+      const deleteSelectedCustomPreset = () => {
+        const raw = get("presetSelect").value;
+        const [scope, id] = raw.split(":");
+
+        if (scope !== "custom") {
+          throw new Error("Only custom presets can be deleted.");
+        }
+
+        const current = getCustomPresets();
+        const next = current.filter((preset) => preset.id !== id);
+        if (next.length === current.length) {
+          throw new Error("Selected custom preset was not found.");
+        }
+
+        setCustomPresets(next);
+        populatePresetSelect();
+        setStatus("Custom preset deleted.");
+      };
+
+      const initializePresets = () => {
+        populatePresetSelect(`builtin:${BUILTIN_PRESETS[0].id}`);
+        applySelectedPreset();
+      };
+
+      const renderRun = (run) => {
+        if (!run || !Array.isArray(run.encounters)) {
+          get("runOutput").textContent = "No run available.";
+          return;
+        }
+
+        const objective = run.objective;
+        const objectiveResult = run.objectiveResult;
+        const objectiveLines = objective
+          ? [
+              `Objective: ${objective.title}`,
+              `Chain ${objective.chainId} | step ${objective.chainStep} | branch ${objective.branch}`,
+              `Lane ${objective.targetLane} | wins ${objective.minimumLaneWins}+ | perfect ${objective.minimumPerfectActions}+ | bonus ${objective.rewardBonusSpores} spores`,
+              objective.targetElement
+                ? `Element attunement: ${objective.targetElement}`
+                : "Element attunement: optional",
+              objectiveResult
+                ? `Last result: ${objectiveResult.completed ? "completed" : "incomplete"} (${(objectiveResult.progress * 100).toFixed(1)}%)`
+                : "Last result: pending",
+              `Hint: ${objective.completionHint}`,
+              "",
+            ]
+          : [];
+
+        const encounterLines = run.encounters.map((encounter) => {
+          const branchDirective = encounter.branchDirective
+            ? ` | ${encounter.branchDirective}`
+            : "";
+          return `#${encounter.encounterNumber} ${encounter.lane} | ${encounter.title} | difficulty ${encounter.targetDifficulty}${branchDirective}`;
+        });
+
+        get("runOutput").textContent = [...objectiveLines, ...encounterLines].join("\n");
+      };
+
+      const renderMetrics = (player, communication) => {
+        const profile = player?.profile ?? {};
+        const wallet = player?.wallet ?? {};
+        get("morality").textContent = String(profile.morality ?? "-");
+        get("sporesCollectedTotal").textContent = String(profile.sporesCollected ?? "-");
+        get("walletSpores").textContent = String(wallet.spores ?? "-");
+        get("learnedMagicCount").textContent = String(
+          Array.isArray(profile.learnedMagic) ? profile.learnedMagic.length : "-",
+        );
+        get("allSourcesActive").textContent = String(communication?.allSourcesActive ?? "-");
+        get("activeSourceCount").textContent = String(communication?.activeSourceCount ?? "-");
+      };
+
+      const renderRpgMap = (map) => {
+        state.rpgMap = map || null;
+        if (!map) {
+          get("rpgMapOutput").textContent = "No RPG map loaded yet.";
+          get("rpgDestination").innerHTML = "";
+          return;
+        }
+
+        const destinations = Array.isArray(map.connectedRegions)
+          ? map.connectedRegions
+          : [];
+        get("rpgDestination").innerHTML = destinations
+          .map((region) => `<option value="${region.id}">${region.name} (${region.biome})</option>`)
+          .join("");
+
+        get("rpgMapOutput").textContent = JSON.stringify(map, null, 2);
+      };
+
+      const renderRpgBattle = (receipt) => {
+        if (!receipt || !receipt.battle) {
+          state.rpgBattle = null;
+          get("rpgBattleOutput").textContent = "No battle started yet.";
+          return;
+        }
+
+        state.rpgBattle = receipt.battle;
+        get("rpgBattleOutput").textContent = JSON.stringify(receipt, null, 2);
+      };
+
+      const loadRpgMap = async () => {
+        setStatus("Loading RPG map...");
+        const payload = {
+          source: get("source").value,
+          externalId: get("externalId").value.trim(),
+        };
+
+        const response = await fetch(apiUrl("/api/rpg/map"), {
+          method: "POST",
+          headers: headers(),
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+
+        const map = await response.json();
+        state.playerId = map.playerId;
+        get("playerId").value = map.playerId;
+        renderRpgMap(map);
+        setStatus(`RPG map loaded in ${map.currentRegion?.name ?? map.world?.currentRegionId}.`);
+      };
+
+      const travelRpgRegion = async () => {
+        setStatus("Traveling to selected region...");
+        const destinationRegionId = get("rpgDestination").value;
+        if (!destinationRegionId) {
+          throw new Error("Load RPG map first so a destination is available.");
+        }
+
+        const payload = {
+          source: get("source").value,
+          externalId: get("externalId").value.trim(),
+          destinationRegionId,
+        };
+
+        const response = await fetch(apiUrl("/api/rpg/travel"), {
+          method: "POST",
+          headers: headers(),
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+
+        const map = await response.json();
+        state.playerId = map.playerId;
+        get("playerId").value = map.playerId;
+        renderRpgMap(map);
+        if (map.activeBattle) {
+          renderRpgBattle({ playerId: map.playerId, campaign: { world: map.world }, battle: map.activeBattle });
+        }
+        setStatus(`Traveled to ${map.currentRegion?.name ?? map.world?.currentRegionId}.`);
+      };
+
+      const startRpgBattle = async () => {
+        setStatus("Starting RPG battle...");
+        const payload = {
+          source: get("source").value,
+          externalId: get("externalId").value.trim(),
+        };
+
+        const response = await fetch(apiUrl("/api/rpg/battle/start"), {
+          method: "POST",
+          headers: headers(),
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+
+        const receipt = await response.json();
+        state.playerId = receipt.playerId;
+        get("playerId").value = receipt.playerId;
+        renderRpgBattle(receipt);
+        setStatus(`Battle started in lane ${receipt.battle?.encounterLane}.`);
+      };
+
+      const playRpgTurn = async () => {
+        setStatus("Resolving RPG turn...");
+        const actionKind = get("rpgActionKind").value;
+        const actionElementRaw = get("rpgActionElement").value;
+
+        const payload = {
+          source: get("source").value,
+          externalId: get("externalId").value.trim(),
+          action: {
+            kind: actionKind,
+            ...(actionElementRaw ? { element: actionElementRaw } : {}),
+          },
+        };
+
+        const response = await fetch(apiUrl("/api/rpg/battle/turn"), {
+          method: "POST",
+          headers: headers(),
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+
+        const receipt = await response.json();
+        state.playerId = receipt.playerId;
+        get("playerId").value = receipt.playerId;
+        renderRpgBattle(receipt);
+
+        if (receipt.battle?.status !== "active") {
+          await loadRpgMap();
+          setStatus(`Battle ${receipt.battle?.status}. Map refreshed.`);
+          return;
+        }
+
+        setStatus(
+          `Turn ${receipt.battle?.turnNumber} resolved. Enemy HP ${receipt.battle?.enemy?.hp}/${receipt.battle?.enemy?.maxHp}.`,
+        );
+      };
+
+      const getTelemetryPayload = () => {
+        const castsByElement = {
+          fire: parseNumber("fireCasts"),
+          water: parseNumber("waterCasts"),
+          ice: parseNumber("iceCasts"),
+          nature: parseNumber("natureCasts"),
+          void: parseNumber("voidCasts"),
+        };
+
+        const usedElements = Object.entries(castsByElement)
+          .filter(([, count]) => count > 0)
+          .map(([element]) => element);
+
+        if (usedElements.length === 0) {
+          usedElements.push("fire", "water");
+        }
+
+        return {
+          sessionLengthSec: parseNumber("sessionLengthSec", 600),
+          completedEncounters: parseNumber("completedEncounters", 5),
+          failedEncounters: parseNumber("failedEncounters", 1),
+          damageTaken: parseNumber("damageTaken", 25),
+          perfectActions: parseNumber("perfectActions", 6),
+          riskyActions: parseNumber("riskyActions", 3),
+          discoveryActions: parseNumber("discoveryActions", 4),
+          sporesCollected: parseNumber("sporesCollected", 30),
+          abandoned: false,
+          usedElements,
+          morality: {
+            compassionateActions: parseNumber("compassionateActions", 3),
+            ruthlessActions: parseNumber("ruthlessActions", 1),
+          },
+          magic: {
+            castsByElement,
+            ritualsCompleted: get("rituals")
+              .value.split(",")
+              .map((value) => value.trim())
+              .filter((value) => value.length > 0),
+          },
+        };
+      };
+
+      const requirePlayerId = () => {
+        const id = get("playerId").value.trim() || state.playerId;
+        if (!id) {
+          throw new Error("No playerId found yet. Generate a run or record a session first.");
+        }
+        return id;
+      };
+
+      const generateRun = async () => {
+        setStatus("Generating run...");
+        const payload = {
+          source: get("source").value,
+          externalId: get("externalId").value.trim(),
+          encounters: parseNumber("encounters", 5),
+        };
+        const seed = get("seed").value.trim();
+        if (seed) {
+          payload.seed = seed;
+        }
+
+        const response = await fetch(apiUrl("/api/run/generate"), {
+          method: "POST",
+          headers: headers(),
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+        const data = await response.json();
+        state.playerId = data.playerId;
+        get("playerId").value = data.playerId;
+        renderRun(data.lastRun);
+        renderMetrics(data, null);
+        setStatus(`Run generated for player ${data.playerId}`);
+      };
+
+      const recordSession = async () => {
+        setStatus("Recording session...");
+        const payload = {
+          source: get("source").value,
+          externalId: get("externalId").value.trim(),
+          mode: get("mode").value.trim() || "myco-quest",
+          score: parseNumber("score", 1200),
+          telemetry: getTelemetryPayload(),
+        };
+        const response = await fetch(apiUrl("/api/session/record"), {
+          method: "POST",
+          headers: headers(),
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+        const data = await response.json();
+        state.playerId = data.playerId;
+        get("playerId").value = data.playerId;
+        renderMetrics({ profile: data.profile, wallet: data.wallet }, null);
+        const objectiveSummary = data.rewards?.objectiveCompleted
+          ? ` Objective complete (+${data.rewards?.objectiveBonusSpores ?? 0} spores).`
+          : ` Objective progress ${(Math.round((data.rewards?.objectiveProgress ?? 0) * 1000) / 10).toFixed(1)}%.`;
+        setStatus(`Session recorded. Awarded ${data.rewards?.awardedSpores ?? 0} spores.${objectiveSummary}`);
+      };
+
+      const refreshHud = async () => {
+        const playerId = requirePlayerId();
+        setStatus(`Refreshing HUD for ${playerId}...`);
+        const params = new URLSearchParams({
+          windowMinutes: String(parseNumber("windowMinutes", 30)),
+          minEventsPerSource: String(parseNumber("minEventsPerSource", 1)),
+        });
+        const response = await fetch(apiUrl(`/api/dev/hud/${encodeURIComponent(playerId)}?${params}`), {
+          method: "GET",
+          headers: headers({ includeAdmin: true }),
+        });
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+        const data = await response.json();
+        renderRun(data.player?.lastRun);
+        renderMetrics(data.player, data.communication);
+        get("hudOutput").textContent = JSON.stringify(data, null, 2);
+        setStatus("HUD refreshed.");
+      };
+
+      const randomizeTelemetry = () => {
+        get("completedEncounters").value = String(4 + Math.floor(Math.random() * 5));
+        get("failedEncounters").value = String(Math.floor(Math.random() * 3));
+        get("damageTaken").value = String(12 + Math.floor(Math.random() * 35));
+        get("perfectActions").value = String(4 + Math.floor(Math.random() * 8));
+        get("discoveryActions").value = String(2 + Math.floor(Math.random() * 7));
+        get("riskyActions").value = String(Math.floor(Math.random() * 6));
+        get("sessionLengthSec").value = String(480 + Math.floor(Math.random() * 320));
+        get("sporesCollected").value = String(20 + Math.floor(Math.random() * 60));
+        get("compassionateActions").value = String(1 + Math.floor(Math.random() * 6));
+        get("ruthlessActions").value = String(Math.floor(Math.random() * 4));
+        get("score").value = String(850 + Math.floor(Math.random() * 900));
+        get("fireCasts").value = String(6 + Math.floor(Math.random() * 10));
+        get("waterCasts").value = String(4 + Math.floor(Math.random() * 9));
+        get("iceCasts").value = String(2 + Math.floor(Math.random() * 8));
+        get("natureCasts").value = String(Math.floor(Math.random() * 6));
+        get("voidCasts").value = String(Math.floor(Math.random() * 4));
+        get("rituals").value = `dev-ritual-${Math.floor(Math.random() * 1000)}`;
+        setStatus("Telemetry randomized.");
+      };
+
+      const withErrorHandling = (action) => async () => {
+        try {
+          await action();
+        } catch (error) {
+          setStatus(error instanceof Error ? error.message : "Unknown error", true);
+        }
+      };
+
+      get("generateRun").addEventListener("click", withErrorHandling(generateRun));
+      get("recordSession").addEventListener("click", withErrorHandling(recordSession));
+      get("refreshHud").addEventListener("click", withErrorHandling(refreshHud));
+      get("randomizeTelemetry").addEventListener("click", randomizeTelemetry);
+      get("loadRpgMap").addEventListener("click", withErrorHandling(loadRpgMap));
+      get("travelRpgRegion").addEventListener("click", withErrorHandling(travelRpgRegion));
+      get("startRpgBattle").addEventListener("click", withErrorHandling(startRpgBattle));
+      get("playRpgTurn").addEventListener("click", withErrorHandling(playRpgTurn));
+      get("applyPreset").addEventListener("click", withErrorHandling(() => {
+        applySelectedPreset();
+      }));
+      get("savePreset").addEventListener("click", withErrorHandling(() => {
+        saveCurrentAsPreset();
+      }));
+      get("deletePreset").addEventListener("click", withErrorHandling(() => {
+        deleteSelectedCustomPreset();
+      }));
+      get("presetSelect").addEventListener("change", withErrorHandling(() => {
+        applySelectedPreset();
+      }));
+      get("exportPresets").addEventListener("click", withErrorHandling(() => {
+        exportPresetsToTextarea();
+      }));
+      get("importPresets").addEventListener("click", withErrorHandling(() => {
+        importPresetsFromJsonText(get("presetJson").value);
+      }));
+      get("downloadPresets").addEventListener("click", withErrorHandling(() => {
+        downloadPresetsJson();
+      }));
+      get("uploadPresets").addEventListener("click", () => {
+        get("presetFile").click();
+      });
+      get("presetFile").addEventListener("change", withErrorHandling(async () => {
+        await handlePresetFileUpload();
+      }));
+
+      initializePresets();
+      exportPresetsToTextarea();
+    </script>
+  </body>
+</html>

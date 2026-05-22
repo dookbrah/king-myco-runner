@@ -1,0 +1,53 @@
+name: Deploy Providers Stub
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy-railway:
+    runs-on: ubuntu-latest
+    if: secrets.RAILWAY_DEPLOY_HOOK != ''
+    steps:
+      - name: Trigger Railway deploy hook
+        run: curl -fsSL -X POST "${{ secrets.RAILWAY_DEPLOY_HOOK }}"
+
+  deploy-render:
+    runs-on: ubuntu-latest
+    if: secrets.RENDER_DEPLOY_HOOK != ''
+    steps:
+      - name: Trigger Render deploy hook
+        run: curl -fsSL -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+
+  deploy-fly:
+    runs-on: ubuntu-latest
+    if: secrets.FLY_API_TOKEN != '' && vars.FLY_APP_NAME != ''
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy Fly app
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl deploy --remote-only --app "${{ vars.FLY_APP_NAME }}"
+
+  deploy-ec2:
+    runs-on: ubuntu-latest
+    if: secrets.EC2_SSH_HOST != '' && secrets.EC2_SSH_USER != '' && secrets.EC2_SSH_KEY != ''
+    steps:
+      - name: Configure SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.EC2_SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy on EC2 host
+        run: |
+          ssh "${{ secrets.EC2_SSH_USER }}@${{ secrets.EC2_SSH_HOST }}" \
+            "APP_DIR=/opt/kingmyco BRANCH=main bash /opt/kingmyco/deploy/ec2/deploy.sh"

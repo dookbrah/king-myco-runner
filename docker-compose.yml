@@ -1,0 +1,47 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: kingmyco-runner:latest
+    restart: unless-stopped
+    command: npm run start:api:prod
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    volumes:
+      - kingmyco-data:/app/data
+
+  heartbeat-worker:
+    image: kingmyco-runner:latest
+    restart: unless-stopped
+    command: npm run start:heartbeat-worker:prod
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+    volumes:
+      - kingmyco-data:/app/data
+    depends_on:
+      - api
+
+  settlement-worker:
+    image: kingmyco-runner:latest
+    restart: unless-stopped
+    command: npm run start:settlement-worker:prod
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+    volumes:
+      - kingmyco-data:/app/data
+    depends_on:
+      - api
+    profiles:
+      - settlement
+
+volumes:
+  kingmyco-data:

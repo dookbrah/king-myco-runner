@@ -1,0 +1,49 @@
+{
+  "name": "king-myco-runner",
+  "version": "0.1.0",
+  "description": "Myco Quest adaptive AI game-core prototype",
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "demo": "tsx src/demo.ts",
+    "start:api": "tsx src/server.ts",
+    "start:api:prod": "node dist/server.js",
+    "start:settlement-worker": "tsx src/workers/solanaSettlementWorker.ts",
+    "start:settlement-worker:prod": "node dist/workers/solanaSettlementWorker.js",
+    "start:heartbeat-worker": "tsx src/workers/ecosystemHeartbeatWorker.ts",
+    "start:heartbeat-worker:prod": "node dist/workers/ecosystemHeartbeatWorker.js",
+    "playground": "bash scripts/dev-playground.sh"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dookbrah/king-myco-runner.git"
+  },
+  "keywords": [
+    "myco",
+    "game-ai",
+    "procedural-generation",
+    "personalization"
+  ],
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dookbrah/king-myco-runner/issues"
+  },
+  "homepage": "https://github.com/dookbrah/king-myco-runner#readme",
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "@types/pg": "^8.20.0",
+    "tsx": "^4.22.3",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.7"
+  },
+  "dependencies": {
+    "@solana/web3.js": "^1.98.4",
+    "bs58": "^6.0.0",
+    "pg": "^8.21.0",
+    "redis": "^5.12.1",
+    "tweetnacl": "^1.0.3"
+  }
+}
