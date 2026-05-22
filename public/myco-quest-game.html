@@ -443,10 +443,10 @@
   <body>
     <main>
       <section class="panel">
-        <h1>Myco Quest - 32-bit Overworld + Contact Battle</h1>
+        <h1>Myco Quest - 32-bit Portal Realms + Contact Battle</h1>
         <p class="tiny">
-          Inspiration blend: exploration adventure + creature encounters + turn RPG strategy. Move through regions, collect clues, unlock powers, and
-          challenge Dark Mycelius in the Solana Chainlands.
+          Inspiration blend: exploration adventure + creature encounters + turn RPG strategy. Explore one massive overworld,
+          learn forgotten magic, and open portal routes into corrupted realms ruled by Dark Mycelius's lieutenants.
           <a href="/dev/myco-quest" target="_blank" rel="noreferrer">Open Dev HUD</a>
         </p>
 
@@ -480,8 +480,8 @@
 
       <section class="layout">
         <article class="panel">
-          <h2>Kingdom Overworld (32-bit, Top-Down, Explorable)</h2>
-          <p class="subtle">Use WASD or Arrow keys to move. Press E to interact with NPCs, houses, caves, dungeons, and gates.</p>
+          <h2>Myco Nexus Overworld (32-bit, Top-Down, Explorable)</h2>
+          <p class="subtle">Use WASD or Arrow keys to move. Press E to interact with NPCs, houses, caves, dungeons, and portal nodes.</p>
           <div class="canvas-shell" style="margin-top: 8px">
             <canvas id="worldCanvas" width="960" height="540"></canvas>
           </div>
@@ -537,6 +537,9 @@
           <section id="panelStory" class="panel">
             <h2>Story Phase + Clues</h2>
             <ul id="questList" class="quest-list"></ul>
+            <p id="storyBackdrop" class="subtle" style="margin-top: 8px">Lore thread loading...</p>
+            <p class="subtle" style="margin-top: 8px">Learned magic</p>
+            <div id="magicList" class="chips"></div>
             <p class="subtle" style="margin-top: 8px">Collected clues</p>
             <div id="clueList" class="chips"></div>
           </section>
@@ -584,7 +587,7 @@
               Interact: E<br />
               Sprint: Hold Shift<br />
               Cutscene Next: Space<br />
-              Run into houses, NPCs, or dungeons to activate events. Contact an enemy to enter turn battle.
+              Run into houses, NPCs, or dungeons to activate events. Step onto unlocked portals to warp between realms.
             </p>
           </section>
 
@@ -699,6 +702,8 @@
         attackStat: document.getElementById("attackStat"),
         defenseStat: document.getElementById("defenseStat"),
         magicStat: document.getElementById("magicStat"),
+        storyBackdrop: document.getElementById("storyBackdrop"),
+        magicList: document.getElementById("magicList"),
         clueList: document.getElementById("clueList"),
         questList: document.getElementById("questList"),
         inventoryList: document.getElementById("inventoryList"),
@@ -748,15 +753,29 @@
 
       const REGIONS = [
         {
+          id: "myco-nexus",
+          name: "Myco Nexus",
+          x: 0,
+          y: 0,
+          w: WORLD_WIDTH,
+          h: WORLD_HEIGHT,
+          colorA: "#15263b",
+          colorB: "#0f1d30",
+          label: "One seamless overworld stitched together by arcane portal routes.",
+        },
+      ];
+
+      const REALMS = [
+        {
           id: "myco-kingdom",
-          name: "Myco Kingdom",
+          name: "Royal Grove",
           x: 0,
           y: 0,
           w: 1400,
           h: 1300,
           colorA: "#2f6b3f",
           colorB: "#234f32",
-          label: "Mushroom villages and the royal grove.",
+          label: "The home realm where King Myco's memory was first shattered.",
         },
         {
           id: "rougarou-fen",
@@ -767,7 +786,7 @@
           h: 1100,
           colorA: "#56753f",
           colorB: "#415a30",
-          label: "Howling marshes ruled by Rougarou.",
+          label: "Moon-swamp hunting ground of Rougarou's packs.",
         },
         {
           id: "tri-drake-peaks",
@@ -778,7 +797,7 @@
           h: 1300,
           colorA: "#545468",
           colorB: "#414155",
-          label: "Ash mountains of the three-headed dragon.",
+          label: "Ash ridges where three dragon heads guard ember sigils.",
         },
         {
           id: "crimson-tide",
@@ -789,7 +808,7 @@
           h: 1500,
           colorA: "#14586d",
           colorB: "#11485b",
-          label: "Coral caverns where the evil crab commands.",
+          label: "Flooded reef vaults ruled by the Evil Crab court.",
         },
         {
           id: "solana-chainlands",
@@ -800,7 +819,7 @@
           h: 1700,
           colorA: "#2f2a63",
           colorB: "#251f45",
-          label: "Corrupted blockchain frontier of Dark Mycelius.",
+          label: "Corrupted blockchain frontier where Dark Mycelius forges rot protocols.",
         },
         {
           id: "verdant-commons",
@@ -811,7 +830,7 @@
           h: 1200,
           colorA: "#2f7f58",
           colorB: "#236043",
-          label: "Trade fields, hidden houses, and caravan trails.",
+          label: "Trade roads, relic inns, and rumor-rich village caravans.",
         },
         {
           id: "obsidian-wilds",
@@ -822,51 +841,134 @@
           h: 700,
           colorA: "#3f434f",
           colorB: "#2d313a",
-          label: "Fractured blackstone canyons crawling with rot scouts.",
+          label: "Blackstone trenches where forgotten guardians still test intruders.",
         },
       ];
 
-      const GATES = [
+      const PORTALS = [
         {
-          id: "fen-to-drake",
-          x: 2588,
-          y: 420,
-          w: 24,
-          h: 180,
-          hint: "Need clue: Lunar Wolf Mark (from Fen villagers).",
-          isUnlocked: (state) => state.progress.clues.has("lunar-wolf-mark"),
+          id: "portal-fen",
+          name: "Fen Moon Portal",
+          x: 1328,
+          y: 560,
+          w: 52,
+          h: 52,
+          destinationX: 1660,
+          destinationY: 560,
+          requiredMagic: ["mycelic-sight"],
+          hint: "Learn Mycelic Sight from Elder Myca to stabilize this moon portal.",
+          arrivalText: "Portal opened: Rougarou Fen",
         },
         {
-          id: "fen-to-crimson",
-          x: 1860,
-          y: 1088,
-          w: 220,
-          h: 24,
-          hint: "Defeat Rougarou to break the rot bramble.",
-          isUnlocked: (state) => state.progress.defeatedBosses.has("rougarou"),
+          id: "portal-fen-return",
+          name: "Royal Return Portal",
+          x: 1452,
+          y: 560,
+          w: 52,
+          h: 52,
+          destinationX: 1180,
+          destinationY: 560,
+          requiredMagic: [],
+          hint: "Return stream to the Royal Grove.",
+          arrivalText: "Portal opened: Royal Grove",
         },
         {
-          id: "crimson-to-solana",
-          x: 2780,
-          y: 1760,
-          w: 24,
-          h: 220,
-          hint: "Need Abyss Pearl clue, magic level 3+, and dragon + crab victories.",
-          isUnlocked: (state) =>
-            state.progress.clues.has("abyss-pearl") &&
-            state.hero.magic >= 3 &&
-            state.progress.defeatedBosses.has("tri-drake") &&
-            state.progress.defeatedBosses.has("evil-crab"),
+          id: "portal-drake",
+          name: "Ember Ascension Portal",
+          x: 2520,
+          y: 520,
+          w: 52,
+          h: 52,
+          destinationX: 2860,
+          destinationY: 520,
+          requiredMagic: ["fenstride"],
+          hint: "Learn Fenstride to keep balance while crossing ember winds.",
+          arrivalText: "Portal opened: Tri-Drake Peaks",
         },
         {
-          id: "commons-to-obsidian",
-          x: 1388,
-          y: 2488,
-          w: 220,
-          h: 24,
-          hint: "Need Trade Charter clue from Verdant caravans.",
-          isUnlocked: (state) => state.progress.clues.has("trade-charter"),
+          id: "portal-drake-return",
+          name: "Fen Recall Portal",
+          x: 2648,
+          y: 520,
+          w: 52,
+          h: 52,
+          destinationX: 2320,
+          destinationY: 520,
+          requiredMagic: [],
+          hint: "Backtrail stream to the Fen.",
+          arrivalText: "Portal opened: Rougarou Fen",
         },
+        {
+          id: "portal-crimson",
+          name: "Tidefall Portal",
+          x: 1328,
+          y: 1700,
+          w: 52,
+          h: 52,
+          destinationX: 1680,
+          destinationY: 1700,
+          requiredMagic: ["ember-veil"],
+          hint: "Learn Ember Veil in the peaks to survive reef pressure.",
+          arrivalText: "Portal opened: Crimson Tide Shelf",
+        },
+        {
+          id: "portal-crimson-return",
+          name: "Commons Recall Portal",
+          x: 1452,
+          y: 1700,
+          w: 52,
+          h: 52,
+          destinationX: 1180,
+          destinationY: 1700,
+          requiredMagic: [],
+          hint: "Return stream to Verdant Commons.",
+          arrivalText: "Portal opened: Verdant Commons",
+        },
+        {
+          id: "portal-solana",
+          name: "Chainlands Breach Portal",
+          x: 2720,
+          y: 1880,
+          w: 52,
+          h: 52,
+          destinationX: 3040,
+          destinationY: 1880,
+          requiredMagic: ["tidecall"],
+          hint: "Learn Tidecall after claiming the Abyss Pearl to breach chain distortion.",
+          arrivalText: "Portal opened: Solana Chainlands",
+        },
+        {
+          id: "portal-solana-return",
+          name: "Reef Recall Portal",
+          x: 2848,
+          y: 1880,
+          w: 52,
+          h: 52,
+          destinationX: 2520,
+          destinationY: 1880,
+          requiredMagic: [],
+          hint: "Return stream to Crimson Tide Shelf.",
+          arrivalText: "Portal opened: Crimson Tide Shelf",
+        },
+        {
+          id: "portal-chain-core",
+          name: "Apex Chain Portal",
+          x: 3440,
+          y: 1820,
+          w: 58,
+          h: 58,
+          destinationX: 3780,
+          destinationY: 2260,
+          requiredMagic: ["chainbind"],
+          hint: "Learn Chainbind from Chain Smith Vox before entering Dark Mycelius's core.",
+          arrivalText: "Portal opened: Chain Core",
+        },
+      ];
+
+      const REALM_BARRIERS = [
+        { x: 1388, y: 0, w: 24, h: 2600 },
+        { x: 2588, y: 0, w: 24, h: 1300 },
+        { x: 2788, y: 1300, w: 24, h: 1700 },
       ];
 
       const STRUCTURES = [
@@ -915,7 +1017,7 @@
           tradeQty: 1,
           adviceGood: "Rougarou feints left, then lunges right. Guard on turn two.",
           adviceBad: "Never guard in Fen fights. Pure offense always works. (It doesn't.)",
-          mycoText: "You protected the marsh families. Take this mark and pass the drake gate.",
+          mycoText: "You protected the marsh families. Take this mark and attune the drake portal stream.",
           darkText: "Fear wins this moment, but fear always asks for more.",
           intro: "Rougarou hunts by moon scent. Read his trails and you'll survive the Fen.",
         },
@@ -985,6 +1087,15 @@
         },
       ];
 
+      const NPC_BACKSTORIES = {
+        "elder-myca": "Elder Myca served as Keeper of the Crown Archives and was the last to witness King Myco before the crownfall.",
+        "fen-scout": "Rill once guided moon pilgrims through the marsh. Rougarou's rot took their squad and left only coded trail songs.",
+        "drake-hermit": "Hermit Cindr was the Tri-Drake's handler before the mountain temples were burned by corrupted ember rituals.",
+        "reef-oracle": "Oracle Neri belongs to the Pearl Choir, a tide order sworn to hide anti-corruption runes beneath reef vaults.",
+        "chain-smith": "Vox forged sovereign wards for the old kingdom. Dark Mycelius stole that forge logic to weaponize blockchain rot.",
+        "commons-merchant": "Poro's caravan survived every regime by trading stories as carefully as spores, mapping safe lanes across factions.",
+      };
+
       const BASE_ENEMIES = [
         { id: "slime-1", kind: "rot-spore", x: 620, y: 820, lane: "speed", boss: false, region: "myco-kingdom" },
         { id: "slime-2", kind: "mold-raider", x: 1060, y: 930, lane: "precision", boss: false, region: "myco-kingdom" },
@@ -1025,35 +1136,96 @@
 
       const CUTSCENES = {
         prologue: {
-          title: "The Crown Falls",
+          title: "The Crownfall Chronicle",
           pages: [
-            "Dark Mycelius corrupted the kingdom roots. King Myco's sorcery shattered into scattered clues.",
-            "Villages now hide from Rougarou, the Three-Headed Dragon, and the Evil Crab warbands.",
-            "Restore your powers, gather allies, and push into the Solana Chainlands for the final confrontation.",
+            "On the Night of Silent Spores, Dark Mycelius shattered King Myco's crown and scattered six memory-arts across the land.",
+            "Each henchman now rules a realm anchor: Rougarou in the Fen, the Tri-Drake in the Peaks, Evil Crab in the Tides, and Dark Mycelius in Chainlands.",
+            "The Nexus remains one world, but realm walls are sealed. Only learned magic can stabilize the portals between them.",
           ],
         },
         fenUnlocked: {
-          title: "Fen Route Open",
+          title: "Moonstep Initiation",
           pages: [
-            "The Fen gate weakens as clues align. Marsh paths now adapt to your morality choices.",
-            "Compassion route: safer support NPCs. Dark route: harder enemies with richer drops.",
+            "With the Lunar Wolf Mark restored, your first portal harmonics begin to respond.",
+            "Mycoside players open safer support loops; Darkside players unlock riskier routes with heavier drops.",
           ],
         },
         solanaReady: {
-          title: "Chainlands Threshold",
+          title: "The Chain Breach",
           pages: [
-            "Dragon and crab lieutenants are down. Your magic resonates with the Abyss Pearl cipher.",
-            "A final gate opens into corrupted blocks where Dark Mycelius forges his rot protocols.",
+            "Dragon embers and pearl tide-runes now resonate in the same cadence.",
+            "One final portal can pierce into Solana Chainlands, where Dark Mycelius rewrites kingdom memory as corrupted code.",
           ],
         },
         epilogue: {
           title: "Kingdom Rewritten",
           pages: [
-            "The final battle is done, but your morality now defines the kingdom's future simulation.",
-            "Your AI-backed path remains unique: villages, encounters, and clue routes continue to diverge.",
+            "The final battle is done, but your moral signature now defines the kingdom timeline.",
+            "Your campaign remains unique: NPC loyalty, portal guidance, and encounter pressure continue adapting to your path.",
           ],
         },
       };
+
+      const MAGIC_SKILLS = {
+        "mycelic-sight": {
+          name: "Mycelic Sight",
+          unlockLabel: "See hidden mycelial pathways and stabilize moon portals.",
+          isUnlocked: (state) => state.progress.clues.has("royal-oath"),
+        },
+        fenstride: {
+          name: "Fenstride",
+          unlockLabel: "Traverse marsh drag and cross unstable terrain currents.",
+          isUnlocked: (state) => state.progress.clues.has("lunar-wolf-mark"),
+        },
+        "ember-veil": {
+          name: "Ember Veil",
+          unlockLabel: "Shield through thermal ruptures between peaks and tide shelf.",
+          isUnlocked: (state) => state.progress.clues.has("drake-ember") && state.hero.magic >= 2,
+        },
+        tidecall: {
+          name: "Tidecall",
+          unlockLabel: "Command abyss currents to open deep-chain portal lanes.",
+          isUnlocked: (state) => state.progress.clues.has("abyss-pearl") && state.progress.defeatedBosses.has("evil-crab"),
+        },
+        chainbind: {
+          name: "Chainbind",
+          unlockLabel: "Anchor corrupted Solana blocks and access the Chain Core.",
+          isUnlocked: (state) => state.progress.clues.has("solana-anchor") && state.hero.magic >= 4,
+        },
+      };
+
+      const BACKSTORY_BEATS = [
+        {
+          id: "crownfall",
+          title: "Crownfall Night",
+          text: "Dark Mycelius was once the kingdom archivist. He bound memory spores into chain blocks and betrayed the court.",
+          isUnlocked: () => true,
+        },
+        {
+          id: "rougarou-oath",
+          title: "Rougarou's Debt",
+          text: "Rougarou served as royal ranger before rot whispers rewrote his instincts. The Lunar Mark remembers his former vow.",
+          isUnlocked: (state) => state.progress.clues.has("lunar-wolf-mark"),
+        },
+        {
+          id: "drake-fracture",
+          title: "Three-Headed Schism",
+          text: "The Tri-Drake's heads were once elemental guardians. Ember Sigils can reunite their fractured will.",
+          isUnlocked: (state) => state.progress.clues.has("drake-ember"),
+        },
+        {
+          id: "tide-vault",
+          title: "Pearl Covenant",
+          text: "The reef oracles hid the Abyss Pearl to prevent chain corruption from reaching kingdom waters.",
+          isUnlocked: (state) => state.progress.clues.has("abyss-pearl"),
+        },
+        {
+          id: "chain-traitor",
+          title: "The Archivist's Betrayal",
+          text: "Chain Smith Vox forged the first seal to stop Dark Mycelius, then vanished into the Chainlands forge halls.",
+          isUnlocked: (state) => state.progress.clues.has("solana-anchor"),
+        },
+      ];
 
       const state = {
         mode: "explore",
@@ -1200,6 +1372,16 @@
           if (
             !structure ||
             dist(state.hero.x, state.hero.y, structure.x + structure.w / 2, structure.y + structure.h / 2) > 66
+          ) {
+            state.contactLatch = null;
+          }
+          return;
+        }
+        if (state.contactLatch.type === "portal") {
+          const portal = PORTALS.find((entry) => entry.id === state.contactLatch.id);
+          if (
+            !portal ||
+            dist(state.hero.x, state.hero.y, portal.x + portal.w / 2, portal.y + portal.h / 2) > 70
           ) {
             state.contactLatch = null;
           }
@@ -1595,7 +1777,22 @@
       const getRegionForPoint = (x, y) =>
         REGIONS.find((region) => x >= region.x && x <= region.x + region.w && y >= region.y && y <= region.y + region.h);
 
-      const gateLocked = (gate) => !gate.isUnlocked(state);
+      const getRealmForPoint = (x, y) =>
+        REALMS.find((realm) => x >= realm.x && x <= realm.x + realm.w && y >= realm.y && y <= realm.y + realm.h);
+
+      const learnedMagicIds = () =>
+        Object.entries(MAGIC_SKILLS)
+          .filter(([, entry]) => entry.isUnlocked(state))
+          .map(([id]) => id);
+
+      const hasMagic = (magicId) => learnedMagicIds().includes(magicId);
+
+      const portalLocked = (portal) => (portal.requiredMagic ?? []).some((magicId) => !hasMagic(magicId));
+
+      const missingPortalMagic = (portal) =>
+        (portal.requiredMagic ?? [])
+          .filter((magicId) => !hasMagic(magicId))
+          .map((magicId) => MAGIC_SKILLS[magicId]?.name ?? magicId);
 
       const staticObstacles = [
         { x: 1180, y: 360, w: 90, h: 360 },
@@ -1618,9 +1815,8 @@
         for (const wall of staticObstacles) {
           if (intersectsRect(heroRect, wall)) return true;
         }
-        for (const gate of GATES) {
-          if (!gateLocked(gate)) continue;
-          if (intersectsRect(heroRect, gate)) return true;
+        for (const barrier of REALM_BARRIERS) {
+          if (intersectsRect(heroRect, barrier)) return true;
         }
         return false;
       };
@@ -1744,16 +1940,14 @@
           return;
         }
         if (
-          state.progress.defeatedBosses.has("rougarou") &&
+          hasMagic("fenstride") &&
           !state.progress.cutscenesSeen.has("fenUnlocked")
         ) {
           openCutscene("fenUnlocked");
           return;
         }
         if (
-          state.progress.defeatedBosses.has("tri-drake") &&
-          state.progress.defeatedBosses.has("evil-crab") &&
-          state.progress.clues.has("abyss-pearl") &&
+          hasMagic("tidecall") &&
           !state.progress.cutscenesSeen.has("solanaReady")
         ) {
           openCutscene("solanaReady");
@@ -1862,6 +2056,7 @@
         const alignment = state.hero.morality >= 20 ? "myco" : state.hero.morality <= -20 ? "dark" : "balanced";
         const bossCount = state.progress.defeatedBosses.size;
         const clueCount = state.progress.clues.size;
+        const backstory = NPC_BACKSTORIES[npc.id];
         let body = npc.intro;
         if (alreadySpoken) {
           body = `${npc.name}: I can already feel your ${alignment} aura changing the routes ahead.`;
@@ -1869,6 +2064,9 @@
           body = `${npc.intro} You already crushed ${bossCount} lieutenants; now tactics matter more than raw force.`;
         } else if (clueCount >= 3) {
           body = `${npc.intro} Clue density is high — puzzle routes now open if you read the signs.`;
+        }
+        if (backstory) {
+          body = `${body}\n\nBackstory: ${backstory}`;
         }
 
         const applyTrade = (trustful) => {
@@ -1976,6 +2174,27 @@
         };
       };
 
+      const activatePortal = (portal) => {
+        if (portalLocked(portal)) {
+          const missing = missingPortalMagic(portal);
+          const requirementText = missing.length
+            ? `Missing magic: ${missing.join(", ")}.`
+            : portal.hint;
+          state.lastAdvice = requirementText;
+          setStatus(`${portal.name} remains sealed. ${requirementText}`, true);
+          playSfx("error");
+          return false;
+        }
+        state.hero.x = portal.destinationX;
+        state.hero.y = portal.destinationY;
+        state.contactLockUntil = Date.now() + 900;
+        state.contactLatch = { type: "portal", id: portal.id };
+        updateCamera();
+        setStatus(portal.arrivalText ?? `${portal.name} activated.`);
+        playSfx("clue");
+        return true;
+      };
+
       const checkActiveContacts = () => {
         if (state.activeDialogue || state.cutscene.active || state.mode !== "explore") return;
         const now = Date.now();
@@ -1990,6 +2209,15 @@
           state.contactLatch = { type: "npc", id: bumpNpc.id };
           const alreadySpoken = state.progress.interactedNpcs.has(bumpNpc.id);
           openDialogue(buildNpcEncounter(bumpNpc, alreadySpoken));
+          return;
+        }
+
+        const bumpPortal = PORTALS.find((portal) => dist(state.hero.x, state.hero.y, portal.x + portal.w / 2, portal.y + portal.h / 2) < 34);
+        if (bumpPortal) {
+          if (state.contactLatch?.type === "portal" && state.contactLatch.id === bumpPortal.id) {
+            return;
+          }
+          activatePortal(bumpPortal);
           return;
         }
 
@@ -2028,11 +2256,9 @@
           return;
         }
 
-        const nearbyGate = GATES.find((gate) => dist(state.hero.x, state.hero.y, gate.x + gate.w / 2, gate.y + gate.h / 2) < 92);
-        if (nearbyGate && gateLocked(nearbyGate)) {
-          state.lastAdvice = nearbyGate.hint;
-          setStatus(`Gate sealed. ${nearbyGate.hint}`, true);
-          playSfx("error");
+        const nearbyPortal = PORTALS.find((portal) => dist(state.hero.x, state.hero.y, portal.x + portal.w / 2, portal.y + portal.h / 2) < 92);
+        if (nearbyPortal) {
+          activatePortal(nearbyPortal);
           return;
         }
 
@@ -2043,10 +2269,11 @@
         const now = Date.now();
         if (now - state.aiDirectiveAt < 9000) return;
         state.aiDirectiveAt = now;
-        const region = getRegionForPoint(state.hero.x, state.hero.y);
+        const realm = getRealmForPoint(state.hero.x, state.hero.y);
         const options = [];
-        options.push(`Region pulse: ${region?.name ?? "Unknown lands"} reshapes around your actions.`);
+        options.push(`Realm pulse: ${realm?.name ?? "Unknown realm"} bends around your portal signature.`);
         options.push(`AI director: ${state.progress.clues.size} clues gathered; new enemy paths are mutating.`);
+        options.push(`Arcane loadout: ${learnedMagicIds().length} learned magic arts in your grimoire.`);
         options.push(`Inventory pulse: potion ${state.inventory.mycoPotion}, dew ${state.inventory.manaDew}, bomb ${state.inventory.smokeBomb}.`);
         if (state.hero.morality >= 35) {
           options.push("Mycoside influence surges. Villagers reveal safer routes.");
@@ -2537,44 +2764,55 @@
           x <= state.camera.x + worldCanvas.width &&
           y <= state.camera.y + worldCanvas.height;
 
-        // Regions with static 32-bit tile detail (no background motion)
-        for (const region of REGIONS) {
-          if (!visible(region.x, region.y, region.w, region.h)) continue;
-          const rx = region.x - state.camera.x;
-          const ry = region.y - state.camera.y;
-          worldCtx.fillStyle = region.colorA;
-          worldCtx.fillRect(rx, ry, region.w, region.h);
-          worldCtx.fillStyle = region.colorB;
-          for (let y = 0; y < region.h; y += TILE) {
-            for (let x = 0; x < region.w; x += TILE) {
+        // Unified world fill + per-realm static 32-bit tile detail (no background motion)
+        const overworld = REGIONS[0];
+        worldCtx.fillStyle = overworld.colorA;
+        worldCtx.fillRect(-state.camera.x, -state.camera.y, WORLD_WIDTH, WORLD_HEIGHT);
+        worldCtx.fillStyle = overworld.colorB;
+        for (let y = 0; y < WORLD_HEIGHT; y += TILE) {
+          for (let x = 0; x < WORLD_WIDTH; x += TILE) {
+            if (((x / TILE) + (y / TILE) + tilePhase) % 6 === 0) {
+              worldCtx.fillRect(x - state.camera.x, y - state.camera.y, TILE, TILE);
+            }
+          }
+        }
+
+        for (const realm of REALMS) {
+          if (!visible(realm.x, realm.y, realm.w, realm.h)) continue;
+          const rx = realm.x - state.camera.x;
+          const ry = realm.y - state.camera.y;
+          worldCtx.fillStyle = realm.colorA;
+          worldCtx.fillRect(rx, ry, realm.w, realm.h);
+          worldCtx.fillStyle = realm.colorB;
+          for (let y = 0; y < realm.h; y += TILE) {
+            for (let x = 0; x < realm.w; x += TILE) {
               if (((x / TILE) + (y / TILE) + tilePhase) % 4 === 0) {
                 worldCtx.fillRect(rx + x, ry + y, TILE, TILE);
               }
             }
           }
 
-          // Static detail accents for richer ambience (no moving background)
-          worldCtx.globalAlpha = 0.22;
+          worldCtx.globalAlpha = 0.24;
           const detailColor =
-            region.id === "crimson-tide"
+            realm.id === "crimson-tide"
               ? "#67e8f9"
-              : region.id === "solana-chainlands"
+              : realm.id === "solana-chainlands"
                 ? "#a78bfa"
                 : "#dbeafe";
           worldCtx.fillStyle = detailColor;
           for (let i = 0; i < 24; i += 1) {
-            const detailX = rx + 16 + ((i * 89 + region.x) % Math.max(40, region.w - 30));
-            const detailY = ry + 16 + ((i * 53 + region.y) % Math.max(40, region.h - 30));
+            const detailX = rx + 16 + ((i * 89 + realm.x) % Math.max(40, realm.w - 30));
+            const detailY = ry + 16 + ((i * 53 + realm.y) % Math.max(40, realm.h - 30));
             worldCtx.fillRect(detailX, detailY, 4, 4);
           }
           worldCtx.globalAlpha = 1;
 
           worldCtx.strokeStyle = "#0b1224";
           worldCtx.lineWidth = 3;
-          worldCtx.strokeRect(rx, ry, region.w, region.h);
+          worldCtx.strokeRect(rx, ry, realm.w, realm.h);
           worldCtx.fillStyle = "#f8fafc";
           worldCtx.font = "16px sans-serif";
-          worldCtx.fillText(region.name, rx + 12, ry + 26);
+          worldCtx.fillText(realm.name, rx + 12, ry + 26);
         }
 
         // Roads
@@ -2601,12 +2839,28 @@
           worldCtx.fillRect(obstacle.x - state.camera.x, obstacle.y - state.camera.y, obstacle.w, obstacle.h);
         }
 
-        // Gate barriers
-        for (const gate of GATES) {
-          if (!visible(gate.x, gate.y, gate.w, gate.h)) continue;
-          const unlocked = gate.isUnlocked(state);
-          worldCtx.fillStyle = unlocked ? "#16a34a" : "#991b1b";
-          worldCtx.fillRect(gate.x - state.camera.x, gate.y - state.camera.y, gate.w, gate.h);
+        // Realm seam barriers
+        for (const barrier of REALM_BARRIERS) {
+          if (!visible(barrier.x, barrier.y, barrier.w, barrier.h)) continue;
+          worldCtx.fillStyle = "#1e293b";
+          worldCtx.fillRect(barrier.x - state.camera.x, barrier.y - state.camera.y, barrier.w, barrier.h);
+          worldCtx.fillStyle = "#334155";
+          worldCtx.fillRect(barrier.x - state.camera.x + 4, barrier.y - state.camera.y + 4, barrier.w - 8, Math.max(2, barrier.h - 8));
+        }
+
+        // Portal nodes
+        for (const portal of PORTALS) {
+          if (!visible(portal.x, portal.y, portal.w, portal.h)) continue;
+          const locked = portalLocked(portal);
+          const px = portal.x - state.camera.x;
+          const py = portal.y - state.camera.y;
+          worldCtx.fillStyle = locked ? "#7f1d1d" : "#0ea5e9";
+          worldCtx.fillRect(px, py, portal.w, portal.h);
+          worldCtx.fillStyle = locked ? "#fca5a5" : "#bae6fd";
+          worldCtx.fillRect(px + 10, py + 10, portal.w - 20, portal.h - 20);
+          worldCtx.fillStyle = locked ? "#fecaca" : "#e0f2fe";
+          worldCtx.font = "11px sans-serif";
+          worldCtx.fillText(portal.name, px - 10, py - 6);
         }
 
         // Pickups
@@ -2759,26 +3013,37 @@
           ? clueLabels.map((label) => `<span class="chip">${label}</span>`).join("")
           : `<span class="chip">No clues yet</span>`;
 
+        const learnedMagic = learnedMagicIds();
+        dom.magicList.innerHTML = learnedMagic.length
+          ? learnedMagic.map((magicId) => `<span class="chip">${MAGIC_SKILLS[magicId]?.name ?? magicId}</span>`).join("")
+          : `<span class="chip">No mastered arts yet</span>`;
+
+        const unlockedLore = BACKSTORY_BEATS.filter((entry) => entry.isUnlocked(state));
+        const latestLore = unlockedLore[unlockedLore.length - 1];
+        dom.storyBackdrop.textContent = latestLore
+          ? `${latestLore.title}: ${latestLore.text}`
+          : "Lore thread dormant.";
+
         const questEntries = [
           {
-            text: "Gather village intel and recover the Lunar Wolf Mark.",
-            done: state.progress.clues.has("lunar-wolf-mark"),
+            text: "Recover the Royal Oath and learn Mycelic Sight to open the Fen Moon Portal.",
+            done: hasMagic("mycelic-sight"),
           },
           {
-            text: "Defeat Rougarou to clear the Fen rot gate.",
-            done: state.progress.defeatedBosses.has("rougarou"),
+            text: "Track Rougarou, claim the Lunar Wolf Mark, and unlock Fenstride.",
+            done: hasMagic("fenstride") && state.progress.defeatedBosses.has("rougarou"),
           },
           {
-            text: "Defeat the Three-Headed Dragon and recover the Drake Ember Sigil.",
-            done: state.progress.defeatedBosses.has("tri-drake") && state.progress.clues.has("drake-ember"),
+            text: "Defeat the Three-Headed Dragon to claim Ember Veil and ignite Tidefall routes.",
+            done: hasMagic("ember-veil") && state.progress.defeatedBosses.has("tri-drake"),
           },
           {
-            text: "Defeat Evil Crab and claim the Abyss Pearl Cipher.",
-            done: state.progress.defeatedBosses.has("evil-crab") && state.progress.clues.has("abyss-pearl"),
+            text: "Bring down Evil Crab, claim the Abyss Pearl, and master Tidecall.",
+            done: hasMagic("tidecall") && state.progress.defeatedBosses.has("evil-crab"),
           },
           {
-            text: "Reach Solana Chainlands and defeat Dark Mycelius.",
-            done: state.progress.defeatedBosses.has("dark-mycelius"),
+            text: "Forge Chainbind with Vox, enter Chain Core portal, and defeat Dark Mycelius.",
+            done: hasMagic("chainbind") && state.progress.defeatedBosses.has("dark-mycelius"),
           },
         ];
         dom.questList.innerHTML = questEntries
@@ -2786,7 +3051,8 @@
           .join("");
 
         const region = getRegionForPoint(state.hero.x, state.hero.y);
-        dom.regionHint.textContent = `Current region: ${region?.name ?? "Unknown"}\n${region?.label ?? ""}\nAI directive: ${state.aiDirective}`;
+        const realm = getRealmForPoint(state.hero.x, state.hero.y);
+        dom.regionHint.textContent = `World region: ${region?.name ?? "Unknown"}\nCurrent realm: ${realm?.name ?? "Unknown"}\n${realm?.label ?? region?.label ?? ""}\nAI directive: ${state.aiDirective}`;
 
         const battleActive = state.mode === "battle" && state.battle && state.battle.status === "active";
         dom.strikeBtn.disabled = !battleActive;
