@@ -218,6 +218,37 @@
       .portal-flash.active {
         opacity: 1;
       }
+      .interior-screen {
+        position: fixed;
+        inset: 0;
+        z-index: 70;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(3, 8, 20, 0.88);
+        padding: 12px;
+      }
+      .interior-screen.active {
+        display: flex;
+      }
+      .interior-card {
+        width: min(1020px, 100%);
+        border: 1px solid #3b5a93;
+        border-radius: 12px;
+        background: linear-gradient(180deg, rgba(8, 16, 34, 0.98), rgba(6, 13, 28, 0.98));
+        padding: 12px;
+        box-shadow: 0 22px 44px rgba(2, 6, 23, 0.58);
+      }
+      .interior-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 10px;
+      }
+      #interiorCanvas {
+        height: min(62vh, 460px);
+        min-height: 260px;
+      }
       .quest-list {
         margin: 0;
         padding-left: 18px;
@@ -658,10 +689,15 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             X-Source-Token (optional)
             <input id="sourceToken" placeholder="only if source auth enabled" />
           </label>
+          <label>
+            Region Page
+            <select id="realmPageSelect"></select>
+          </label>
         </div>
 
         <div class="actions">
           <button id="syncBtn" class="primary">Sync Campaign</button>
+          <button id="switchRealmBtn">Open Region Page</button>
           <button id="saveBtn">Save Progress</button>
           <button id="resetBtn" class="warn">Reset Local Progress</button>
           <button id="minimalHudBtn">Minimal HUD: Off</button>
@@ -671,8 +707,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       <section class="layout">
         <article class="panel">
-          <h2>Myco Nexus Overworld (32-bit, Top-Down, Explorable)</h2>
-          <p class="subtle">Use WASD or Arrow keys to move. Press E to interact with NPCs, houses, caves, dungeons, and portal nodes.</p>
+          <h2 id="realmPageTitle">Realm Page // Loading</h2>
+          <p class="subtle">Each region is now its own page. Use WASD/Arrow keys to move, E to interact, and enter structures for interior screens.</p>
           <div class="canvas-shell" style="margin-top: 8px">
             <div id="realmBanner" class="realm-header">Realm Syncing...</div>
             <canvas id="worldCanvas" width="960" height="540"></canvas>
@@ -793,7 +829,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
               Interact: E<br />
               Sprint: Hold Shift<br />
               Cutscene Next: Space<br />
-              Run into houses, NPCs, or dungeons to activate events. Step onto unlocked portals to warp between realms.
+              Enter houses/caves/castles/dungeons to open interior screens. Step onto unlocked portals to load linked region pages.
             </p>
           </section>
 
@@ -876,6 +912,23 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       </div>
     </section>
 
+    <section id="interiorScreen" class="interior-screen">
+      <article class="interior-card">
+        <div class="interior-head">
+          <h3 id="interiorTitle">Interior</h3>
+          <p id="interiorSubtitle" class="subtle">Region node interior</p>
+        </div>
+        <div class="canvas-shell" style="margin-top: 8px">
+          <canvas id="interiorCanvas" width="960" height="540"></canvas>
+        </div>
+        <p id="interiorHint" class="subtle" style="margin-top: 8px">Search the interior or exit back to the region.</p>
+        <div class="actions">
+          <button id="interiorSearchBtn" class="primary">Search Interior</button>
+          <button id="interiorExitBtn">Exit Interior</button>
+        </div>
+      </article>
+    </section>
+
     <script>
       const STORAGE_CONFIG_KEY = "mycoQuestPlayableConfig";
       const STORAGE_STATE_KEY = "mycoQuestOverworldStateV2";
@@ -888,8 +941,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const worldCtx = worldCanvas.getContext("2d");
       const battleCanvas = document.getElementById("battleCanvas");
       const battleCtx = battleCanvas.getContext("2d");
+      const interiorCanvas = document.getElementById("interiorCanvas");
+      const interiorCtx = interiorCanvas.getContext("2d");
       worldCtx.imageSmoothingEnabled = false;
       battleCtx.imageSmoothingEnabled = false;
+      interiorCtx.imageSmoothingEnabled = false;
 
       const dom = {
         titleScreen: document.getElementById("titleScreen"),
@@ -906,12 +962,15 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         source: document.getElementById("source"),
         externalId: document.getElementById("externalId"),
         sourceToken: document.getElementById("sourceToken"),
+        realmPageSelect: document.getElementById("realmPageSelect"),
         syncBtn: document.getElementById("syncBtn"),
+        switchRealmBtn: document.getElementById("switchRealmBtn"),
         saveBtn: document.getElementById("saveBtn"),
         resetBtn: document.getElementById("resetBtn"),
         minimalHudBtn: document.getElementById("minimalHudBtn"),
         minimalHudFloating: document.getElementById("minimalHudFloating"),
         status: document.getElementById("status"),
+        realmPageTitle: document.getElementById("realmPageTitle"),
         regionHint: document.getElementById("regionHint"),
         realmBanner: document.getElementById("realmBanner"),
         hpFill: document.getElementById("hpFill"),
@@ -967,6 +1026,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         cutsceneMeta: document.getElementById("cutsceneMeta"),
         cutsceneNextBtn: document.getElementById("cutsceneNextBtn"),
         cutsceneSkipBtn: document.getElementById("cutsceneSkipBtn"),
+        interiorScreen: document.getElementById("interiorScreen"),
+        interiorTitle: document.getElementById("interiorTitle"),
+        interiorSubtitle: document.getElementById("interiorSubtitle"),
+        interiorHint: document.getElementById("interiorHint"),
+        interiorSearchBtn: document.getElementById("interiorSearchBtn"),
+        interiorExitBtn: document.getElementById("interiorExitBtn"),
         audioEnableBtn: document.getElementById("audioEnableBtn"),
         musicToggleBtn: document.getElementById("musicToggleBtn"),
         sfxToggleBtn: document.getElementById("sfxToggleBtn"),
@@ -1077,6 +1142,24 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           label: "Blackstone trenches where forgotten guardians still test intruders.",
         },
       ];
+
+      const realmIdFromPoint = (x, y) =>
+        REALMS.find((realm) => x >= realm.x && x <= realm.x + realm.w && y >= realm.y && y <= realm.y + realm.h)?.id ?? null;
+
+      const REALM_DEFAULT_SPAWNS = {
+        "myco-kingdom": { x: 280, y: 500 },
+        "rougarou-fen": { x: 1660, y: 560 },
+        "tri-drake-peaks": { x: 2860, y: 520 },
+        "crimson-tide": { x: 1680, y: 1700 },
+        "solana-chainlands": { x: 3040, y: 1880 },
+        "verdant-commons": { x: 720, y: 1760 },
+        "obsidian-wilds": { x: 860, y: 2840 },
+      };
+
+      const parseInitialRealmId = () => {
+        const requested = new URLSearchParams(window.location.search).get("region");
+        return REALMS.some((realm) => realm.id === requested) ? requested : "myco-kingdom";
+      };
 
       const PORTALS = [
         {
@@ -1208,8 +1291,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         { id: "house-1", type: "house", x: 190, y: 180, w: 148, h: 110, name: "Sporecap Cottage", solid: true },
         { id: "house-2", type: "house", x: 440, y: 270, w: 138, h: 100, name: "Healer Hut", solid: true },
         { id: "house-3", type: "house", x: 760, y: 170, w: 152, h: 114, name: "Elder Archive", solid: true },
+        { id: "castle-1", type: "castle", x: 960, y: 320, w: 240, h: 168, name: "Crownwatch Keep", solid: true },
         { id: "house-4", type: "house", x: 360, y: 1540, w: 150, h: 108, name: "Commons Trade Hall", solid: true },
         { id: "house-5", type: "house", x: 950, y: 1760, w: 160, h: 112, name: "Caravan Inn", solid: true },
+        { id: "castle-2", type: "castle", x: 3360, y: 2040, w: 250, h: 176, name: "Chain Bastion Citadel", solid: true },
         { id: "cave-1", type: "cave", x: 1470, y: 340, w: 134, h: 98, name: "Fen Echo Cave", solid: true },
         { id: "cave-2", type: "cave", x: 320, y: 2670, w: 150, h: 108, name: "Obsidian Rift Cave", solid: true },
         { id: "dungeon-1", type: "dungeon", x: 2870, y: 300, w: 176, h: 132, name: "Drake Bastion", solid: true },
@@ -1503,6 +1588,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const state = {
         mode: "intro",
+        currentRealmId: parseInitialRealmId(),
         pendingBattle: false,
         worldTime: 0,
         camera: { x: 0, y: 0 },
@@ -1536,6 +1622,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         bossIntro: {
           activeUntil: 0,
           timeoutId: null,
+        },
+        interior: {
+          active: false,
+          structureId: null,
         },
         cutscene: {
           active: false,
@@ -1613,6 +1703,19 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         dom.audioStateText.textContent = state.audio.initialized
           ? "Audio active: magical 32-bit synth enabled."
           : "Audio locked until first user interaction.";
+      };
+
+      const populateRealmSelector = () => {
+        if (!dom.realmPageSelect) return;
+        dom.realmPageSelect.innerHTML = REALMS.map((realm) => `<option value="${realm.id}">${realm.name}</option>`).join("");
+        dom.realmPageSelect.value = state.currentRealmId;
+        const realm = getCurrentRealm();
+        if (dom.realmPageTitle) {
+          dom.realmPageTitle.textContent = `${realm.name} // Regional Play Page`;
+        }
+        if (dom.titleLore) {
+          dom.titleLore.textContent = `Current chapter realm: ${realm.name}. ${realm.label} Portals connect each realm as separate pages.`;
+        }
       };
 
       const setupCornerMenus = () => {
@@ -1700,6 +1803,14 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (battleCanvas.width !== battleW || battleCanvas.height !== battleH) {
           battleCanvas.width = battleW;
           battleCanvas.height = battleH;
+        }
+
+        const interiorRect = interiorCanvas.getBoundingClientRect();
+        const interiorW = Math.max(320, Math.round(interiorRect.width * dpr));
+        const interiorH = Math.max(240, Math.round(interiorRect.height * dpr));
+        if (interiorCanvas.width !== interiorW || interiorCanvas.height !== interiorH) {
+          interiorCanvas.width = interiorW;
+          interiorCanvas.height = interiorH;
         }
       };
 
@@ -2114,7 +2225,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         state.intro.active = false;
         state.mode = "explore";
         dom.titleScreen.classList.remove("active");
-        setStatus("Chronicle initialized. Venture into portals, learn magic, and shape the kingdom.");
+        setStatus(`Chronicle initialized in ${getCurrentRealm().name}. Venture through portals to open other realm pages.`);
         checkCutsceneTriggers();
         syncCampaign();
       };
@@ -2192,6 +2303,86 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const getRealmForPoint = (x, y) =>
         REALMS.find((realm) => x >= realm.x && x <= realm.x + realm.w && y >= realm.y && y <= realm.y + realm.h);
 
+      const getCurrentRealm = () => REALMS.find((realm) => realm.id === state.currentRealmId) ?? REALMS[0];
+
+      const getEntityRealmId = (entry) => {
+        if (entry?.region) return entry.region;
+        const centerX = entry.x + (entry.w ? entry.w / 2 : 0);
+        const centerY = entry.y + (entry.h ? entry.h / 2 : 0);
+        return realmIdFromPoint(centerX, centerY);
+      };
+
+      const isInCurrentRealm = (entry) => {
+        if (entry?.region) return entry.region === state.currentRealmId;
+        const realm = getCurrentRealm();
+        const hasSize = typeof entry.w === "number" && typeof entry.h === "number";
+        if (hasSize) {
+          return (
+            entry.x < realm.x + realm.w &&
+            entry.x + entry.w > realm.x &&
+            entry.y < realm.y + realm.h &&
+            entry.y + entry.h > realm.y
+          );
+        }
+        return getEntityRealmId(entry) === state.currentRealmId;
+      };
+
+      const portalSourceRealmId = (portal) => realmIdFromPoint(portal.x + portal.w / 2, portal.y + portal.h / 2);
+      const portalDestinationRealmId = (portal) => realmIdFromPoint(portal.destinationX, portal.destinationY);
+
+      const replaceQueryParams = (params) => {
+        const query = params.toString();
+        const path = `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`;
+        window.history.replaceState({}, "", path);
+      };
+
+      const goToRealmPage = (realmId, spawnX, spawnY) => {
+        if (!REALMS.some((realm) => realm.id === realmId)) return;
+        const params = new URLSearchParams(window.location.search);
+        params.set("region", realmId);
+        if (typeof spawnX === "number" && typeof spawnY === "number") {
+          params.set("spawnX", String(Math.round(spawnX)));
+          params.set("spawnY", String(Math.round(spawnY)));
+        } else {
+          params.delete("spawnX");
+          params.delete("spawnY");
+        }
+        window.location.search = params.toString();
+      };
+
+      const ensureHeroInsideCurrentRealm = (preferSpawn = null) => {
+        const realm = getCurrentRealm();
+        const defaultSpawn = REALM_DEFAULT_SPAWNS[realm.id] ?? {
+          x: realm.x + realm.w / 2,
+          y: realm.y + realm.h / 2,
+        };
+        const desired = preferSpawn ?? defaultSpawn;
+        const inside =
+          state.hero.x >= realm.x &&
+          state.hero.x <= realm.x + realm.w &&
+          state.hero.y >= realm.y &&
+          state.hero.y <= realm.y + realm.h;
+        if (!inside || preferSpawn) {
+          state.hero.x = desired.x;
+          state.hero.y = desired.y;
+        }
+        state.hero.x = clamp(state.hero.x, realm.x + state.hero.w / 2, realm.x + realm.w - state.hero.w / 2);
+        state.hero.y = clamp(state.hero.y, realm.y + state.hero.h / 2, realm.y + realm.h - state.hero.h / 2);
+      };
+
+      const applyRealmPageEntry = () => {
+        const params = new URLSearchParams(window.location.search);
+        const spawnX = Number(params.get("spawnX"));
+        const spawnY = Number(params.get("spawnY"));
+        const hasSpawn = Number.isFinite(spawnX) && Number.isFinite(spawnY);
+        ensureHeroInsideCurrentRealm(hasSpawn ? { x: spawnX, y: spawnY } : null);
+        if (hasSpawn) {
+          params.delete("spawnX");
+          params.delete("spawnY");
+          replaceQueryParams(params);
+        }
+      };
+
       const learnedMagicIds = () =>
         Object.entries(MAGIC_SKILLS)
           .filter(([, entry]) => entry.isUnlocked(state))
@@ -2216,26 +2407,38 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const isBlocked = (nextX, nextY) => {
         const heroRect = getHeroRect(nextX, nextY);
-        if (heroRect.x < 0 || heroRect.y < 0 || heroRect.x + heroRect.w > WORLD_WIDTH || heroRect.y + heroRect.h > WORLD_HEIGHT) {
+        const realm = getCurrentRealm();
+        if (
+          heroRect.x < realm.x ||
+          heroRect.y < realm.y ||
+          heroRect.x + heroRect.w > realm.x + realm.w ||
+          heroRect.y + heroRect.h > realm.y + realm.h
+        ) {
           return true;
         }
 
         for (const structure of STRUCTURES) {
+          if (!isInCurrentRealm(structure)) continue;
           if (!structure.solid) continue;
           if (intersectsRect(heroRect, structure)) return true;
         }
         for (const wall of staticObstacles) {
+          if (!isInCurrentRealm(wall)) continue;
           if (intersectsRect(heroRect, wall)) return true;
         }
         for (const barrier of REALM_BARRIERS) {
+          if (!isInCurrentRealm(barrier)) continue;
           if (intersectsRect(heroRect, barrier)) return true;
         }
         return false;
       };
 
       const updateCamera = () => {
-        state.camera.x = clamp(state.hero.x - worldCanvas.width / 2, 0, WORLD_WIDTH - worldCanvas.width);
-        state.camera.y = clamp(state.hero.y - worldCanvas.height / 2, 0, WORLD_HEIGHT - worldCanvas.height);
+        const realm = getCurrentRealm();
+        const maxX = Math.max(realm.x, realm.x + realm.w - worldCanvas.width);
+        const maxY = Math.max(realm.y, realm.y + realm.h - worldCanvas.height);
+        state.camera.x = clamp(state.hero.x - worldCanvas.width / 2, realm.x, maxX);
+        state.camera.y = clamp(state.hero.y - worldCanvas.height / 2, realm.y, maxY);
       };
 
       const addClue = (clueId, clueLabel) => {
@@ -2575,12 +2778,121 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         };
       };
 
+      const ENTERABLE_STRUCTURE_TYPES = new Set(["house", "cave", "dungeon", "castle"]);
+
+      const isEnterableStructure = (structure) => ENTERABLE_STRUCTURE_TYPES.has(structure.type);
+
+      const openInterior = (structure) => {
+        state.keys.clear();
+        state.interior.active = true;
+        state.interior.structureId = structure.id;
+        state.mode = "interior";
+        dom.interiorScreen.classList.add("active");
+        dom.interiorTitle.textContent = structure.name;
+        dom.interiorSubtitle.textContent = `${structure.type.toUpperCase()} INTERIOR // ${getCurrentRealm().name}`;
+        dom.interiorHint.textContent = "Search for relics, clues, and supplies. Press E or Exit to leave.";
+        drawInteriorScene(structure);
+      };
+
+      const closeInterior = () => {
+        if (!state.interior.active) return;
+        state.interior.active = false;
+        state.interior.structureId = null;
+        dom.interiorScreen.classList.remove("active");
+        state.mode = "explore";
+        state.keys.clear();
+        state.contactLockUntil = Date.now() + 600;
+      };
+
+      const drawInteriorScene = (structureInput = null) => {
+        const structure = structureInput ?? STRUCTURES.find((entry) => entry.id === state.interior.structureId);
+        const width = interiorCanvas.width;
+        const height = interiorCanvas.height;
+        interiorCtx.fillStyle = "#050913";
+        interiorCtx.fillRect(0, 0, width, height);
+        if (!structure) return;
+
+        const palette = {
+          house: ["#78350f", "#f59e0b", "#fef3c7"],
+          cave: ["#334155", "#0f172a", "#a5b4fc"],
+          dungeon: ["#27272a", "#6d28d9", "#ddd6fe"],
+          castle: ["#1e293b", "#2563eb", "#bfdbfe"],
+        };
+        const [base, accent, glow] = palette[structure.type] ?? ["#1f2937", "#4b5563", "#e2e8f0"];
+        const roomGradient = interiorCtx.createLinearGradient(0, 0, width, height);
+        roomGradient.addColorStop(0, base);
+        roomGradient.addColorStop(1, "#020617");
+        interiorCtx.fillStyle = roomGradient;
+        interiorCtx.fillRect(0, 0, width, height);
+
+        interiorCtx.fillStyle = "rgba(148, 163, 184, 0.13)";
+        for (let y = 0; y < height; y += 30) {
+          for (let x = 0; x < width; x += 30) {
+            if (((x * 7 + y * 11) / 30) % 6 < 2) {
+              interiorCtx.fillRect(x + 2, y + 2, 14, 14);
+            }
+          }
+        }
+
+        interiorCtx.fillStyle = accent;
+        interiorCtx.fillRect(40, height - 70, width - 80, 24);
+        interiorCtx.fillStyle = glow;
+        interiorCtx.fillRect(58, height - 64, width - 116, 12);
+
+        interiorCtx.fillStyle = accent;
+        interiorCtx.fillRect(width * 0.5 - 36, height * 0.38, 72, 72);
+        interiorCtx.fillStyle = glow;
+        interiorCtx.fillRect(width * 0.5 - 20, height * 0.38 + 16, 40, 40);
+
+        interiorCtx.fillStyle = "#f8fafc";
+        interiorCtx.font = "700 16px sans-serif";
+        interiorCtx.fillText(structure.name, 26, 34);
+        interiorCtx.font = "13px sans-serif";
+        interiorCtx.fillText("Interior Node Active", 26, 54);
+
+        const solved = state.progress.solvedStructures.has(structure.id);
+        interiorCtx.fillStyle = solved ? "#4ade80" : "#facc15";
+        interiorCtx.fillText(solved ? "Search complete: rewards already claimed" : "Search available: relic chest unopened", 26, 78);
+      };
+
+      const searchInterior = () => {
+        const structure = STRUCTURES.find((entry) => entry.id === state.interior.structureId);
+        if (!structure) return;
+        if (state.progress.solvedStructures.has(structure.id)) {
+          dom.interiorHint.textContent = "This interior has already been cleared. Try another region structure.";
+          playSfx("error");
+          return;
+        }
+        state.progress.solvedStructures.add(structure.id);
+        if (structure.type === "house") {
+          state.hero.hp = state.hero.maxHp;
+          state.inventory.mycoPotion += 1;
+          grantSpores(12);
+          dom.interiorHint.textContent = "Village stash recovered: +1 Potion, +12 Spores, HP restored.";
+        } else if (structure.type === "cave") {
+          grantSpores(24);
+          state.inventory.manaDew += 1;
+          dom.interiorHint.textContent = "Cave cache secured: +24 Spores, +1 Mana Dew.";
+        } else if (structure.type === "dungeon") {
+          grantSpores(36);
+          addClue("dungeon-rune", "Ancient Dungeon Rune");
+          dom.interiorHint.textContent = "Dungeon sigil recovered: +36 Spores and Ancient Dungeon Rune clue.";
+        } else if (structure.type === "castle") {
+          state.hero.goldenSpores += 1;
+          addClue("restoration-seed", "Restoration Seed");
+          dom.interiorHint.textContent = "Castle vault opened: +1 Golden Spore and Restoration Seed clue.";
+        }
+        playSfx("pickup");
+        drawInteriorScene(structure);
+      };
+
       const buildStructureEncounter = (nearbyStructure) => {
         const solved = state.progress.solvedStructures.has(nearbyStructure.id);
         const structurePortrait = {
           house: { glyph: "🏠", subtitle: "Village Contact" },
           cave: { glyph: "🕳️", subtitle: "Echoing Cavern" },
           dungeon: { glyph: "🏛️", subtitle: "Sealed Trial Hall" },
+          castle: { glyph: "🏰", subtitle: "Royal Fortified Keep" },
           shrine: { glyph: "🗿", subtitle: "Mycelic Shrine" },
         };
         return {
@@ -2592,6 +2904,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
               ? "A rune puzzle asks: 'What restores magic faster than conquest?'"
               : nearbyStructure.type === "dungeon"
                 ? "A locked sigil puzzle blocks the inner chamber."
+                : nearbyStructure.type === "castle"
+                  ? "A fortified hall hums with old crown wards and sealed relic doors."
                 : nearbyStructure.type === "house"
                   ? "A household asks for aid and offers local intelligence in return."
                   : "A villager asks for aid against roaming rot packs.",
@@ -2607,6 +2921,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
               if (nearbyStructure.type === "dungeon") {
                 grantSpores(32);
                 addClue("dungeon-rune", "Ancient Dungeon Rune");
+              }
+              if (nearbyStructure.type === "castle") {
+                state.hero.goldenSpores += 1;
               }
               if (nearbyStructure.type === "house") {
                 state.hero.hp = state.hero.maxHp;
@@ -2646,6 +2963,17 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         state.visualFx.portalPulseUntil = Date.now() + 700;
         state.visualFx.portalPulseX = portal.x + portal.w / 2;
         state.visualFx.portalPulseY = portal.y + portal.h / 2;
+        const destinationRealmId = portalDestinationRealmId(portal);
+        if (destinationRealmId && destinationRealmId !== state.currentRealmId) {
+          const destinationRealm = REALMS.find((realm) => realm.id === destinationRealmId);
+          setStatus(`Portal stabilized. Entering ${destinationRealm?.name ?? destinationRealmId} page...`);
+          playSfx("portal");
+          saveGame();
+          window.setTimeout(() => {
+            goToRealmPage(destinationRealmId, portal.destinationX, portal.destinationY);
+          }, 180);
+          return true;
+        }
         if (dom.portalFlash) {
           dom.portalFlash.classList.add("active");
           window.setTimeout(() => dom.portalFlash.classList.remove("active"), 220);
@@ -2661,7 +2989,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const now = Date.now();
         if (now < state.contactLockUntil) return;
 
-        const bumpNpc = NPCS.find((npc) => dist(state.hero.x, state.hero.y, npc.x, npc.y) < 34);
+        const bumpNpc = NPCS.find((npc) => isInCurrentRealm(npc) && dist(state.hero.x, state.hero.y, npc.x, npc.y) < 34);
         if (bumpNpc) {
           if (state.contactLatch?.type === "npc" && state.contactLatch.id === bumpNpc.id) {
             return;
@@ -2673,7 +3001,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           return;
         }
 
-        const bumpPortal = PORTALS.find((portal) => dist(state.hero.x, state.hero.y, portal.x + portal.w / 2, portal.y + portal.h / 2) < 34);
+        const bumpPortal = PORTALS.find(
+          (portal) => portalSourceRealmId(portal) === state.currentRealmId && dist(state.hero.x, state.hero.y, portal.x + portal.w / 2, portal.y + portal.h / 2) < 34,
+        );
         if (bumpPortal) {
           if (state.contactLatch?.type === "portal" && state.contactLatch.id === bumpPortal.id) {
             return;
@@ -2683,7 +3013,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
 
         const bumpStructure = STRUCTURES.find(
-          (entry) => dist(state.hero.x, state.hero.y, entry.x + entry.w / 2, entry.y + entry.h / 2) < 44,
+          (entry) => isInCurrentRealm(entry) && dist(state.hero.x, state.hero.y, entry.x + entry.w / 2, entry.y + entry.h / 2) < 44,
         );
         if (bumpStructure) {
           if (state.contactLatch?.type === "structure" && state.contactLatch.id === bumpStructure.id) {
@@ -2691,12 +3021,20 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           }
           state.contactLockUntil = now + 1600;
           state.contactLatch = { type: "structure", id: bumpStructure.id };
-          openDialogue(buildStructureEncounter(bumpStructure));
+          if (isEnterableStructure(bumpStructure)) {
+            openInterior(bumpStructure);
+          } else {
+            openDialogue(buildStructureEncounter(bumpStructure));
+          }
         }
       };
 
       const interact = () => {
         if (state.intro.active || state.mode === "intro") {
+          return;
+        }
+        if (state.mode === "interior" || state.interior.active) {
+          closeInterior();
           return;
         }
         if (state.activeDialogue || state.cutscene.active || state.mode === "cutscene") {
@@ -2707,20 +3045,28 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           return;
         }
 
-        const nearbyNpc = NPCS.find((npc) => dist(state.hero.x, state.hero.y, npc.x, npc.y) < 82);
+        const nearbyNpc = NPCS.find((npc) => isInCurrentRealm(npc) && dist(state.hero.x, state.hero.y, npc.x, npc.y) < 82);
         if (nearbyNpc) {
           const alreadySpoken = state.progress.interactedNpcs.has(nearbyNpc.id);
           openDialogue(buildNpcEncounter(nearbyNpc, alreadySpoken));
           return;
         }
 
-        const nearbyStructure = STRUCTURES.find((entry) => dist(state.hero.x, state.hero.y, entry.x + entry.w / 2, entry.y + entry.h / 2) < 88);
+        const nearbyStructure = STRUCTURES.find(
+          (entry) => isInCurrentRealm(entry) && dist(state.hero.x, state.hero.y, entry.x + entry.w / 2, entry.y + entry.h / 2) < 88,
+        );
         if (nearbyStructure) {
-          openDialogue(buildStructureEncounter(nearbyStructure));
+          if (isEnterableStructure(nearbyStructure)) {
+            openInterior(nearbyStructure);
+          } else {
+            openDialogue(buildStructureEncounter(nearbyStructure));
+          }
           return;
         }
 
-        const nearbyPortal = PORTALS.find((portal) => dist(state.hero.x, state.hero.y, portal.x + portal.w / 2, portal.y + portal.h / 2) < 92);
+        const nearbyPortal = PORTALS.find(
+          (portal) => portalSourceRealmId(portal) === state.currentRealmId && dist(state.hero.x, state.hero.y, portal.x + portal.w / 2, portal.y + portal.h / 2) < 92,
+        );
         if (nearbyPortal) {
           activatePortal(nearbyPortal);
           return;
@@ -2765,6 +3111,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         };
         const darkPressure = state.hero.morality < 0 ? Math.min(0.35, Math.abs(state.hero.morality) / 260) : 0;
         for (const enemy of state.enemies) {
+          if (enemy.region !== state.currentRealmId) continue;
           if (!enemy.active) {
             if (enemy.respawnAt && now >= enemy.respawnAt && !enemy.boss) {
               enemy.active = true;
@@ -2782,12 +3129,13 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           const nextX = enemy.x + enemy.wanderDirX * speed * dt;
           const nextY = enemy.y + enemy.wanderDirY * speed * dt;
           const enemyRect = { x: nextX - 18, y: nextY - 18, w: 36, h: 36 };
+          const realm = getCurrentRealm();
           if (
-            enemyRect.x < 0 ||
-            enemyRect.y < 0 ||
-            enemyRect.x + enemyRect.w > WORLD_WIDTH ||
-            enemyRect.y + enemyRect.h > WORLD_HEIGHT ||
-            STRUCTURES.some((structure) => structure.solid && intersectsRect(enemyRect, structure))
+            enemyRect.x < realm.x ||
+            enemyRect.y < realm.y ||
+            enemyRect.x + enemyRect.w > realm.x + realm.w ||
+            enemyRect.y + enemyRect.h > realm.y + realm.h ||
+            STRUCTURES.some((structure) => structure.solid && isInCurrentRealm(structure) && intersectsRect(enemyRect, structure))
           ) {
             enemy.wanderDirX *= -1;
             enemy.wanderDirY *= -1;
@@ -2801,6 +3149,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const updatePickups = () => {
         const heroRect = getHeroRect();
         for (const pickup of PICKUPS) {
+          if (!isInCurrentRealm(pickup)) continue;
           if (state.progress.collectedPickups.has(pickup.id)) continue;
           const pickupRect = { x: pickup.x - 10, y: pickup.y - 10, w: 20, h: 20 };
           if (!intersectsRect(heroRect, pickupRect)) continue;
@@ -2887,6 +3236,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const checkEnemyContact = async () => {
         if (state.mode === "battle" || state.pendingBattle) return;
         for (const enemy of state.enemies) {
+          if (enemy.region !== state.currentRealmId) continue;
           if (!enemy.active) continue;
           if (dist(state.hero.x, state.hero.y, enemy.x, enemy.y) < (enemy.boss ? 32 : 27)) {
             await engageEnemy(enemy);
@@ -2940,9 +3290,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         } else if (battle.status === "lost") {
           applyMorality(-6);
           state.hero.hp = state.hero.maxHp;
-          state.hero.x = 280;
-          state.hero.y = 500;
-          setStatus("Defeat in battle. You were restored at the Myco Kingdom shrine.", true);
+          const spawn = REALM_DEFAULT_SPAWNS[state.currentRealmId] ?? { x: 280, y: 500 };
+          state.hero.x = spawn.x;
+          state.hero.y = spawn.y;
+          setStatus(`Defeat in battle. You were restored at ${getCurrentRealm().name}'s nearest sanctuary.`, true);
           playSfx("lose");
         }
         state.mode = "explore";
@@ -3087,6 +3438,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (state.mode === "intro" || state.intro.active) return;
         if (state.activeDialogue) return;
         if (state.cutscene.active || state.mode === "cutscene") return;
+        if (state.mode === "interior" || state.interior.active) return;
         if (state.mode === "battle") return;
         moveHero(dt);
         updateEnemies(dt);
@@ -3258,9 +3610,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           ctx.fillRect(sx + structure.w / 2 - 7, sy + structure.h - 26, 14, 18);
         } else if (structure.type === "cave") {
           ctx.fillStyle = "#334155";
-          ctx.fillRect(sx, sy, structure.w, structure.h);
-          ctx.fillStyle = "#111827";
-          ctx.fillRect(sx + 20, sy + 22, structure.w - 40, structure.h - 30);
+          ctx.fillRect(sx, sy + 8, structure.w, structure.h - 8);
+          ctx.fillStyle = "#0f172a";
+          ctx.fillRect(sx + 16, sy + 20, structure.w - 32, structure.h - 28);
+          ctx.fillStyle = "#64748b";
+          ctx.fillRect(sx + 6, sy + 10, structure.w - 12, 8);
         } else if (structure.type === "dungeon") {
           ctx.fillStyle = "#3f3f46";
           ctx.fillRect(sx, sy, structure.w, structure.h);
@@ -3268,6 +3622,19 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           ctx.fillRect(sx + 8, sy + 8, structure.w - 16, 10);
           ctx.fillStyle = "#111827";
           ctx.fillRect(sx + 24, sy + 34, structure.w - 48, structure.h - 46);
+        } else if (structure.type === "castle") {
+          ctx.fillStyle = "#1e293b";
+          ctx.fillRect(sx, sy + 18, structure.w, structure.h - 18);
+          ctx.fillStyle = "#334155";
+          ctx.fillRect(sx + 12, sy + 26, structure.w - 24, structure.h - 32);
+          ctx.fillStyle = "#60a5fa";
+          ctx.fillRect(sx + structure.w / 2 - 14, sy + structure.h - 42, 28, 22);
+          ctx.fillStyle = "#0f172a";
+          ctx.fillRect(sx + 18, sy + 4, 34, 26);
+          ctx.fillRect(sx + structure.w - 52, sy + 4, 34, 26);
+          ctx.fillStyle = "#93c5fd";
+          ctx.fillRect(sx + 24, sy + 11, 22, 5);
+          ctx.fillRect(sx + structure.w - 46, sy + 11, 22, 5);
         } else if (structure.type === "shrine") {
           ctx.fillStyle = "#0f766e";
           ctx.fillRect(sx, sy, structure.w, structure.h);
@@ -3346,7 +3713,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           }
         }
 
-        for (const realm of REALMS) {
+        const currentRealm = getCurrentRealm();
+        for (const realm of [currentRealm]) {
           if (!visible(realm.x, realm.y, realm.w, realm.h)) continue;
           const rx = realm.x - state.camera.x;
           const ry = realm.y - state.camera.y;
@@ -3400,12 +3768,14 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
         // Static scene props
         for (const prop of SCENIC_PROPS) {
+          if (prop.realm !== state.currentRealmId) continue;
           if (!visible(prop.x - 14, prop.y - 18, 28, 30)) continue;
           drawScenicProp(worldCtx, prop, prop.x - state.camera.x, prop.y - state.camera.y);
         }
 
         worldCtx.fillStyle = "#243b63";
         for (const obstacle of staticObstacles) {
+          if (!isInCurrentRealm(obstacle)) continue;
           if (!visible(obstacle.x, obstacle.y, obstacle.w, obstacle.h)) continue;
           worldCtx.fillRect(obstacle.x - state.camera.x, obstacle.y - state.camera.y, obstacle.w, obstacle.h);
           worldCtx.fillStyle = "rgba(148, 163, 184, 0.1)";
@@ -3414,6 +3784,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
 
         for (const barrier of REALM_BARRIERS) {
+          if (!isInCurrentRealm(barrier)) continue;
           if (!visible(barrier.x, barrier.y, barrier.w, barrier.h)) continue;
           worldCtx.fillStyle = "#111827";
           worldCtx.fillRect(barrier.x - state.camera.x, barrier.y - state.camera.y, barrier.w, barrier.h);
@@ -3422,6 +3793,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
 
         for (const portal of PORTALS) {
+          if (portalSourceRealmId(portal) !== state.currentRealmId) continue;
           if (!visible(portal.x, portal.y, portal.w, portal.h)) continue;
           const locked = portalLocked(portal);
           const px = portal.x - state.camera.x;
@@ -3443,7 +3815,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           worldCtx.fillRect(centerX - 6, centerY - 2, 12, 4);
           worldCtx.fillStyle = locked ? "#fca5a5" : "#dbeafe";
           worldCtx.font = "11px sans-serif";
-          worldCtx.fillText(portal.name, px - 12, py - 6);
+          const destinationRealm = REALMS.find((realm) => realm.id === portalDestinationRealmId(portal));
+          worldCtx.fillText(`${portal.name} -> ${destinationRealm?.name ?? "Unknown"}`, px - 12, py - 6);
         }
 
         if (Date.now() < state.visualFx.portalPulseUntil) {
@@ -3459,6 +3832,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
 
         for (const pickup of PICKUPS) {
+          if (!isInCurrentRealm(pickup)) continue;
           if (state.progress.collectedPickups.has(pickup.id)) continue;
           if (!visible(pickup.x - 10, pickup.y - 10, 20, 20)) continue;
           const sx = pickup.x - state.camera.x;
@@ -3470,16 +3844,19 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
 
         for (const structure of STRUCTURES) {
+          if (!isInCurrentRealm(structure)) continue;
           if (!visible(structure.x, structure.y, structure.w, structure.h)) continue;
           drawStructure(worldCtx, structure, Math.round(structure.x - state.camera.x), Math.round(structure.y - state.camera.y));
         }
 
         for (const npc of NPCS) {
+          if (!isInCurrentRealm(npc)) continue;
           if (!visible(npc.x - 14, npc.y - 16, 28, 30)) continue;
           drawNpc(worldCtx, npc, npc.x - state.camera.x, npc.y - state.camera.y);
         }
 
         for (const enemy of state.enemies) {
+          if (enemy.region !== state.currentRealmId) continue;
           if (!enemy.active) continue;
           if (!visible(enemy.x - 18, enemy.y - 18, 36, 36)) continue;
           drawEnemy(worldCtx, enemy, enemy.x - state.camera.x, enemy.y - state.camera.y);
@@ -3497,11 +3874,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         worldCtx.strokeRect(miniX, miniY, miniW, miniH);
         const sx = miniW / WORLD_WIDTH;
         const sy = miniH / WORLD_HEIGHT;
-        for (const realm of REALMS) {
-          worldCtx.fillStyle = realm.colorA;
-          worldCtx.fillRect(miniX + realm.x * sx, miniY + realm.y * sy, realm.w * sx, realm.h * sy);
-        }
+        worldCtx.fillStyle = currentRealm.colorA;
+        worldCtx.fillRect(miniX + currentRealm.x * sx, miniY + currentRealm.y * sy, currentRealm.w * sx, currentRealm.h * sy);
         for (const portal of PORTALS) {
+          if (portalSourceRealmId(portal) !== state.currentRealmId) continue;
           worldCtx.fillStyle = portalLocked(portal) ? "#f87171" : "#7dd3fc";
           worldCtx.fillRect(miniX + portal.x * sx, miniY + portal.y * sy, Math.max(2, portal.w * sx), Math.max(2, portal.h * sy));
         }
@@ -3682,11 +4058,19 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           .join("");
 
         const region = getRegionForPoint(state.hero.x, state.hero.y);
-        const realm = getRealmForPoint(state.hero.x, state.hero.y);
-        dom.regionHint.textContent = `World region: ${region?.name ?? "Unknown"}\nCurrent realm: ${realm?.name ?? "Unknown"}\n${realm?.label ?? region?.label ?? ""}\nAI directive: ${state.aiDirective}`;
+        const realm = getCurrentRealm();
+        const linkedRealms = PORTALS
+          .filter((portal) => portalSourceRealmId(portal) === state.currentRealmId)
+          .map((portal) => REALMS.find((entry) => entry.id === portalDestinationRealmId(portal))?.name)
+          .filter((name, idx, list) => Boolean(name) && list.indexOf(name) === idx)
+          .join(", ");
+        dom.regionHint.textContent = `World region: ${region?.name ?? "Unknown"}\nCurrent realm page: ${realm?.name ?? "Unknown"}\nLinked pages: ${linkedRealms || "None"}\n${realm?.label ?? region?.label ?? ""}\nAI directive: ${state.aiDirective}`;
         if (dom.realmBanner) {
           const pathTone = state.hero.morality >= 0 ? "Mycoside" : "Darkside";
           dom.realmBanner.textContent = `${realm?.name ?? "Unknown Realm"} // ${pathTone} path`;
+        }
+        if (dom.realmPageTitle) {
+          dom.realmPageTitle.textContent = `${realm?.name ?? "Unknown Realm"} // Regional Play Page`;
         }
 
         const connected = Boolean(state.web3.wallet);
@@ -3747,6 +4131,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         await update(dt);
         drawWorld();
         drawBattleScene();
+        if (state.interior.active) {
+          drawInteriorScene();
+        }
         renderHud();
         requestAnimationFrame(frameLoop);
       };
@@ -3775,6 +4162,15 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (state.intro.active) {
           if (key === "enter") {
             startAdventure();
+          }
+          event.preventDefault();
+          return;
+        }
+        if (state.mode === "interior" || state.interior.active) {
+          if (key === "e" || key === "escape") {
+            closeInterior();
+          } else if (key === "enter" || key === " ") {
+            searchInterior();
           }
           event.preventDefault();
           return;
@@ -3818,6 +4214,15 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       });
 
       dom.syncBtn.addEventListener("click", syncCampaign);
+      dom.switchRealmBtn.addEventListener("click", () => {
+        const target = dom.realmPageSelect.value;
+        if (!target || target === state.currentRealmId) {
+          setStatus("Already on this realm page.");
+          return;
+        }
+        saveGame();
+        goToRealmPage(target);
+      });
       dom.minimalHudBtn.addEventListener("click", () => {
         toggleMinimalHud();
       });
@@ -3846,6 +4251,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       dom.connectWalletBtn.addEventListener("click", connectWallet);
       dom.syncWeb3Btn.addEventListener("click", syncWeb3Profile);
       dom.mintSigilBtn.addEventListener("click", mintVictorySigil);
+      dom.interiorSearchBtn.addEventListener("click", searchInterior);
+      dom.interiorExitBtn.addEventListener("click", closeInterior);
 
       dom.upgradeAttackBtn.addEventListener("click", () => tryUpgrade("attack"));
       dom.upgradeDefenseBtn.addEventListener("click", () => tryUpgrade("defense"));
@@ -3862,6 +4269,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       loadConfig();
       loadGame();
+      applyRealmPageEntry();
+      populateRealmSelector();
       setupCornerMenus();
       setupMobileControls();
       refreshTitleScreen();
