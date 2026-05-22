@@ -341,11 +341,10 @@ Workflow behavior:
 - Supports manual **Run workflow** dispatch with custom branch/SHA/PM2 app/repo-dir inputs
 - Executes `scripts/ops/finalize-api-deploy.sh` over SSH on the VPS
 
-Required repository secrets:
-- `VPS_HOST`
-- `VPS_USER`
-- `VPS_SSH_KEY`
-- `VPS_PORT` (optional; defaults to `22`)
+Required GitHub configuration:
+- `VPS_SSH_KEY` as a **Repository Secret** (required)
+- `VPS_HOST` and `VPS_USER` as either **Repository Secrets** or **Repository Variables**
+- `VPS_PORT` as Secret/Variable (optional; defaults to `22`)
 
 ### 4) Reverse proxy / TLS
 
