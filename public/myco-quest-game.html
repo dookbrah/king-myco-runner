@@ -1995,6 +1995,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         encounterEnemyId: null,
         battleMode: "none",
         battle: null,
+        battleFx: {
+          impacts: [],
+          popups: [],
+        },
         campaignSnapshot: null,
         enemies: [],
         audio: {
@@ -2437,6 +2441,58 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const lines = dom.battleLog.textContent === "No combat logs yet." ? [] : dom.battleLog.textContent.split("\n").filter(Boolean);
         lines.push(message);
         dom.battleLog.textContent = lines.slice(-14).join("\n");
+      };
+
+      const BATTLE_FX_MAX_EVENTS = 18;
+
+      const resetBattleFx = () => {
+        state.battleFx.impacts = [];
+        state.battleFx.popups = [];
+      };
+
+      const pruneBattleFx = (now = Date.now()) => {
+        state.battleFx.impacts = state.battleFx.impacts.filter((fx) => now - fx.startedAt <= fx.duration);
+        state.battleFx.popups = state.battleFx.popups.filter((fx) => now - fx.startedAt <= fx.duration);
+      };
+
+      const triggerBattleHitFx = (target, damage, critical = false) => {
+        const amount = Math.max(0, Math.round(damage || 0));
+        if (!amount) return;
+        const now = Date.now();
+        const magnitude = clamp(amount / 32, 0.35, 1.3);
+        const rgb = target === "enemy" ? "248,113,113" : "125,211,252";
+        const popupColor = target === "enemy" ? "#fecaca" : "#bae6fd";
+        state.battleFx.impacts.push({
+          target,
+          startedAt: now,
+          duration: 280 + Math.round(150 * magnitude),
+          rgb,
+          magnitude,
+        });
+        state.battleFx.popups.push({
+          target,
+          text: `-${amount}`,
+          startedAt: now,
+          duration: critical ? 960 : 820,
+          color: popupColor,
+          critical,
+        });
+        state.battleFx.impacts = state.battleFx.impacts.slice(-BATTLE_FX_MAX_EVENTS);
+        state.battleFx.popups = state.battleFx.popups.slice(-BATTLE_FX_MAX_EVENTS);
+      };
+
+      const triggerBattleHealFx = (target, amount) => {
+        const heal = Math.max(0, Math.round(amount || 0));
+        if (!heal) return;
+        state.battleFx.popups.push({
+          target,
+          text: `+${heal}`,
+          startedAt: Date.now(),
+          duration: 840,
+          color: "#86efac",
+          critical: false,
+        });
+        state.battleFx.popups = state.battleFx.popups.slice(-BATTLE_FX_MAX_EVENTS);
       };
 
       const saveConfig = () => {
@@ -3052,6 +3108,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           if (state.battle?.player) {
             state.battle.player.hp = Math.min(state.battle.player.maxHp, state.battle.player.hp + heal);
             state.battle.battleLog.push(`King Myco used a potion for +${heal} HP.`);
+            triggerBattleHealFx("player", heal);
           }
           setStatus(`Myco Potion used (+${heal} HP).`);
           playSfx("item");
@@ -3692,6 +3749,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         state.pendingBattle = true;
         state.mode = "battle";
         state.encounterEnemyId = enemy.id;
+        resetBattleFx();
         showBossIntro(enemy);
         setStatus(`Enemy contact: ${getEnemyDisplayName(enemy.kind)}. Initiating turn battle...`);
         playSfx("battle");
@@ -3782,6 +3840,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
         state.mode = "explore";
         state.encounterEnemyId = null;
+        resetBattleFx();
         if (battle.status !== "active") {
           state.battle = null;
         }
@@ -3808,6 +3867,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           battle.enemy.hp = Math.max(0, battle.enemy.hp - mitigated);
           battle.enemy.guard = Math.max(0, battle.enemy.guard - Math.round(playerDamage * 0.6));
           battle.battleLog.push(`King Myco dealt ${mitigated} damage.`);
+          triggerBattleHitFx("enemy", mitigated, kind === "skill" && mitigated >= 20);
         } else {
           battle.battleLog.push("King Myco braces for impact.");
         }
@@ -3824,6 +3884,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         battle.player.guard = Math.max(0, battle.player.guard - 10);
         battle.enemy.guard = Math.min(16, battle.enemy.guard + 4);
         battle.battleLog.push(`${battle.enemy.name} hits for ${mitigatedEnemy}.`);
+        triggerBattleHitFx("player", mitigatedEnemy, mitigatedEnemy >= 22);
 
         if (battle.player.hp <= 0) {
           battle.status = "lost";
@@ -3843,6 +3904,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           return;
         }
         const element = dom.elementSelect.value;
+        const beforePlayerHp = state.battle.player?.hp;
+        const beforeEnemyHp = state.battle.enemy?.hp;
         if (state.battleMode === "api") {
           try {
             const action = kind === "skill" ? { kind, element } : { kind };
@@ -3852,6 +3915,18 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             });
             state.battle = receipt.battle;
             appendBattleLog(`API turn ${receipt.battle.turnNumber}: ${kind}`);
+            if (typeof beforeEnemyHp === "number" && typeof receipt.battle.enemy?.hp === "number") {
+              const enemyDamage = Math.max(0, Math.round(beforeEnemyHp - receipt.battle.enemy.hp));
+              if (enemyDamage > 0) {
+                triggerBattleHitFx("enemy", enemyDamage, kind === "skill" && enemyDamage >= 20);
+              }
+            }
+            if (typeof beforePlayerHp === "number" && typeof receipt.battle.player?.hp === "number") {
+              const playerDamage = Math.max(0, Math.round(beforePlayerHp - receipt.battle.player.hp));
+              if (playerDamage > 0) {
+                triggerBattleHitFx("player", playerDamage, playerDamage >= 22);
+              }
+            }
           } catch (error) {
             setStatus(String(error), true);
             return;
@@ -4567,6 +4642,64 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         worldCtx.fillRect(miniX + state.hero.x * sx - 2, miniY + state.hero.y * sy - 2, 4, 4);
       };
 
+      const drawBattleTurnFx = (ctx, stage) => {
+        const now = Date.now();
+        pruneBattleFx(now);
+        const anchors = {
+          player: { x: stage.playerCenterX, y: stage.actorCenterY, panelX: stage.playerPanelX },
+          enemy: { x: stage.enemyCenterX, y: stage.actorCenterY, panelX: stage.enemyPanelX },
+        };
+
+        for (const impact of state.battleFx.impacts) {
+          const anchor = anchors[impact.target];
+          if (!anchor) continue;
+          const progress = clamp((now - impact.startedAt) / impact.duration, 0, 1);
+          const alpha = 1 - progress;
+          const radius = 14 + progress * 38 * impact.magnitude;
+
+          ctx.fillStyle = `rgba(${impact.rgb}, ${0.28 * alpha * impact.magnitude})`;
+          ctx.fillRect(anchor.panelX, stage.panelY, stage.panelW, stage.panelH);
+          ctx.strokeStyle = `rgba(${impact.rgb}, ${0.82 * alpha})`;
+          ctx.lineWidth = Math.max(1.5, 4 * alpha);
+          ctx.beginPath();
+          ctx.arc(anchor.x, anchor.y, radius, 0, Math.PI * 2);
+          ctx.stroke();
+
+          for (let ray = 0; ray < 4; ray += 1) {
+            const angle = progress * Math.PI * 2 + ray * (Math.PI / 2);
+            const inner = 9 + progress * 8;
+            const outer = inner + 18 * impact.magnitude;
+            ctx.beginPath();
+            ctx.moveTo(anchor.x + Math.cos(angle) * inner, anchor.y + Math.sin(angle) * inner);
+            ctx.lineTo(anchor.x + Math.cos(angle) * outer, anchor.y + Math.sin(angle) * outer);
+            ctx.stroke();
+          }
+        }
+
+        ctx.save();
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        for (const popup of state.battleFx.popups) {
+          const anchor = anchors[popup.target];
+          if (!anchor) continue;
+          const progress = clamp((now - popup.startedAt) / popup.duration, 0, 1);
+          const alpha = 1 - progress;
+          const rise = 38 * progress;
+          const drift = Math.sin(progress * Math.PI * 3) * 4;
+          const px = anchor.x + drift;
+          const py = anchor.y - 22 - rise;
+          ctx.font = popup.critical ? "700 20px sans-serif" : "700 17px sans-serif";
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = `rgba(2, 6, 23, ${0.86 * alpha})`;
+          ctx.strokeText(popup.text, px, py);
+          ctx.fillStyle = popup.color;
+          ctx.globalAlpha = Math.max(0, alpha);
+          ctx.fillText(popup.text, px, py);
+          ctx.globalAlpha = 1;
+        }
+        ctx.restore();
+      };
+
       const drawBattleScene = () => {
         const bg = battleCtx.createLinearGradient(0, 0, 0, battleCanvas.height);
         bg.addColorStop(0, "#0b1530");
@@ -4577,6 +4710,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         battleCtx.fillRect(0, 170, battleCanvas.width, 60);
 
         if (!state.battle) {
+          resetBattleFx();
           battleCtx.fillStyle = "#93c5fd";
           battleCtx.font = "700 16px sans-serif";
           battleCtx.fillText("No active battle", 20, 36);
@@ -4584,6 +4718,22 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
 
         const battle = state.battle;
+        const stage = {
+          panelY: 72,
+          panelW: 108,
+          panelH: 84,
+          playerPanelX: 50,
+          enemyPanelX: battleCanvas.width - 158,
+          bodyY: 84,
+          bodyW: 56,
+          bodyH: 56,
+          playerBodyX: 74,
+          enemyBodyX: battleCanvas.width - 130,
+          actorCenterY: 112,
+          playerCenterX: 102,
+          enemyCenterX: battleCanvas.width - 102,
+        };
+        const enemyBarX = battleCanvas.width - 174;
         const laneColor = {
           speed: "#38bdf8",
           precision: "#67e8f9",
@@ -4599,22 +4749,23 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         battleCtx.fillText(`Lane: ${battle.encounterLane} | Turn: ${battle.turnNumber}`, 12, 28);
 
         battleCtx.fillStyle = "rgba(59, 130, 246, 0.24)";
-        battleCtx.fillRect(50, 72, 108, 84);
+        battleCtx.fillRect(stage.playerPanelX, stage.panelY, stage.panelW, stage.panelH);
         battleCtx.fillStyle = "rgba(239, 68, 68, 0.24)";
-        battleCtx.fillRect(302, 72, 108, 84);
+        battleCtx.fillRect(stage.enemyPanelX, stage.panelY, stage.panelW, stage.panelH);
         battleCtx.fillStyle = "#2563eb";
-        battleCtx.fillRect(74, 84, 56, 56);
+        battleCtx.fillRect(stage.playerBodyX, stage.bodyY, stage.bodyW, stage.bodyH);
         battleCtx.fillStyle = "#ef4444";
-        battleCtx.fillRect(330, 84, 56, 56);
+        battleCtx.fillRect(stage.enemyBodyX, stage.bodyY, stage.bodyW, stage.bodyH);
         battleCtx.fillStyle = "#bfdbfe";
-        battleCtx.fillRect(94, 100, 16, 20);
+        battleCtx.fillRect(stage.playerCenterX - 8, stage.actorCenterY - 12, 16, 20);
         battleCtx.fillStyle = "#fecaca";
-        battleCtx.fillRect(350, 100, 16, 20);
+        battleCtx.fillRect(stage.enemyCenterX - 8, stage.actorCenterY - 12, 16, 20);
+        drawBattleTurnFx(battleCtx, stage);
 
         battleCtx.fillStyle = "#dbeafe";
         battleCtx.font = "700 13px sans-serif";
         battleCtx.fillText(battle.player.name, 52, 66);
-        battleCtx.fillText(battle.enemy.name, 306, 66);
+        battleCtx.fillText(battle.enemy.name, stage.enemyPanelX + 4, 66);
 
         const drawBar = (x, y, width, ratio, color) => {
           battleCtx.fillStyle = "#0f172a";
@@ -4626,11 +4777,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         };
 
         drawBar(20, 146, 156, battle.player.maxHp > 0 ? battle.player.hp / battle.player.maxHp : 0, "#22c55e");
-        drawBar(286, 146, 156, battle.enemy.maxHp > 0 ? battle.enemy.hp / battle.enemy.maxHp : 0, "#22c55e");
+        drawBar(enemyBarX, 146, 156, battle.enemy.maxHp > 0 ? battle.enemy.hp / battle.enemy.maxHp : 0, "#22c55e");
         battleCtx.fillStyle = "#cbd5e1";
         battleCtx.font = "12px sans-serif";
         battleCtx.fillText(`HP ${battle.player.hp}/${battle.player.maxHp} | Guard ${battle.player.guard}`, 20, 164);
-        battleCtx.fillText(`HP ${battle.enemy.hp}/${battle.enemy.maxHp} | Guard ${battle.enemy.guard}`, 286, 164);
+        battleCtx.fillText(`HP ${battle.enemy.hp}/${battle.enemy.maxHp} | Guard ${battle.enemy.guard}`, enemyBarX, 164);
 
         battleCtx.fillStyle = battle.status === "won" ? "#4ade80" : battle.status === "lost" ? "#fb7185" : "#cbd5e1";
         battleCtx.font = "700 15px sans-serif";
