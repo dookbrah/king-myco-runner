@@ -18,6 +18,28 @@ assert_contains() {
   fi
 }
 
+wait_for_http() {
+  local label="$1"
+  local url="$2"
+  local attempts="${3:-20}"
+  local sleep_seconds="${4:-2}"
+  local i=1
+
+  while (( i <= attempts )); do
+    if curl -fsS "$url" >/dev/null 2>&1; then
+      return 0
+    fi
+    echo "⏳ waiting for $label ($i/$attempts): $url"
+    sleep "$sleep_seconds"
+    ((i++))
+  done
+
+  echo "❌ timed out waiting for $label: $url"
+  pm2 status "$APP_NAME" || true
+  pm2 logs "$APP_NAME" --lines 60 --nostream || true
+  return 1
+}
+
 echo "==> Syncing repository"
 cd "$REPO_DIR"
 git fetch origin "$BRANCH"
@@ -46,6 +68,7 @@ sudo nginx -t
 sudo systemctl reload nginx
 
 echo "==> Checking local endpoints"
+wait_for_http "local /api/health" "http://127.0.0.1:3000/api/health" 25 2
 LOCAL_HEALTH="$(curl -fsS http://127.0.0.1:3000/api/health)"
 assert_contains "local /api/health" "$LOCAL_HEALTH" "\"status\":\"ok\""
 
@@ -76,6 +99,7 @@ console.log("✅ local run objective chain fields present");
 NODE
 
 echo "==> Checking public endpoints"
+wait_for_http "public /api/health" "$PUBLIC_BASE_URL/api/health" 20 2
 PUBLIC_HEALTH="$(curl -fsS "$PUBLIC_BASE_URL/api/health")"
 assert_contains "public /api/health" "$PUBLIC_HEALTH" "\"status\":\"ok\""
 
