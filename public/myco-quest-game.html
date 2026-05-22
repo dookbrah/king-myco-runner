@@ -407,6 +407,55 @@
         flex-wrap: wrap;
         gap: 8px;
       }
+      .clan-select-grid {
+        margin-top: 12px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 8px;
+      }
+      .clan-banner-preview {
+        margin-top: 10px;
+        border: 2px solid #4c6ba8;
+        border-radius: 10px;
+        padding: 10px;
+        background: rgba(7, 14, 30, 0.88);
+      }
+      .clan-banner-preview h3 {
+        margin: 0 0 4px;
+        font-size: 14px;
+        letter-spacing: 0.05em;
+      }
+      .clan-banner-preview p {
+        margin: 0;
+        font-size: 12px;
+        color: #a7bfe4;
+      }
+      .leaderboard-list {
+        margin-top: 8px;
+        max-height: 220px;
+        overflow: auto;
+        border: 1px solid #2f4f85;
+        border-radius: 8px;
+        background: rgba(7, 15, 32, 0.86);
+        padding: 8px;
+        display: grid;
+        gap: 6px;
+      }
+      .leaderboard-entry {
+        border: 1px solid #2f4f85;
+        border-radius: 8px;
+        background: rgba(12, 23, 46, 0.76);
+        padding: 6px;
+      }
+      .leaderboard-entry strong {
+        display: block;
+        font-size: 12px;
+      }
+      .leaderboard-entry small {
+        display: block;
+        color: #9fb6dd;
+        font-size: 11px;
+      }
       .boss-intro {
         position: fixed;
         top: max(18px, env(safe-area-inset-top));
@@ -706,6 +755,20 @@ Dark Mycelius fractured the royal crown into living memory shards.
 Every realm now floats behind unstable portal locks.
 Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a time.
         </p>
+        <div class="clan-select-grid">
+          <label>
+            Choose Clan
+            <select id="clanSelect"></select>
+          </label>
+          <label>
+            Choose Avatar
+            <select id="avatarSelect"></select>
+          </label>
+        </div>
+        <div id="clanBannerPreview" class="clan-banner-preview">
+          <h3>CLAN BANNER</h3>
+          <p>Select a clan to view its war banner and campaign oath.</p>
+        </div>
         <div class="title-actions">
           <button id="continueAdventureBtn" class="primary">Continue Adventure</button>
           <button id="newAdventureBtn">New Adventure</button>
@@ -858,6 +921,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             </div>
           </section>
 
+          <section id="panelLeaderboard" class="panel">
+            <h2>Realm Leaderboard</h2>
+            <p id="leaderboardSummary" class="subtle">No rankings yet. Start a clan chronicle to post your score.</p>
+            <div id="leaderboardList" class="leaderboard-list"></div>
+          </section>
+
           <section id="panelBattle" class="panel">
             <h2>Turn Battle</h2>
             <div class="canvas-shell" style="margin-top: 8px">
@@ -914,7 +983,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
     <section class="corner-menu right">
       <details open>
-        <summary>Character + Inventory + Web3 + Battle + Audio</summary>
+        <summary>Character + Inventory + Web3 + Leaderboard + Battle + Audio</summary>
         <div id="rightMenuContent"></div>
       </details>
     </section>
@@ -990,6 +1059,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
     <script>
       const STORAGE_CONFIG_KEY = "mycoQuestPlayableConfig";
       const STORAGE_STATE_KEY = "mycoQuestOverworldStateV2";
+      const STORAGE_LEADERBOARD_KEY = "mycoQuestClanLeaderboardV1";
       const TILE = 48;
       const WORLD_WIDTH = 6200;
       const WORLD_HEIGHT = 4200;
@@ -1010,6 +1080,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         titleScreen: document.getElementById("titleScreen"),
         titleLore: document.getElementById("titleLore"),
         titleHint: document.getElementById("titleHint"),
+        clanSelect: document.getElementById("clanSelect"),
+        avatarSelect: document.getElementById("avatarSelect"),
+        clanBannerPreview: document.getElementById("clanBannerPreview"),
         continueAdventureBtn: document.getElementById("continueAdventureBtn"),
         newAdventureBtn: document.getElementById("newAdventureBtn"),
         skipIntroBtn: document.getElementById("skipIntroBtn"),
@@ -1067,6 +1140,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         web3Status: document.getElementById("web3Status"),
         web3Stats: document.getElementById("web3Stats"),
         web3Relics: document.getElementById("web3Relics"),
+        leaderboardSummary: document.getElementById("leaderboardSummary"),
+        leaderboardList: document.getElementById("leaderboardList"),
         connectWalletBtn: document.getElementById("connectWalletBtn"),
         syncWeb3Btn: document.getElementById("syncWeb3Btn"),
         mintSigilBtn: document.getElementById("mintSigilBtn"),
@@ -1102,6 +1177,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         panelStory: document.getElementById("panelStory"),
         panelInventory: document.getElementById("panelInventory"),
         panelWeb3: document.getElementById("panelWeb3"),
+        panelLeaderboard: document.getElementById("panelLeaderboard"),
         panelBattle: document.getElementById("panelBattle"),
         panelControls: document.getElementById("panelControls"),
         panelAudio: document.getElementById("panelAudio"),
@@ -2002,6 +2078,108 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         },
       ];
 
+      const CLAN_PROFILES = {
+        myco: {
+          id: "myco",
+          name: "Myco Clan",
+          bannerTitle: "MYCO CLAN",
+          slogan: "Spread the Spores",
+          colors: { primary: "#84cc16", accent: "#a855f7", aura: "#22d3ee", cap: "#ef4444", robe: "#6d28d9", eye: "#22c55e" },
+          storyThread: "You carry the old royal oath to regrow the realm network.",
+          npcThread: "Villagers treat your spores as restoration sigils.",
+          questThread: "Stabilize fungal shrines and reclaim royal trust.",
+          cutsceneThread: "Royal spores answer your crown line.",
+        },
+        "dark-mycelius": {
+          id: "dark-mycelius",
+          name: "Mycelius Clan",
+          bannerTitle: "MYCELIUS CLAN",
+          slogan: "Rise from the Depths",
+          colors: { primary: "#84cc16", accent: "#a855f7", aura: "#84cc16", cap: "#6d28d9", robe: "#1f2937", eye: "#84cc16" },
+          storyThread: "You chase forbidden depth-lore and chain rot scriptures.",
+          npcThread: "Nexus watchers fear your occult mushroom rites.",
+          questThread: "Master depth sigils and bend corrupted gates.",
+          cutsceneThread: "The abyss spores whisper your clan name.",
+        },
+        rougarou: {
+          id: "rougarou",
+          name: "Rougarou Clan",
+          bannerTitle: "ROUGAROU CLAN",
+          slogan: "Hunt the Night",
+          colors: { primary: "#a855f7", accent: "#7e22ce", aura: "#c084fc", cap: "#312e81", robe: "#4c1d95", eye: "#a855f7" },
+          storyThread: "Moonlit packs mark your path with predator rites.",
+          npcThread: "Fen scouts read your oath as hunter law.",
+          questThread: "Control night routes, pack towers, and moon shrines.",
+          cutsceneThread: "Moonfire obeys your clan hunt-call.",
+        },
+        "dragon-brood": {
+          id: "dragon-brood",
+          name: "Brood Dragon Clan",
+          bannerTitle: "BROOD DRAGON CLAN",
+          slogan: "Nurture the Nest",
+          colors: { primary: "#84cc16", accent: "#f97316", aura: "#f97316", cap: "#475569", robe: "#7c2d12", eye: "#84cc16" },
+          storyThread: "You guard drake eggs and ember nests across peak citadels.",
+          npcThread: "Mountain wardens trust your brood vows.",
+          questThread: "Secure nest towers and rekindle drake forges.",
+          cutsceneThread: "Ember winds answer broodfire command.",
+        },
+        tegbot: {
+          id: "tegbot",
+          name: "Tegbot Clan",
+          bannerTitle: "TEGBOT",
+          slogan: "Built Different",
+          colors: { primary: "#22d3ee", accent: "#a855f7", aura: "#22d3ee", cap: "#0f172a", robe: "#334155", eye: "#22d3ee" },
+          storyThread: "You decode chain relics with machine-grade precision.",
+          npcThread: "Engineers and smiths treat you as a living relay core.",
+          questThread: "Synchronize towers, optimize routes, and break rot code.",
+          cutsceneThread: "Circuit runes pulse to your command signature.",
+        },
+        "shiba-inu": {
+          id: "shiba-inu",
+          name: "Shiba Inu Clan",
+          bannerTitle: "SHIBA INFINITY",
+          slogan: "To the Infinity and Beyond",
+          colors: { primary: "#84cc16", accent: "#a855f7", aura: "#a3e635", cap: "#f97316", robe: "#7c3aed", eye: "#f8fafc" },
+          storyThread: "You rally fast-strike caravans with infinity coin vows.",
+          npcThread: "Commons traders back your daring luck runs.",
+          questThread: "Capture coin trails, market routes, and infinity relics.",
+          cutsceneThread: "Fortune sparks on every portal you cross.",
+        },
+      };
+
+      const CLAN_AVATARS = {
+        myco: [
+          { id: "crownward", name: "Crownward Sorcerer" },
+          { id: "sporeblade", name: "Sporeblade Marshal" },
+          { id: "embersage", name: "Embersage Regent" },
+        ],
+        "dark-mycelius": [
+          { id: "depthseer", name: "Depthseer Hexer" },
+          { id: "graveflame", name: "Graveflame Adept" },
+          { id: "voidcrown", name: "Voidcrown Lich" },
+        ],
+        rougarou: [
+          { id: "moonfang", name: "Moonfang Stalker" },
+          { id: "packwarden", name: "Packwarden Alpha" },
+          { id: "nightclaw", name: "Nightclaw Raider" },
+        ],
+        "dragon-brood": [
+          { id: "nestguard", name: "Nestguard Knight" },
+          { id: "embertalon", name: "Embertalon Wyrmkin" },
+          { id: "broodseer", name: "Broodseer Tactician" },
+        ],
+        tegbot: [
+          { id: "relay-prime", name: "Relay Prime" },
+          { id: "code-smith", name: "Code Smith" },
+          { id: "synth-sage", name: "Synth Sage" },
+        ],
+        "shiba-inu": [
+          { id: "infinity-runner", name: "Infinity Runner" },
+          { id: "coin-blazer", name: "Coin Blazer" },
+          { id: "astro-shiba", name: "Astro Shiba" },
+        ],
+      };
+
       const state = {
         mode: "intro",
         currentRealmId: parseInitialRealmId(),
@@ -2016,6 +2194,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         contactLockUntil: 0,
         contactLatch: null,
         lastAdvice: "Earn trust in each region to receive reliable guidance.",
+        playerClan: "myco",
+        playerAvatar: "crownward",
         ui: {
           minimalHud: false,
           titleCardSkipped: false,
@@ -2106,6 +2286,145 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const randomBetween = (min, max) => min + Math.random() * (max - min);
 
+      const getClanProfile = (clanId = state.playerClan) => CLAN_PROFILES[clanId] ?? CLAN_PROFILES.myco;
+
+      const getClanAvatarOptions = (clanId = state.playerClan) => CLAN_AVATARS[clanId] ?? CLAN_AVATARS.myco;
+
+      const getSelectedAvatarName = () => {
+        const options = getClanAvatarOptions();
+        return options.find((entry) => entry.id === state.playerAvatar)?.name ?? options[0]?.name ?? "Wandering Avatar";
+      };
+
+      const updateClanBannerPreview = () => {
+        if (!dom.clanBannerPreview) return;
+        const profile = getClanProfile();
+        dom.clanBannerPreview.style.borderColor = profile.colors.accent;
+        dom.clanBannerPreview.style.boxShadow = `inset 0 0 0 1px ${profile.colors.primary}55`;
+        dom.clanBannerPreview.innerHTML = `
+          <h3 style="color:${profile.colors.primary}">${profile.bannerTitle}</h3>
+          <p><strong style="color:${profile.colors.accent}">${profile.slogan}</strong></p>
+          <p>${profile.storyThread}</p>
+        `;
+      };
+
+      const populateAvatarSelect = () => {
+        if (!dom.avatarSelect) return;
+        const options = getClanAvatarOptions();
+        if (!options.some((entry) => entry.id === state.playerAvatar)) {
+          state.playerAvatar = options[0]?.id ?? "crownward";
+        }
+        dom.avatarSelect.innerHTML = options.map((entry) => `<option value="${entry.id}">${entry.name}</option>`).join("");
+        dom.avatarSelect.value = state.playerAvatar;
+      };
+
+      const applyClanSelectionFromUi = () => {
+        if (dom.clanSelect?.value && CLAN_PROFILES[dom.clanSelect.value]) {
+          state.playerClan = dom.clanSelect.value;
+        }
+        populateAvatarSelect();
+        if (dom.avatarSelect?.value) {
+          state.playerAvatar = dom.avatarSelect.value;
+        }
+        updateClanBannerPreview();
+      };
+
+      const populateClanSelect = () => {
+        if (!dom.clanSelect) return;
+        const entries = Object.values(CLAN_PROFILES);
+        dom.clanSelect.innerHTML = entries.map((entry) => `<option value="${entry.id}">${entry.name}</option>`).join("");
+        if (!CLAN_PROFILES[state.playerClan]) state.playerClan = "myco";
+        dom.clanSelect.value = state.playerClan;
+        populateAvatarSelect();
+        updateClanBannerPreview();
+      };
+
+      const calculateLeaderboardScore = () => {
+        const profileBonus = {
+          myco: 12,
+          "dark-mycelius": 14,
+          rougarou: 10,
+          "dragon-brood": 13,
+          tegbot: 11,
+          "shiba-inu": 9,
+        }[state.playerClan] ?? 0;
+        return (
+          state.progress.defeatedBosses.size * 140 +
+          state.progress.clues.size * 46 +
+          state.progress.solvedStructures.size * 18 +
+          state.progress.interactedNpcs.size * 12 +
+          state.hero.goldenSpores * 95 +
+          Math.max(0, Math.round(state.hero.spores / 9)) +
+          Math.max(-40, state.hero.morality) +
+          profileBonus
+        );
+      };
+
+      const loadLeaderboardEntries = () => {
+        try {
+          const raw = localStorage.getItem(STORAGE_LEADERBOARD_KEY);
+          if (!raw) return [];
+          const parsed = JSON.parse(raw);
+          if (!Array.isArray(parsed)) return [];
+          return parsed.filter((entry) => entry && typeof entry === "object");
+        } catch (_error) {
+          return [];
+        }
+      };
+
+      const saveLeaderboardEntries = (entries) => {
+        localStorage.setItem(STORAGE_LEADERBOARD_KEY, JSON.stringify(entries.slice(0, 20)));
+      };
+
+      const updateLeaderboardEntry = () => {
+        const playerId = dom.externalId.value.trim() || "myco-player-01";
+        const entries = loadLeaderboardEntries();
+        const score = calculateLeaderboardScore();
+        const profile = getClanProfile();
+        const avatarName = getSelectedAvatarName();
+        const existingIdx = entries.findIndex((entry) => entry.playerId === playerId && entry.clanId === state.playerClan);
+        const draft = {
+          playerId,
+          clanId: state.playerClan,
+          clanName: profile.name,
+          slogan: profile.slogan,
+          avatarName,
+          score,
+          bosses: state.progress.defeatedBosses.size,
+          clues: state.progress.clues.size,
+          morality: state.hero.morality,
+          updatedAt: Date.now(),
+        };
+        if (existingIdx >= 0) {
+          if (score >= (entries[existingIdx].score ?? 0)) {
+            entries[existingIdx] = { ...entries[existingIdx], ...draft };
+          }
+        } else {
+          entries.push(draft);
+        }
+        entries.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+        saveLeaderboardEntries(entries);
+        renderLeaderboard();
+      };
+
+      const renderLeaderboard = () => {
+        if (!dom.leaderboardList || !dom.leaderboardSummary) return;
+        const entries = loadLeaderboardEntries();
+        if (!entries.length) {
+          dom.leaderboardSummary.textContent = "No rankings yet. Start a clan chronicle to post your score.";
+          dom.leaderboardList.innerHTML = `<span class="chip">No leaderboard entries yet</span>`;
+          return;
+        }
+        const top = entries[0];
+        dom.leaderboardSummary.textContent = `Top score ${top.score} by ${top.playerId} // ${top.clanName}`;
+        dom.leaderboardList.innerHTML = entries
+          .slice(0, 12)
+          .map((entry, idx) => {
+            const dateLabel = new Date(entry.updatedAt ?? Date.now()).toLocaleDateString();
+            return `<article class="leaderboard-entry"><strong>#${idx + 1} ${entry.playerId} // ${entry.clanName}</strong><small>${entry.avatarName} | Score ${entry.score} | Bosses ${entry.bosses} | Clues ${entry.clues} | Morality ${entry.morality}</small><small>${entry.slogan} • ${dateLabel}</small></article>`;
+          })
+          .join("");
+      };
+
       const THEME_SEQUENCE = [
         261.63, 329.63, 392.0, 523.25,
         392.0, 329.63, 293.66, 261.63,
@@ -2147,6 +2466,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (dom.panelStatus) right.appendChild(dom.panelStatus);
         if (dom.panelInventory) right.appendChild(dom.panelInventory);
         if (dom.panelWeb3) right.appendChild(dom.panelWeb3);
+        if (dom.panelLeaderboard) right.appendChild(dom.panelLeaderboard);
         if (dom.panelBattle) right.appendChild(dom.panelBattle);
         if (dom.panelAudio) right.appendChild(dom.panelAudio);
         if (dom.hudAside) {
@@ -2588,6 +2908,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             source: dom.source.value.trim(),
             externalId: dom.externalId.value.trim(),
             sourceToken: dom.sourceToken.value,
+            selectedClan: state.playerClan,
+            selectedAvatar: state.playerAvatar,
             minimalHud: state.ui.minimalHud,
             titleCardSkipped: state.ui.titleCardSkipped,
           }),
@@ -2603,6 +2925,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           if (typeof parsed.source === "string") dom.source.value = parsed.source;
           if (typeof parsed.externalId === "string") dom.externalId.value = parsed.externalId;
           if (typeof parsed.sourceToken === "string") dom.sourceToken.value = parsed.sourceToken;
+          if (typeof parsed.selectedClan === "string" && CLAN_PROFILES[parsed.selectedClan]) {
+            state.playerClan = parsed.selectedClan;
+          }
+          if (typeof parsed.selectedAvatar === "string") {
+            state.playerAvatar = parsed.selectedAvatar;
+          }
           if (typeof parsed.minimalHud === "boolean") state.ui.minimalHud = parsed.minimalHud;
           if (typeof parsed.titleCardSkipped === "boolean") state.ui.titleCardSkipped = parsed.titleCardSkipped;
         } catch (error) {
@@ -2622,6 +2950,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           inventory: state.inventory,
           web3: state.web3,
           lastAdvice: state.lastAdvice,
+          playerClan: state.playerClan,
+          playerAvatar: state.playerAvatar,
           enemyStates: state.enemies.map((enemy) => ({
             id: enemy.id,
             active: enemy.active,
@@ -2631,6 +2961,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           })),
         };
         localStorage.setItem(STORAGE_STATE_KEY, JSON.stringify(payload));
+        updateLeaderboardEntry();
       };
 
       const loadGame = () => {
@@ -2682,6 +3013,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             if (typeof parsed.lastAdvice === "string") {
               state.lastAdvice = parsed.lastAdvice;
             }
+            if (typeof parsed.playerClan === "string" && CLAN_PROFILES[parsed.playerClan]) {
+              state.playerClan = parsed.playerClan;
+            }
+            if (typeof parsed.playerAvatar === "string") {
+              state.playerAvatar = parsed.playerAvatar;
+            }
             for (const enemyState of parsed.enemyStates ?? []) {
               if (!enemyState || typeof enemyState !== "object") continue;
               const enemy = state.enemies.find((entry) => entry.id === enemyState.id);
@@ -2710,26 +3047,39 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const refreshTitleScreen = () => {
         const hasSave = hasSavedGame();
         if (!dom.continueAdventureBtn) return;
+        applyClanSelectionFromUi();
+        const profile = getClanProfile();
         dom.continueAdventureBtn.disabled = !hasSave;
         dom.continueAdventureBtn.textContent = hasSave ? "Continue Adventure" : "No Save Found";
+        const avatarName = getSelectedAvatarName();
         if (dom.titleHint) {
           dom.titleHint.textContent = hasSave
-            ? "Save detected. Continue your chronicle or begin a fresh arc."
-            : "No local save found. Start a new chronicle to begin.";
+            ? `Save detected for ${profile.name} (${avatarName}). Continue your chronicle or begin a fresh arc.`
+            : `No local save found. Begin a ${profile.name} chronicle as ${avatarName}.`;
+        }
+        if (dom.titleLore) {
+          dom.titleLore.textContent = `${profile.bannerTitle}\n${profile.slogan}\n${profile.storyThread}\n${profile.questThread}`;
         }
       };
 
       const startAdventure = () => {
         if (!state.intro.active) return;
+        applyClanSelectionFromUi();
+        saveConfig();
+        const profile = getClanProfile();
+        const avatarName = getSelectedAvatarName();
         state.intro.active = false;
         state.mode = "explore";
+        state.aiDirective = `${profile.name} directive: ${profile.questThread}`;
         dom.titleScreen.classList.remove("active");
-        setStatus(`Chronicle initialized in ${getCurrentRealm().name}. Venture through portals to open other realm pages.`);
+        setStatus(`${profile.name} chronicle (${avatarName}) initialized in ${getCurrentRealm().name}. ${profile.storyThread}`);
+        updateLeaderboardEntry();
         checkCutsceneTriggers();
         syncCampaign();
       };
 
       const beginFreshAdventure = () => {
+        applyClanSelectionFromUi();
         clearGame();
         state.ui.titleCardSkipped = false;
         saveConfig();
@@ -2750,6 +3100,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const requestBase = () => ({
         source: dom.source.value.trim() || "kingmyco.io",
         externalId: dom.externalId.value.trim() || "myco-player-01",
+        clanId: state.playerClan,
+        avatarId: state.playerAvatar,
       });
 
       const callApi = async (path, body) => {
@@ -3092,9 +3444,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const renderCutscene = () => {
         if (!state.cutscene.active) return;
+        const clan = getClanProfile();
         dom.cutsceneTitle.textContent = state.cutscene.title;
-        dom.cutsceneBody.textContent = state.cutscene.pages[state.cutscene.page] ?? "...";
-        dom.cutsceneMeta.textContent = `Scene ${state.cutscene.page + 1} / ${state.cutscene.pages.length}`;
+        dom.cutsceneBody.textContent = `${state.cutscene.pages[state.cutscene.page] ?? "..."}\n\n${clan.cutsceneThread}`;
+        dom.cutsceneMeta.textContent = `${clan.name} // Scene ${state.cutscene.page + 1} / ${state.cutscene.pages.length}`;
       };
 
       const advanceCutscene = () => {
@@ -3236,10 +3589,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (now - state.aiRemoteDirectiveAt < 45000) return;
         state.aiRemoteDirectiveAt = now;
         try {
+          const clan = getClanProfile();
           const profilePulse = `morality=${state.hero.morality}, clues=${state.progress.clues.size}, bosses=${state.progress.defeatedBosses.size}, spores=${state.hero.spores}`;
           const coaching = await callApi("/api/mycoai/coach", {
             ...requestBase(),
-            prompt: `Myco Quest overworld directive (${profilePulse}). Give one concise narrative gameplay directive for next 60 seconds.`,
+            prompt: `Myco Quest overworld directive (${profilePulse}, clan=${clan.name}, avatar=${getSelectedAvatarName()}). Give one concise narrative gameplay directive for next 60 seconds.`,
           });
           const recommendation = Array.isArray(coaching?.recommendations)
             ? coaching.recommendations.find((entry) => typeof entry === "string")
@@ -3256,6 +3610,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const alignment = state.hero.morality >= 20 ? "myco" : state.hero.morality <= -20 ? "dark" : "balanced";
         const bossCount = state.progress.defeatedBosses.size;
         const clueCount = state.progress.clues.size;
+        const clan = getClanProfile();
         const backstory = NPC_BACKSTORIES[npc.id];
         let body = npc.intro;
         if (alreadySpoken) {
@@ -3268,6 +3623,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (backstory) {
           body = `${body}\n\nBackstory: ${backstory}`;
         }
+        body = `${body}\n\nClan Thread (${clan.name}): ${clan.npcThread}`;
 
         const applyTrade = (trustful) => {
           const cost = npc.tradeCost ?? 0;
@@ -3930,6 +4286,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         state.encounterEnemyId = null;
         setBattlePopupActive(false);
         resetBattleFx();
+        updateLeaderboardEntry();
         if (battle.status !== "active") {
           state.battle = null;
         }
@@ -4126,7 +4483,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const drawPixelCharacter = (ctx, screenX, screenY) => {
         const x = Math.round(screenX);
         const y = Math.round(screenY + Math.sin(state.worldTime * 8) * 1.2);
-        const aura = state.hero.morality >= 0 ? "rgba(34, 211, 238, 0.42)" : "rgba(244, 63, 94, 0.42)";
+        const clan = getClanProfile();
+        const aura = state.hero.morality >= 0 ? `${clan.colors.aura}66` : "rgba(244, 63, 94, 0.42)";
+        const capColor = clan.colors.cap;
+        const robeColor = clan.colors.robe;
+        const eyeColor = clan.colors.eye;
 
         ctx.fillStyle = "rgba(2, 6, 23, 0.5)";
         ctx.fillRect(x - 13, y + 12, 26, 5);
@@ -4142,9 +4503,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           ctx.fillRect(-1, -28, 2, 6);
           ctx.fillRect(3, -26, 2, 4);
 
-          ctx.fillStyle = "#991b1b";
+          ctx.fillStyle = capColor;
           ctx.fillRect(-11, -19, 22, 8);
-          ctx.fillStyle = "#ef4444";
+          ctx.fillStyle = clan.colors.primary;
           ctx.fillRect(-9, -17, 18, 4);
           ctx.fillStyle = "#fca5a5";
           ctx.fillRect(-5, -16, 4, 2);
@@ -4152,16 +4513,16 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
           ctx.fillStyle = "#020617";
           ctx.fillRect(-7, -11, 14, 10);
-          ctx.fillStyle = "#22c55e";
+          ctx.fillStyle = eyeColor;
           ctx.fillRect(-4, -8, 2, 2);
           ctx.fillRect(2, -8, 2, 2);
           ctx.fillStyle = "#86efac";
           ctx.fillRect(-4, -6, 2, 1);
           ctx.fillRect(2, -6, 2, 1);
 
-          ctx.fillStyle = "#6d28d9";
+          ctx.fillStyle = robeColor;
           ctx.fillRect(-10, -1, 20, 14);
-          ctx.fillStyle = "#4c1d95";
+          ctx.fillStyle = clan.colors.accent;
           ctx.fillRect(-8, 3, 16, 10);
           ctx.fillStyle = "#c4b5fd";
           ctx.fillRect(-1, 2, 2, 10);
@@ -4172,6 +4533,41 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           ctx.fillRect(9, -14, 8, 5);
           ctx.fillStyle = "#86efac";
           ctx.fillRect(11, -13, 4, 2);
+
+          if (state.playerClan === "rougarou") {
+            ctx.fillStyle = "#a855f7";
+            ctx.fillRect(-9, -22, 5, 5);
+            ctx.fillRect(4, -22, 5, 5);
+          } else if (state.playerClan === "dragon-brood") {
+            ctx.fillStyle = "#f97316";
+            ctx.fillRect(-9, -25, 3, 6);
+            ctx.fillRect(6, -25, 3, 6);
+          } else if (state.playerClan === "dark-mycelius") {
+            ctx.fillStyle = "#84cc16";
+            ctx.fillRect(-6, -10, 12, 1);
+            ctx.fillRect(-2, -12, 4, 2);
+          } else if (state.playerClan === "tegbot") {
+            ctx.fillStyle = "#22d3ee";
+            ctx.fillRect(-8, -20, 16, 2);
+            ctx.fillRect(-1, -24, 2, 4);
+          } else if (state.playerClan === "shiba-inu") {
+            ctx.fillStyle = "#f97316";
+            ctx.fillRect(-8, -22, 4, 4);
+            ctx.fillRect(4, -22, 4, 4);
+          }
+
+          if (state.playerAvatar.includes("prime") || state.playerAvatar.includes("code")) {
+            ctx.fillStyle = "#22d3ee";
+            ctx.fillRect(-6, 8, 12, 2);
+          } else if (state.playerAvatar.includes("fang") || state.playerAvatar.includes("claw")) {
+            ctx.fillStyle = "#a855f7";
+            ctx.fillRect(-10, 9, 3, 3);
+            ctx.fillRect(7, 9, 3, 3);
+          } else if (state.playerAvatar.includes("brood") || state.playerAvatar.includes("ember")) {
+            ctx.fillStyle = "#f97316";
+            ctx.fillRect(-12, -2, 2, 6);
+            ctx.fillRect(10, -2, 2, 6);
+          }
         });
       };
 
@@ -4920,9 +5316,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
         const unlockedLore = BACKSTORY_BEATS.filter((entry) => entry.isUnlocked(state));
         const latestLore = unlockedLore[unlockedLore.length - 1];
+        const clan = getClanProfile();
         dom.storyBackdrop.textContent = latestLore
-          ? `${latestLore.title}: ${latestLore.text}`
-          : "Lore thread dormant.";
+          ? `${latestLore.title}: ${latestLore.text} // ${clan.storyThread}`
+          : `${clan.name} lore thread: ${clan.storyThread}`;
 
         const enterableClears = Array.from(state.progress.solvedStructures).filter((id) => {
           const structure = STRUCTURES.find((entry) => entry.id === id);
@@ -4940,7 +5337,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const questEntries = [
           {
             chapter: "Chapter I - Crownfall Echoes",
-            hook: "Restore the first memory-art to reconnect the Nexus portals.",
+            hook: `Restore the first memory-art to reconnect the Nexus portals. ${clan.questThread}`,
             objectives: [
               { text: "Recover the Royal Oath from Elder Myca.", done: state.progress.clues.has("royal-oath") },
               { text: "Learn Mycelic Sight and activate the Fen Moon Portal.", done: hasMagic("mycelic-sight") },
@@ -4984,7 +5381,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           },
           {
             chapter: "Chapter VI - Deep Frontier Oaths",
-            hook: "Push into the expanded Obsidian Wilds and bind the final frontier alliances.",
+            hook: `Push into the expanded Obsidian Wilds and bind the final frontier alliances. ${clan.npcThread}`,
             objectives: [
               { text: "Earn Obsidian Oath and Ledger Fragment clues.", done: state.progress.clues.has("obsidian-oath") && state.progress.clues.has("ledger-fragment") },
               { text: "Recruit 10 NPC allies across all regions.", done: state.progress.interactedNpcs.size >= 10 },
@@ -5015,10 +5412,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           .map((portal) => REALMS.find((entry) => entry.id === portalDestinationRealmId(portal))?.name)
           .filter((name, idx, list) => Boolean(name) && list.indexOf(name) === idx)
           .join(", ");
-        dom.regionHint.textContent = `World region: ${region?.name ?? "Unknown"}\nCurrent realm page: ${realm?.name ?? "Unknown"}\nLinked pages: ${linkedRealms || "None"}\n${realm?.label ?? region?.label ?? ""}\nAI directive: ${state.aiDirective}`;
+        dom.regionHint.textContent = `World region: ${region?.name ?? "Unknown"}\nCurrent realm page: ${realm?.name ?? "Unknown"}\nLinked pages: ${linkedRealms || "None"}\nClan: ${clan.name} // Avatar: ${getSelectedAvatarName()}\n${realm?.label ?? region?.label ?? ""}\nAI directive: ${state.aiDirective}`;
         if (dom.realmBanner) {
           const pathTone = state.hero.morality >= 0 ? "Mycoside" : "Darkside";
-          dom.realmBanner.textContent = `${realm?.name ?? "Unknown Realm"} // ${pathTone} path`;
+          dom.realmBanner.textContent = `${realm?.name ?? "Unknown Realm"} // ${clan.bannerTitle} // ${pathTone} path`;
         }
         if (dom.realmPageTitle) {
           dom.realmPageTitle.textContent = `${realm?.name ?? "Unknown Realm"} // Regional Play Page`;
@@ -5214,6 +5611,16 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       [dom.apiBase, dom.source, dom.externalId, dom.sourceToken].forEach((input) => {
         input.addEventListener("change", saveConfig);
       });
+      dom.clanSelect.addEventListener("change", () => {
+        applyClanSelectionFromUi();
+        refreshTitleScreen();
+        saveConfig();
+      });
+      dom.avatarSelect.addEventListener("change", () => {
+        applyClanSelectionFromUi();
+        refreshTitleScreen();
+        saveConfig();
+      });
 
       window.addEventListener("beforeunload", saveGame);
       window.addEventListener("resize", () => {
@@ -5222,6 +5629,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       loadConfig();
       loadGame();
+      populateClanSelect();
       applyRealmPageEntry();
       populateRealmSelector();
       setupCornerMenus();
@@ -5233,6 +5641,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       resizeCanvases();
       updateCamera();
       renderHud();
+      renderLeaderboard();
       drawWorld();
       drawBattleScene();
       requestAnimationFrame(frameLoop);
