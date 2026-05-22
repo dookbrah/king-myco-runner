@@ -7,6 +7,7 @@ APP_NAME="${APP_NAME:-king-myco-web}"
 PUBLIC_BASE_URL="${PUBLIC_BASE_URL:-https://api.kingmyco.io}"
 EXPECTED_SHA="${EXPECTED_SHA:-}"
 SOURCE_TOKEN="${SOURCE_TOKEN:-}"
+APP_PORT="${APP_PORT:-3000}"
 
 assert_contains() {
   local label="$1"
@@ -114,8 +115,8 @@ npm run build
 
 echo "==> Restarting app process"
 pm2 delete "$APP_NAME" >/dev/null 2>&1 || true
-sudo fuser -k 3000/tcp >/dev/null 2>&1 || true
-pm2 start "$REPO_DIR/dist/server.js" --name "$APP_NAME" --cwd "$REPO_DIR" --update-env
+sudo fuser -k "${APP_PORT}/tcp" >/dev/null 2>&1 || true
+PORT="$APP_PORT" pm2 start "$REPO_DIR/dist/server.js" --name "$APP_NAME" --cwd "$REPO_DIR" --update-env
 pm2 save
 
 echo "==> Reloading nginx"
@@ -123,11 +124,12 @@ sudo nginx -t
 sudo systemctl reload nginx
 
 echo "==> Checking local endpoints"
-wait_for_http "local /api/health" "http://127.0.0.1:3000/api/health" 25 2
-LOCAL_HEALTH="$(curl -fsS http://127.0.0.1:3000/api/health)"
+LOCAL_BASE_URL="http://127.0.0.1:${APP_PORT}"
+wait_for_http "local /api/health" "$LOCAL_BASE_URL/api/health" 25 2
+LOCAL_HEALTH="$(curl -fsS "$LOCAL_BASE_URL/api/health")"
 assert_contains "local /api/health" "$LOCAL_HEALTH" "\"status\":\"ok\""
 
-LOCAL_DEV_STATUS="$(curl -fsS -o /tmp/kingmyco-dev-ui.html -w '%{http_code}' http://127.0.0.1:3000/api/dev/myco-quest)"
+LOCAL_DEV_STATUS="$(curl -fsS -o /tmp/kingmyco-dev-ui.html -w '%{http_code}' "$LOCAL_BASE_URL/api/dev/myco-quest")"
 if [[ "$LOCAL_DEV_STATUS" != "200" ]]; then
   echo "❌ local /api/dev/myco-quest returned status $LOCAL_DEV_STATUS"
   exit 1
@@ -136,7 +138,7 @@ fi
 LOCAL_DEV_UI="$(cat /tmp/kingmyco-dev-ui.html)"
 assert_contains "local /api/dev/myco-quest" "$LOCAL_DEV_UI" "Myco Quest Dev"
 
-run_generate_with_optional_token "local" "http://127.0.0.1:3000" "/tmp/kingmyco-local-run.json"
+run_generate_with_optional_token "local" "$LOCAL_BASE_URL" "/tmp/kingmyco-local-run.json"
 
 echo "==> Checking public endpoints"
 wait_for_http "public /api/health" "$PUBLIC_BASE_URL/api/health" 20 2

@@ -39,6 +39,7 @@ jobs:
       VPS_HOST: ${{ secrets.VPS_HOST != '' && secrets.VPS_HOST || vars.VPS_HOST }}
       VPS_USER: ${{ secrets.VPS_USER != '' && secrets.VPS_USER || vars.VPS_USER }}
       VPS_PORT: ${{ secrets.VPS_PORT != '' && secrets.VPS_PORT || vars.VPS_PORT }}
+      APP_PORT: ${{ secrets.APP_PORT != '' && secrets.APP_PORT || vars.APP_PORT }}
 
     steps:
       - name: Resolve deploy inputs
@@ -106,6 +107,7 @@ jobs:
           PUBLIC_BASE_URL: ${{ steps.inputs.outputs.public_base_url }}
           REPO_DIR: ${{ steps.inputs.outputs.repo_dir }}
           SOURCE_TOKEN: ${{ secrets.PLAYGROUND_SOURCE_TOKEN }}
+          APP_PORT: ${{ env.APP_PORT }}
         run: |
           set -euo pipefail
           PORT="${VPS_PORT:-22}"
