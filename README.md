@@ -337,7 +337,7 @@ To remove manual SSH/paste deployment commands, use:
 - `.github/workflows/hostinger-vps-deploy.yml`
 
 Workflow behavior:
-- Auto deploys when this branch is pushed: `cursor/playable-game-view-ae3a`
+- Auto deploys when `main` is pushed (post-merge)
 - Supports manual **Run workflow** dispatch with custom branch/SHA/PM2 app/repo-dir inputs
 - Executes `scripts/ops/finalize-api-deploy.sh` over SSH on the VPS
 

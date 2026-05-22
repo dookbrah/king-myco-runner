@@ -3,7 +3,7 @@ name: Hostinger VPS Deploy
 on:
   push:
     branches:
-      - cursor/playable-game-view-ae3a
+      - main
   workflow_dispatch:
     inputs:
       deploy_branch:
