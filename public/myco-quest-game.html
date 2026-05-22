@@ -1919,6 +1919,30 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         { id: "gold-6", x: 3020, y: 3900, value: 1, golden: true },
       ];
 
+      const SHRINE_DAILY_QUESTS = [
+        "Relight three moss braziers by tracing the oldest crown path in this realm.",
+        "Map two safe caravan routes and report the least corrupted crossing.",
+        "Carry a memory ember to the shrine without forcing any hostile ward.",
+        "Restore one broken relay rune and synchronize it with local spore currents.",
+        "Collect dawn dew from the basin and return before shadowfall.",
+      ];
+
+      const SHRINE_DAILY_RIDDLES = [
+        { prompt: "I grow in darkness but heal in light. What am I?", answer: "A mycelic root." },
+        { prompt: "What opens every portal but has no key?", answer: "Learned magic." },
+        { prompt: "What is strongest when shared and weakest when hoarded?", answer: "Trust." },
+        { prompt: "What can defeat rot without drawing a blade?", answer: "Balance." },
+        { prompt: "What walks no road yet connects every region?", answer: "The spore network." },
+      ];
+
+      const SHRINE_DAILY_PUZZLES = [
+        "Align three rune stones in the order: Tide, Ember, Chain.",
+        "Match the glyph pattern mirrored by the western monolith.",
+        "Rotate the sigils until only one crown rune glows.",
+        "Activate the four corner wards before touching the center glyph.",
+        "Trace the spiral path from outer ring to inner altar in one pass.",
+      ];
+
       const ROAMING_SPORE_SETTINGS = {
         blueTargetPerRealm: 7,
         goldenTargetPerRealm: 2,
@@ -2368,6 +2392,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           solvedStructures: new Set(),
           collectedPickups: new Set(),
           cutscenesSeen: new Set(),
+          shrineDailyKey: "",
+          shrineSolvedToday: new Set(),
         },
         hero: {
           x: 280,
@@ -2390,6 +2416,15 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
       const randomBetween = (min, max) => min + Math.random() * (max - min);
+
+      const hashString = (value) => {
+        let hash = 0;
+        for (let index = 0; index < value.length; index += 1) {
+          hash = (hash << 5) - hash + value.charCodeAt(index);
+          hash |= 0;
+        }
+        return Math.abs(hash);
+      };
 
       const getClanProfile = (clanId = state.playerClan) => CLAN_PROFILES[clanId] ?? CLAN_PROFILES.myco;
 
@@ -3052,6 +3087,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           solvedStructures: Array.from(state.progress.solvedStructures),
           collectedPickups: Array.from(state.progress.collectedPickups),
           cutscenesSeen: Array.from(state.progress.cutscenesSeen),
+          shrineDailyKey: state.progress.shrineDailyKey,
+          shrineSolvedToday: Array.from(state.progress.shrineSolvedToday),
           inventory: state.inventory,
           web3: state.web3,
           lastAdvice: state.lastAdvice,
@@ -3101,6 +3138,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             for (const id of parsed.cutscenesSeen ?? []) {
               if (typeof id === "string") state.progress.cutscenesSeen.add(id);
             }
+            if (typeof parsed.shrineDailyKey === "string") {
+              state.progress.shrineDailyKey = parsed.shrineDailyKey;
+            }
+            for (const id of parsed.shrineSolvedToday ?? []) {
+              if (typeof id === "string") state.progress.shrineSolvedToday.add(id);
+            }
             if (parsed.inventory && typeof parsed.inventory === "object") {
               state.inventory = {
                 ...state.inventory,
@@ -3133,6 +3176,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
               if (!Array.isArray(state.burn.events)) state.burn.events = [];
               refreshDailyBurnQuota();
             }
+            refreshDailyShrineProgress();
             for (const enemyState of parsed.enemyStates ?? []) {
               if (!enemyState || typeof enemyState !== "object") continue;
               const enemy = state.enemies.find((entry) => entry.id === enemyState.id);
@@ -3257,7 +3301,37 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
       };
 
+      const pickDailyItem = (items, key) => items[hashString(key) % items.length];
+
+      const getDailyShrineChallenge = (structure, dayKey = getLocalDayKey()) => {
+        const quest = pickDailyItem(SHRINE_DAILY_QUESTS, `${dayKey}:${structure.id}:quest`);
+        const riddle = pickDailyItem(SHRINE_DAILY_RIDDLES, `${dayKey}:${structure.id}:riddle`);
+        const puzzle = pickDailyItem(SHRINE_DAILY_PUZZLES, `${dayKey}:${structure.id}:puzzle`);
+        const rewardSpores = 18 + (hashString(`${dayKey}:${structure.id}:reward`) % 12);
+        const grantsGolden = hashString(`${dayKey}:${structure.id}:golden`) % 5 === 0;
+        return {
+          dayKey,
+          quest,
+          riddle,
+          puzzle,
+          rewardSpores,
+          grantsGolden,
+        };
+      };
+
       const isSundayNow = () => new Date().getDay() === 0;
+
+      const refreshDailyShrineProgress = () => {
+        const today = getLocalDayKey();
+        if (state.progress.shrineDailyKey === today) return;
+        state.progress.shrineDailyKey = today;
+        state.progress.shrineSolvedToday.clear();
+        for (const structure of STRUCTURES) {
+          if (structure.type === "shrine") {
+            state.progress.solvedStructures.delete(structure.id);
+          }
+        }
+      };
 
       const refreshDailyBurnQuota = () => {
         const today = getLocalDayKey();
@@ -4262,7 +4336,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       };
 
       const buildStructureEncounter = (nearbyStructure) => {
-        const solved = state.progress.solvedStructures.has(nearbyStructure.id);
+        const isShrine = nearbyStructure.type === "shrine";
+        const shrineChallenge = isShrine ? getDailyShrineChallenge(nearbyStructure) : null;
+        const solved = isShrine
+          ? state.progress.shrineSolvedToday.has(nearbyStructure.id)
+          : state.progress.solvedStructures.has(nearbyStructure.id);
         const structurePortrait = {
           house: { glyph: "🏠", subtitle: "Village Contact" },
           cave: { glyph: "🕳️", subtitle: "Echoing Cavern" },
@@ -4271,15 +4349,17 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           tower: { glyph: "🗼", subtitle: "Signal Relay Tower" },
           "mushroom-shop": { glyph: "🍄", subtitle: "Mushroom Supply Market" },
           "burn-pit": { glyph: "🔥", subtitle: "Spore Burn Pit" },
-          shrine: { glyph: "🗿", subtitle: "Mycelic Shrine" },
+          shrine: { glyph: "🗿", subtitle: "Stone Sentinel Shrine" },
         };
         return {
           title: nearbyStructure.name,
           portrait: structurePortrait[nearbyStructure.type] ?? { glyph: "✨", subtitle: "Ancient Site" },
           body: solved
-            ? "You already solved this location's challenge. The echoes still guide your path."
-            : nearbyStructure.type === "shrine"
-              ? "A rune puzzle asks: 'What restores magic faster than conquest?'"
+            ? isShrine
+              ? `Today's shrine rite is complete. Return tomorrow for new quest, riddle, and puzzle rites.\n\nLast riddle answer: ${shrineChallenge?.riddle.answer ?? "Unknown"}`
+              : "You already solved this location's challenge. The echoes still guide your path."
+            : isShrine
+              ? `Daily Shrine Rite (${shrineChallenge?.dayKey}):\nQuest - ${shrineChallenge?.quest}\nRiddle - ${shrineChallenge?.riddle.prompt}\nPuzzle - ${shrineChallenge?.puzzle}`
               : nearbyStructure.type === "dungeon"
                 ? "A locked sigil puzzle blocks the inner chamber."
                 : nearbyStructure.type === "castle"
@@ -4293,15 +4373,24 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
                       : nearbyStructure.type === "burn-pit"
                         ? "The burn pit pulses with ritual heat. Offer spores to align with the Sunday token burn."
                         : "A villager asks for aid against roaming rot packs.",
-          mycoLabel: solved ? "Close" : "Resolve peacefully",
-          darkLabel: solved ? "Close" : "Force through",
+          mycoLabel: solved ? "Close" : isShrine ? "Honor Shrine Rite" : "Resolve peacefully",
+          darkLabel: solved ? "Close" : isShrine ? "Break Through Rite" : "Force through",
           onMyco: () => {
             if (!solved) {
+              if (isShrine) {
+                state.progress.solvedStructures.add(nearbyStructure.id);
+                state.progress.shrineSolvedToday.add(nearbyStructure.id);
+                applyMorality(6);
+                grantSpores(shrineChallenge.rewardSpores);
+                if (shrineChallenge.grantsGolden) {
+                  state.hero.goldenSpores += 1;
+                }
+                state.lastAdvice = `Shrine answer: ${shrineChallenge.riddle.answer}`;
+                setStatus(`${nearbyStructure.name} renewed. +${shrineChallenge.rewardSpores} spores${shrineChallenge.grantsGolden ? " and +1 golden spore" : ""}.`);
+                return;
+              }
               state.progress.solvedStructures.add(nearbyStructure.id);
               applyMorality(7);
-              if (nearbyStructure.type === "shrine") {
-                state.hero.magic += 1;
-              }
               if (nearbyStructure.type === "dungeon") {
                 grantSpores(32);
                 addClue("dungeon-rune", "Ancient Dungeon Rune");
@@ -4325,6 +4414,16 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           },
           onDark: () => {
             if (!solved) {
+              if (isShrine) {
+                state.progress.solvedStructures.add(nearbyStructure.id);
+                state.progress.shrineSolvedToday.add(nearbyStructure.id);
+                applyMorality(-6);
+                const darkReward = Math.max(10, shrineChallenge.rewardSpores - 7);
+                grantSpores(darkReward);
+                state.lastAdvice = `You forced the shrine. The true answer was: ${shrineChallenge.riddle.answer}`;
+                setStatus(`${nearbyStructure.name} was forced. +${darkReward} spores, but the shrine rejects your haste.`);
+                return;
+              }
               state.progress.solvedStructures.add(nearbyStructure.id);
               applyMorality(-9);
               state.hero.attack += 1;
@@ -4887,6 +4986,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const update = async (dt) => {
         state.worldTime += dt;
+        refreshDailyShrineProgress();
         if (state.mode !== "intro" && !state.intro.active) {
           maintainRoamingSporeSpawns();
         }
@@ -5287,10 +5387,27 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           ctx.fillStyle = "#22c55e";
           ctx.fillRect(sx + structure.w / 2 - 3, sy + 2, 6, 4);
         } else if (structure.type === "shrine") {
-          ctx.fillStyle = "#0f766e";
-          ctx.fillRect(sx, sy, structure.w, structure.h);
-          ctx.fillStyle = "#facc15";
-          ctx.fillRect(sx + 28, sy + 20, 22, 22);
+          // Easter Island-inspired moai shrine face
+          ctx.fillStyle = "#1f2937";
+          ctx.fillRect(sx + 18, sy + 8, structure.w - 36, structure.h - 14);
+          ctx.fillStyle = "#374151";
+          ctx.fillRect(sx + 24, sy + 14, structure.w - 48, structure.h - 24);
+          ctx.fillStyle = "#4b5563";
+          ctx.fillRect(sx + 28, sy + 18, structure.w - 56, structure.h - 36);
+          ctx.fillStyle = "#0f172a";
+          ctx.fillRect(sx + 30, sy + 26, 10, 4);
+          ctx.fillRect(sx + structure.w - 40, sy + 26, 10, 4);
+          ctx.fillRect(sx + structure.w / 2 - 4, sy + 28, 8, 18);
+          ctx.fillStyle = "#111827";
+          ctx.fillRect(sx + structure.w / 2 - 14, sy + structure.h - 22, 28, 5);
+          ctx.fillStyle = "#94a3b8";
+          ctx.fillRect(sx + structure.w / 2 - 16, sy + 6, 32, 4);
+          ctx.strokeStyle = "rgba(2, 6, 23, 0.84)";
+          ctx.lineWidth = 2;
+          ctx.strokeRect(sx + 18, sy + 8, structure.w - 36, structure.h - 14);
+          ctx.strokeStyle = "rgba(148, 163, 184, 0.35)";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(sx + 24, sy + 14, structure.w - 48, structure.h - 24);
         }
         if (structure.type !== "shrine") {
           ctx.strokeStyle = "rgba(2, 6, 23, 0.82)";
