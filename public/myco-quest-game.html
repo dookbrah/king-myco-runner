@@ -277,6 +277,32 @@
       .hidden {
         display: none !important;
       }
+      .hud-toggle-floating {
+        position: fixed;
+        top: max(8px, env(safe-area-inset-top));
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 40;
+        display: none;
+        border: 1px solid #3f5f99;
+        background: rgba(11, 25, 50, 0.95);
+        color: #eff6ff;
+        border-radius: 999px;
+        padding: 8px 12px;
+      }
+      body.minimal-hud main > section:first-child {
+        display: none;
+      }
+      body.minimal-hud .corner-menu {
+        display: none;
+      }
+      body.minimal-hud .hud-toggle-floating {
+        display: block;
+      }
+      body.minimal-hud #worldCanvas {
+        height: calc(100vh - 110px);
+        min-height: 260px;
+      }
       .mobile-controls {
         position: fixed;
         left: 0;
@@ -331,6 +357,14 @@
           max-height: calc(100vh - 18px);
         }
       }
+      @media (hover: none) and (pointer: coarse) {
+        .mobile-controls {
+          display: flex;
+        }
+        .dialogue {
+          bottom: 112px;
+        }
+      }
       @media (max-width: 760px) {
         main {
           padding: 6px;
@@ -341,7 +375,7 @@
         }
         #worldCanvas {
           height: calc(100vh - 350px);
-          min-height: 300px;
+          min-height: 280px;
         }
         .corner-menu {
           top: 6px;
@@ -371,8 +405,34 @@
         .battle-controls {
           grid-template-columns: 1fr 1fr 1fr;
         }
+        .mobile-pad {
+          grid-template-columns: repeat(3, 44px);
+          grid-template-rows: repeat(3, 38px);
+        }
+      }
+      @media (max-width: 950px) and (orientation: landscape) and (hover: none) and (pointer: coarse) {
+        #worldCanvas {
+          height: calc(100vh - 170px);
+          min-height: 210px;
+        }
+        .corner-menu {
+          width: min(36vw, 280px);
+          max-height: 56vh;
+        }
+        .dialogue {
+          bottom: 86px;
+        }
         .mobile-controls {
-          display: flex;
+          bottom: max(4px, env(safe-area-inset-bottom));
+          padding: 0 6px;
+        }
+        .touch-btn {
+          min-height: 34px;
+          font-size: 12px;
+          padding: 6px 8px;
+        }
+        .mobile-actions {
+          grid-template-columns: repeat(3, minmax(52px, 66px));
         }
       }
       a {
@@ -413,6 +473,7 @@
           <button id="syncBtn" class="primary">Sync Campaign</button>
           <button id="saveBtn">Save Progress</button>
           <button id="resetBtn" class="warn">Reset Local Progress</button>
+          <button id="minimalHudBtn">Minimal HUD: Off</button>
         </div>
         <p id="status" class="status"></p>
       </section>
@@ -555,6 +616,8 @@
       </details>
     </section>
 
+    <button id="minimalHudFloating" class="hud-toggle-floating">Show HUD</button>
+
     <section id="mobileControls" class="mobile-controls">
       <div class="mobile-pad">
         <span class="touch-spacer"></span>
@@ -621,6 +684,8 @@
         syncBtn: document.getElementById("syncBtn"),
         saveBtn: document.getElementById("saveBtn"),
         resetBtn: document.getElementById("resetBtn"),
+        minimalHudBtn: document.getElementById("minimalHudBtn"),
+        minimalHudFloating: document.getElementById("minimalHudFloating"),
         status: document.getElementById("status"),
         regionHint: document.getElementById("regionHint"),
         hpFill: document.getElementById("hpFill"),
@@ -1003,6 +1068,9 @@
         contactLockUntil: 0,
         contactLatch: null,
         lastAdvice: "Earn trust in each region to receive reliable guidance.",
+        ui: {
+          minimalHud: false,
+        },
         cutscene: {
           active: false,
           id: null,
@@ -1094,6 +1162,28 @@
         if (dom.hudAside) {
           dom.hudAside.classList.add("hidden");
         }
+      };
+
+      const applyHudMode = () => {
+        document.body.classList.toggle("minimal-hud", state.ui.minimalHud);
+        if (dom.minimalHudBtn) {
+          dom.minimalHudBtn.textContent = `Minimal HUD: ${state.ui.minimalHud ? "On" : "Off"}`;
+        }
+        if (dom.minimalHudFloating) {
+          dom.minimalHudFloating.textContent = state.ui.minimalHud ? "Show HUD" : "Hide HUD";
+        }
+      };
+
+      const toggleMinimalHud = (forceValue) => {
+        if (typeof forceValue === "boolean") {
+          state.ui.minimalHud = forceValue;
+        } else {
+          state.ui.minimalHud = !state.ui.minimalHud;
+        }
+        applyHudMode();
+        saveConfig();
+        resizeCanvases();
+        updateCamera();
       };
 
       const clearContactLatchIfFar = () => {
@@ -1343,6 +1433,7 @@
             source: dom.source.value.trim(),
             externalId: dom.externalId.value.trim(),
             sourceToken: dom.sourceToken.value,
+            minimalHud: state.ui.minimalHud,
           }),
         );
       };
@@ -1356,6 +1447,7 @@
           if (typeof parsed.source === "string") dom.source.value = parsed.source;
           if (typeof parsed.externalId === "string") dom.externalId.value = parsed.externalId;
           if (typeof parsed.sourceToken === "string") dom.sourceToken.value = parsed.sourceToken;
+          if (typeof parsed.minimalHud === "boolean") state.ui.minimalHud = parsed.minimalHud;
         } catch (error) {
           console.warn("config load failed", error);
         }
@@ -2796,6 +2888,12 @@
       });
 
       dom.syncBtn.addEventListener("click", syncCampaign);
+      dom.minimalHudBtn.addEventListener("click", () => {
+        toggleMinimalHud();
+      });
+      dom.minimalHudFloating.addEventListener("click", () => {
+        toggleMinimalHud(false);
+      });
       dom.saveBtn.addEventListener("click", () => {
         saveGame();
         setStatus("Local progress saved.");
@@ -2834,6 +2932,7 @@
       setupCornerMenus();
       setupMobileControls();
       dom.choiceTradeBtn.style.display = "none";
+      applyHudMode();
       updateAudioUi();
       resizeCanvases();
       updateCamera();
