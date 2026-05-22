@@ -64,6 +64,9 @@ jobs:
             REPO_DIR="/opt/kingmyco-runner"
           fi
 
+          # finalize-api-deploy.sh compares against short HEAD SHA.
+          EXPECTED_SHA="$(printf '%s' "${EXPECTED_SHA}" | cut -c1-7)"
+
           echo "deploy_branch=${DEPLOY_BRANCH}" >> "$GITHUB_OUTPUT"
           echo "expected_sha=${EXPECTED_SHA}" >> "$GITHUB_OUTPUT"
           echo "app_name=${APP_NAME}" >> "$GITHUB_OUTPUT"
