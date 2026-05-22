@@ -920,6 +920,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             <p id="questProgressText" class="journal-progress">Campaign progress loading...</p>
             <div id="questJournal" class="journal-grid"></div>
             <p id="storyBackdrop" class="subtle" style="margin-top: 8px">Lore thread loading...</p>
+            <p id="storyPersona" class="subtle" style="margin-top: 8px">Chronicle persona calibrating...</p>
+            <p class="subtle" style="margin-top: 8px">Living Chronicle</p>
+            <div id="livingChronicle" class="log">The world is quiet... for now.</div>
             <p class="subtle" style="margin-top: 8px">Learned magic</p>
             <div id="magicList" class="chips"></div>
             <p class="subtle" style="margin-top: 8px">Collected clues</p>
@@ -1178,6 +1181,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         questProgressText: document.getElementById("questProgressText"),
         questJournal: document.getElementById("questJournal"),
         storyBackdrop: document.getElementById("storyBackdrop"),
+        storyPersona: document.getElementById("storyPersona"),
+        livingChronicle: document.getElementById("livingChronicle"),
         magicList: document.getElementById("magicList"),
         clueList: document.getElementById("clueList"),
         inventoryList: document.getElementById("inventoryList"),
@@ -1943,6 +1948,67 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         "Trace the spiral path from outer ring to inner altar in one pass.",
       ];
 
+      const NPC_PERSONALITY_TEMPLATES = [
+        {
+          archetype: "Stoic Sentinel",
+          mannerism: "Speaks in short tactical fragments and trusts proven resolve.",
+          motive: "Keeps civilians alive by controlling chokepoints and relay routes.",
+        },
+        {
+          archetype: "Mystic Historian",
+          mannerism: "Frames every answer as a memory ritual from the old kingdom.",
+          motive: "Preserves fractured lore so each generation avoids repeating the fall.",
+        },
+        {
+          archetype: "Rogue Broker",
+          mannerism: "Smiles through danger and values leverage over promises.",
+          motive: "Builds influence by controlling rare goods and whispered intel.",
+        },
+        {
+          archetype: "Forge Pragmatist",
+          mannerism: "Treats feelings like variables and speaks in calibration terms.",
+          motive: "Wants stable systems, predictable defense lines, and zero waste.",
+        },
+        {
+          archetype: "Feral Oracle",
+          mannerism: "Reads omens in stormlight and tests strangers with riddles first.",
+          motive: "Protects sacred wild corridors where spores still grow pure.",
+        },
+      ];
+
+      const ENDLESS_STORY_BEATS = {
+        diplomat: [
+          "Two rival villages requested your verdict; your words now shape their shared border law.",
+          "A caravan dispute ended without bloodshed, and both leaders carved your vow into a waypoint stone.",
+          "An orphaned scout you helped now trains as a peace envoy between realm towers.",
+        ],
+        warlord: [
+          "Rumors of your battlefield tempo spread, causing enemy captains to alter patrol doctrine.",
+          "A hostile warband challenged your authority and retreated after witnessing your command aura.",
+          "A black-banner garrison now studies your tactics, turning every clash into a mythic duel.",
+        ],
+        seeker: [
+          "A hidden inscription surfaced after your route choice, revealing an older map beneath the map.",
+          "You followed a forgotten spoor trail and uncovered a chamber no chronicle had named.",
+          "A child archivist now copies your travel marks to chart newly discovered safe passages.",
+        ],
+        mystic: [
+          "Shrine wards echoed your signature and projected a memory of the First Crown Conclave.",
+          "Moonlit spores circled your staff, forming a new sigil pattern in the night air.",
+          "A dormant altar awakened and recognized your name as a continuing prophecy thread.",
+        ],
+        trader: [
+          "Your latest exchange reshaped market prices, opening routes to rare potion stockpiles.",
+          "Guild clerks now track your deals as a new benchmark for fair wartime trade.",
+          "A broker circle offered you silent partnership after your balanced negotiation terms.",
+        ],
+        balanced: [
+          "The realm reacts to your measured path, opening both mercy and force outcomes in tandem.",
+          "Your mixed decisions produced an unstable but powerful narrative branch unique to your chronicle.",
+          "Witnesses disagree on your legend: saint, strategist, or sovereign shade.",
+        ],
+      };
+
       const ROAMING_SPORE_SETTINGS = {
         blueTargetPerRealm: 7,
         goldenTargetPerRealm: 2,
@@ -2104,6 +2170,27 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             "Your campaign remains unique: NPC loyalty, portal guidance, encounter pressure, and interior routes continue adapting to your path.",
           ],
         },
+        voicesUnbound: {
+          title: "Voices of the Regions",
+          pages: [
+            "As more residents trust your banner, rumor webs begin to align into a living oral history.",
+            "Each NPC now carries a personal stake in your choices, and their personalities begin steering your future routes.",
+          ],
+        },
+        chronicleEngine: {
+          title: "The Living Chronicle",
+          pages: [
+            "The world starts remembering what kind of monarch you are becoming.",
+            "From this point, directives, encounter pressure, and reward pulses adapt to your evolving playstyle profile.",
+          ],
+        },
+        endlessFrontier: {
+          title: "Endless Frontier Accord",
+          pages: [
+            "Even after great victories, the kingdom keeps writing new stories around your legacy.",
+            "Your choices now seed rotating lore beats, emergent quests, and personalized narrative echoes across all realms.",
+          ],
+        },
       };
 
       const MAGIC_SKILLS = {
@@ -2188,6 +2275,18 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           title: "The Last Frontier Oath",
           text: "Obsidian rangers swore to defend the final fallback line. Their oathstones still answer worthy monarchs.",
           isUnlocked: (state) => state.progress.clues.has("obsidian-oath"),
+        },
+        {
+          id: "living-chronicle",
+          title: "The Chronicle Learns",
+          text: "Ancient scripts describe a crown that studies the bearer. Every choice feeds a memory engine that reshapes fate-lines in real time.",
+          isUnlocked: (state) => state.story.entries.length >= 5,
+        },
+        {
+          id: "persona-covenant",
+          title: "The Persona Covenant",
+          text: "Village elders taught that no two monarchs restore the same kingdom. Personality, not power alone, decides which future survives.",
+          isUnlocked: (state) => state.progress.interactedNpcs.size >= 8,
         },
       ];
 
@@ -2303,6 +2402,21 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         aiDirective: "The kingdom listens to your choices.",
         aiDirectiveAt: 0,
         aiRemoteDirectiveAt: 0,
+        aiModel: {
+          compassion: 0,
+          ferocity: 0,
+          curiosity: 0,
+          diplomacy: 0,
+          commerce: 0,
+          rituals: 0,
+          combat: 0,
+          exploration: 0,
+        },
+        story: {
+          chapter: 1,
+          entries: [],
+          lastBeatAt: 0,
+        },
         activeDialogue: null,
         contactLockUntil: 0,
         contactLatch: null,
@@ -2424,6 +2538,84 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           hash |= 0;
         }
         return Math.abs(hash);
+      };
+
+      const recordAiSignal = (field, amount = 1) => {
+        if (!Object.prototype.hasOwnProperty.call(state.aiModel, field)) return;
+        state.aiModel[field] = Math.max(0, (state.aiModel[field] ?? 0) + amount);
+      };
+
+      const getNpcPersonality = (npc) => {
+        const template = NPC_PERSONALITY_TEMPLATES[hashString(npc.id) % NPC_PERSONALITY_TEMPLATES.length];
+        return template;
+      };
+
+      const getNarrativeProfile = () => {
+        const diplomacyScore = state.aiModel.compassion + state.aiModel.diplomacy + state.progress.interactedNpcs.size * 0.4;
+        const warlordScore = state.aiModel.ferocity + state.aiModel.combat + Math.max(0, -state.hero.morality) * 0.09;
+        const seekerScore = state.aiModel.curiosity + state.aiModel.exploration + state.progress.clues.size * 0.65;
+        const mysticScore = state.aiModel.rituals + state.hero.magic * 1.1 + state.progress.solvedStructures.size * 0.25;
+        const traderScore = state.aiModel.commerce + state.aiModel.diplomacy * 0.5 + Math.max(0, Math.round(state.hero.spores / 120));
+        const scoreMap = {
+          diplomat: diplomacyScore,
+          warlord: warlordScore,
+          seeker: seekerScore,
+          mystic: mysticScore,
+          trader: traderScore,
+          balanced: 1,
+        };
+        const dominant = Object.entries(scoreMap).sort((left, right) => right[1] - left[1])[0]?.[0] ?? "balanced";
+        const profileName = {
+          diplomat: "Peaceweaver",
+          warlord: "Battle Sovereign",
+          seeker: "Pathfinder Archivist",
+          mystic: "Ritual Warden",
+          trader: "Caravan Architect",
+          balanced: "Nexus Wanderer",
+        }[dominant] ?? "Nexus Wanderer";
+        return {
+          dominant,
+          profileName,
+          enemyPaceMultiplier: clamp(1 + (warlordScore - diplomacyScore) * 0.012, 0.82, 1.34),
+          blueSporeMultiplier: clamp(1 + seekerScore * 0.018, 0.95, 1.7),
+          goldenSporeMultiplier: clamp(1 + mysticScore * 0.014, 0.92, 1.48),
+          text: `${profileName} (${dominant})`,
+        };
+      };
+
+      const pushStoryEntry = (text, type = "chronicle") => {
+        if (!text || typeof text !== "string") return;
+        const trimmed = text.trim();
+        if (!trimmed) return;
+        const previous = state.story.entries[0];
+        if (previous?.text === trimmed) return;
+        const profile = getNarrativeProfile();
+        state.story.entries.unshift({
+          id: `story-${Date.now()}-${hashString(trimmed) % 1000}`,
+          text: trimmed,
+          type,
+          profile: profile.text,
+          realmId: state.currentRealmId,
+          at: Date.now(),
+        });
+        state.story.entries = state.story.entries.slice(0, 45);
+      };
+
+      const updateLivingStory = () => {
+        if (state.cutscene.active || state.activeDialogue || state.mode === "battle" || state.mode === "interior" || state.mode === "burn-pit") {
+          return;
+        }
+        const now = Date.now();
+        if (now - state.story.lastBeatAt < 36000) return;
+        const profile = getNarrativeProfile();
+        const realm = getCurrentRealm();
+        const stream = ENDLESS_STORY_BEATS[profile.dominant] ?? ENDLESS_STORY_BEATS.balanced;
+        const chapterSeed = `${getLocalDayKey()}:${state.story.chapter}:${realm.id}:${profile.dominant}:${state.story.entries.length}`;
+        const beat = stream[hashString(chapterSeed) % stream.length];
+        pushStoryEntry(`Chapter ${state.story.chapter}: ${realm.name} — ${beat}`, "ai");
+        state.aiDirective = `Living Chronicle (${profile.profileName}): ${beat}`;
+        state.story.lastBeatAt = now;
+        state.story.chapter += 1;
       };
 
       const getClanProfile = (clanId = state.playerClan) => CLAN_PROFILES[clanId] ?? CLAN_PROFILES.myco;
@@ -3091,6 +3283,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           shrineSolvedToday: Array.from(state.progress.shrineSolvedToday),
           inventory: state.inventory,
           web3: state.web3,
+          aiModel: state.aiModel,
+          story: {
+            chapter: state.story.chapter,
+            entries: state.story.entries,
+            lastBeatAt: state.story.lastBeatAt,
+          },
           lastAdvice: state.lastAdvice,
           playerClan: state.playerClan,
           playerAvatar: state.playerAvatar,
@@ -3149,6 +3347,19 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
                 ...state.inventory,
                 ...parsed.inventory,
               };
+            }
+            if (parsed.aiModel && typeof parsed.aiModel === "object") {
+              state.aiModel = {
+                ...state.aiModel,
+                ...parsed.aiModel,
+              };
+            }
+            if (parsed.story && typeof parsed.story === "object") {
+              state.story = {
+                ...state.story,
+                ...parsed.story,
+              };
+              if (!Array.isArray(state.story.entries)) state.story.entries = [];
             }
             if (parsed.web3 && typeof parsed.web3 === "object") {
               state.web3 = {
@@ -3229,6 +3440,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         state.intro.active = false;
         state.mode = "explore";
         state.aiDirective = `${profile.name} directive: ${profile.questThread}`;
+        if (!state.story.entries.length) {
+          pushStoryEntry(`Chapter 1: ${profile.name} ${getSelectedAvatarName()} enters ${getCurrentRealm().name}.`, "chronicle");
+          state.story.lastBeatAt = Date.now();
+        }
         dom.titleScreen.classList.remove("active");
         setStatus(`${profile.name} chronicle (${avatarName}) initialized in ${getCurrentRealm().name}. ${profile.storyThread}`);
         updateLeaderboardEntry();
@@ -3446,6 +3661,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
 
         state.hero.spores -= burnAmount;
+        recordAiSignal("rituals", 1);
+        recordAiSignal("commerce", 1);
         state.burn.burnedToday += burnAmount;
         state.burn.totalBurned += burnAmount;
         const now = Date.now();
@@ -3476,6 +3693,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         } else {
           setStatus(`Burned ${burnAmount} spores at ${pit.name}. Local burn ledger updated.`);
         }
+        pushStoryEntry(`${pit.name} witnessed a ${burnAmount}-spore offering under your clan oath.`, "ritual");
         updateLeaderboardEntry();
         renderBurnPitScreen();
         renderHud();
@@ -3743,6 +3961,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const maintainRoamingSporeSpawns = () => {
         ensureRoamingSporeTimers();
         const now = Date.now();
+        const profile = getNarrativeProfile();
+        const blueTargetPerRealm = Math.max(4, Math.round(ROAMING_SPORE_SETTINGS.blueTargetPerRealm * profile.blueSporeMultiplier));
+        const goldenTargetPerRealm = Math.max(1, Math.round(ROAMING_SPORE_SETTINGS.goldenTargetPerRealm * profile.goldenSporeMultiplier));
         state.roamingSpores.active = state.roamingSpores.active.filter((pickup) =>
           REALMS.some((realm) => realm.id === pickup.region),
         );
@@ -3754,11 +3975,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           const nextBlueAt = state.roamingSpores.nextBlueByRealm[realm.id] ?? 0;
           const nextGoldAt = state.roamingSpores.nextGoldenByRealm[realm.id] ?? 0;
 
-          if (activeBlue < ROAMING_SPORE_SETTINGS.blueTargetPerRealm && now >= nextBlueAt) {
+          if (activeBlue < blueTargetPerRealm && now >= nextBlueAt) {
             const spawned = spawnRoamingSporeInRealm(realm, false, now);
             scheduleRoamingSporeRespawn(realm.id, false, now, !spawned);
           }
-          if (activeGold < ROAMING_SPORE_SETTINGS.goldenTargetPerRealm && now >= nextGoldAt) {
+          if (activeGold < goldenTargetPerRealm && now >= nextGoldAt) {
             const spawned = spawnRoamingSporeInRealm(realm, true, now);
             scheduleRoamingSporeRespawn(realm.id, true, now, !spawned);
           }
@@ -3776,6 +3997,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const addClue = (clueId, clueLabel) => {
         if (!state.progress.clues.has(clueId)) {
           state.progress.clues.add(clueId);
+          recordAiSignal("curiosity", 2);
+          pushStoryEntry(`New clue secured: ${clueLabel}.`, "lore");
           setStatus(`Clue discovered: ${clueLabel}`);
           playSfx("clue");
         }
@@ -3896,6 +4119,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const scene = CUTSCENES[cutsceneId];
         if (!scene) return;
         state.progress.cutscenesSeen.add(cutsceneId);
+        pushStoryEntry(`Cutscene unlocked: ${scene.title}.`, "cutscene");
         state.cutscene = {
           active: true,
           id: cutsceneId,
@@ -3940,6 +4164,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const checkCutsceneTriggers = () => {
         if (state.cutscene.active || state.activeDialogue || state.mode === "battle") return;
+        const profile = getNarrativeProfile();
         if (!state.progress.cutscenesSeen.has("prologue")) {
           openCutscene("prologue");
           return;
@@ -3982,6 +4207,28 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           return;
         }
         if (
+          state.progress.interactedNpcs.size >= 10 &&
+          !state.progress.cutscenesSeen.has("voicesUnbound")
+        ) {
+          openCutscene("voicesUnbound");
+          return;
+        }
+        if (
+          state.story.entries.length >= 7 &&
+          !state.progress.cutscenesSeen.has("chronicleEngine")
+        ) {
+          openCutscene("chronicleEngine");
+          return;
+        }
+        if (
+          state.progress.defeatedBosses.size >= 3 &&
+          (profile.dominant === "warlord" || profile.dominant === "mystic" || profile.dominant === "seeker") &&
+          !state.progress.cutscenesSeen.has("endlessFrontier")
+        ) {
+          openCutscene("endlessFrontier");
+          return;
+        }
+        if (
           state.progress.defeatedBosses.has("dark-mycelius") &&
           !state.progress.cutscenesSeen.has("epilogue")
         ) {
@@ -4008,6 +4255,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
         state.hero.spores -= price;
         state.inventory[itemType] += 1;
+        recordAiSignal("commerce", 1);
+        pushStoryEntry(`You purchased ${labels[itemType]} to prepare for the next arc.`, "economy");
         setStatus(`Purchased ${labels[itemType]}.`);
         playSfx("coin");
       };
@@ -4018,6 +4267,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           return;
         }
         if (itemType === "mycoPotion") {
+          recordAiSignal("rituals", 0.4);
           state.inventory.mycoPotion -= 1;
           const heal = 28 + state.hero.magic * 2;
           state.hero.hp = Math.min(state.hero.maxHp, state.hero.hp + heal);
@@ -4031,6 +4281,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           return;
         }
         if (itemType === "manaDew") {
+          recordAiSignal("rituals", 0.7);
           state.inventory.manaDew -= 1;
           state.hero.magicBoostTurns = Math.max(state.hero.magicBoostTurns, 3);
           setStatus("Mana Dew activated: skill power boosted for 3 turns.");
@@ -4038,6 +4289,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           return;
         }
         if (itemType === "smokeBomb") {
+          recordAiSignal("combat", 0.4);
           state.inventory.smokeBomb -= 1;
           if (state.mode !== "battle" || !state.battle || state.battle.status !== "active") {
             setStatus("Smoke Bomb can only be used in battle.", true);
@@ -4068,16 +4320,22 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         state.aiRemoteDirectiveAt = now;
         try {
           const clan = getClanProfile();
+          const profile = getNarrativeProfile();
+          const chroniclePulse = state.story.entries
+            .slice(0, 3)
+            .map((entry) => entry.text)
+            .join(" | ");
           const profilePulse = `morality=${state.hero.morality}, clues=${state.progress.clues.size}, bosses=${state.progress.defeatedBosses.size}, spores=${state.hero.spores}`;
           const coaching = await callApi("/api/mycoai/coach", {
             ...requestBase(),
-            prompt: `Myco Quest overworld directive (${profilePulse}, clan=${clan.name}, avatar=${getSelectedAvatarName()}). Give one concise narrative gameplay directive for next 60 seconds.`,
+            prompt: `Myco Quest adaptive chronicle (${profilePulse}, clan=${clan.name}, avatar=${getSelectedAvatarName()}, profile=${profile.text}). Recent story beats: ${chroniclePulse || "none yet"}. Return one concise immersive directive that evolves this player's unique narrative for the next minute.`,
           });
           const recommendation = Array.isArray(coaching?.recommendations)
             ? coaching.recommendations.find((entry) => typeof entry === "string")
             : null;
           if (recommendation) {
             state.aiDirective = `AI Coach: ${recommendation}`;
+            pushStoryEntry(`AI Coach evolved your route: ${recommendation}`, "ai");
           }
         } catch (_error) {
           // Optional enhancement; local loop continues when auth/scope is unavailable.
@@ -4089,6 +4347,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const bossCount = state.progress.defeatedBosses.size;
         const clueCount = state.progress.clues.size;
         const clan = getClanProfile();
+        const profile = getNarrativeProfile();
+        const persona = getNpcPersonality(npc);
         const backstory = NPC_BACKSTORIES[npc.id];
         let body = npc.intro;
         if (alreadySpoken) {
@@ -4098,9 +4358,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         } else if (clueCount >= 3) {
           body = `${npc.intro} Clue density is high — puzzle routes now open if you read the signs.`;
         }
+        body = `${body}\n\nPersonality: ${persona.archetype} — ${persona.mannerism}`;
         if (backstory) {
           body = `${body}\n\nBackstory: ${backstory}`;
         }
+        body = `${body}\n\nReading You: ${npc.name} sees you as a ${profile.profileName} and adjusts counsel to match.`;
         body = `${body}\n\nClan Thread (${clan.name}): ${clan.npcThread}`;
 
         const applyTrade = (trustful) => {
@@ -4122,6 +4384,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           if (npc.tradeItem === "manaDew") state.inventory.manaDew += qty;
           if (npc.tradeItem === "smokeBomb") state.inventory.smokeBomb += qty;
           if (npc.tradeItem === "goldenSpore") state.hero.goldenSpores += qty;
+          recordAiSignal("commerce", 2);
+          recordAiSignal("diplomacy", trustful ? 1 : 0);
+          pushStoryEntry(`${npc.name} completed a ${trustful ? "trust" : "risky"} trade with your banner.`, "npc");
           state.lastAdvice = npc.adviceGood;
           setStatus(`${npc.name} trade complete. ${npc.adviceGood}`);
           playSfx("coin");
@@ -4135,6 +4400,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           darkLabel: alignment === "myco" ? "Treat Rudely (-morality)" : "Darkside Path (-morality)",
           tradeLabel: `Trade (${npc.tradeCost ?? 0} spores)`,
           onMyco: () => {
+            recordAiSignal("compassion", 2);
+            recordAiSignal("diplomacy", 1);
+            recordAiSignal("curiosity", 1);
             applyMorality(8 + Math.floor(clueCount / 2));
             grantSpores(16 + bossCount * 2);
             state.lastAdvice = npc.adviceGood;
@@ -4143,9 +4411,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             }
             addClue(npc.clueId, npc.clueLabel);
             state.progress.interactedNpcs.add(npc.id);
+            pushStoryEntry(`${npc.name} pledged support after your compassionate choice.`, "npc");
             setStatus(`${npc.mycoText} Advice: ${npc.adviceGood}`);
           },
           onDark: () => {
+            recordAiSignal("ferocity", 2);
+            recordAiSignal("combat", 1);
             applyMorality(-10 - Math.floor(bossCount / 2));
             state.hero.attack += 1;
             state.lastAdvice = npc.adviceBad;
@@ -4154,6 +4425,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             }
             addClue(npc.clueId, npc.clueLabel);
             state.progress.interactedNpcs.add(npc.id);
+            pushStoryEntry(`${npc.name} yielded under pressure and marked your path with fear.`, "npc");
             setStatus(`${npc.darkText} Advice: ${npc.adviceBad}`);
           },
           onTrade: () => {
@@ -4378,6 +4650,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           onMyco: () => {
             if (!solved) {
               if (isShrine) {
+                recordAiSignal("rituals", 2);
+                recordAiSignal("curiosity", 1);
                 state.progress.solvedStructures.add(nearbyStructure.id);
                 state.progress.shrineSolvedToday.add(nearbyStructure.id);
                 applyMorality(6);
@@ -4386,8 +4660,13 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
                   state.hero.goldenSpores += 1;
                 }
                 state.lastAdvice = `Shrine answer: ${shrineChallenge.riddle.answer}`;
+                pushStoryEntry(`${nearbyStructure.name} accepted your rite and revealed: ${shrineChallenge.riddle.answer}`, "shrine");
                 setStatus(`${nearbyStructure.name} renewed. +${shrineChallenge.rewardSpores} spores${shrineChallenge.grantsGolden ? " and +1 golden spore" : ""}.`);
                 return;
+              }
+              recordAiSignal("curiosity", 1);
+              if (nearbyStructure.type === "house" || nearbyStructure.type === "mushroom-shop") {
+                recordAiSignal("diplomacy", 1);
               }
               state.progress.solvedStructures.add(nearbyStructure.id);
               applyMorality(7);
@@ -4409,26 +4688,33 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
                 state.hero.hp = state.hero.maxHp;
                 state.lastAdvice = "House allies marked safer paths on your map.";
               }
+              pushStoryEntry(`${nearbyStructure.name} opened through disciplined strategy and trust.`, "quest");
               setStatus(`${nearbyStructure.name} completed. Your balanced path strengthens Myco magic.`);
             }
           },
           onDark: () => {
             if (!solved) {
               if (isShrine) {
+                recordAiSignal("ferocity", 1);
+                recordAiSignal("rituals", 1);
                 state.progress.solvedStructures.add(nearbyStructure.id);
                 state.progress.shrineSolvedToday.add(nearbyStructure.id);
                 applyMorality(-6);
                 const darkReward = Math.max(10, shrineChallenge.rewardSpores - 7);
                 grantSpores(darkReward);
                 state.lastAdvice = `You forced the shrine. The true answer was: ${shrineChallenge.riddle.answer}`;
+                pushStoryEntry(`${nearbyStructure.name} was forced open; prophecy shifted around your choice.`, "shrine");
                 setStatus(`${nearbyStructure.name} was forced. +${darkReward} spores, but the shrine rejects your haste.`);
                 return;
               }
+              recordAiSignal("ferocity", 2);
+              recordAiSignal("combat", 1);
               state.progress.solvedStructures.add(nearbyStructure.id);
               applyMorality(-9);
               state.hero.attack += 1;
               grantSpores(18);
               state.lastAdvice = "Rushed tactics unlocked riskier shortcuts with stronger enemies.";
+              pushStoryEntry(`${nearbyStructure.name} was breached by force, altering local rumor lines.`, "quest");
               setStatus(`${nearbyStructure.name} was forced open. You gained speed, but the realm darkened.`);
             }
           },
@@ -4597,11 +4883,16 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (now - state.aiDirectiveAt < 9000) return;
         state.aiDirectiveAt = now;
         const realm = getRealmForPoint(state.hero.x, state.hero.y);
+        const profile = getNarrativeProfile();
         const options = [];
         options.push(`Realm pulse: ${realm?.name ?? "Unknown realm"} bends around your portal signature.`);
+        options.push(`Adaptive profile: ${profile.text}. The world is adjusting to your decisions.`);
         options.push(`AI director: ${state.progress.clues.size} clues gathered; new enemy paths are mutating.`);
         options.push(`Arcane loadout: ${learnedMagicIds().length} learned magic arts in your grimoire.`);
         options.push(`Inventory pulse: potion ${state.inventory.mycoPotion}, dew ${state.inventory.manaDew}, bomb ${state.inventory.smokeBomb}.`);
+        if (state.story.entries.length) {
+          options.push(`Latest chronicle beat: ${state.story.entries[0].text}`);
+        }
         if (state.hero.morality >= 35) {
           options.push("Mycoside influence surges. Villagers reveal safer routes.");
         } else if (state.hero.morality <= -35) {
@@ -4617,6 +4908,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const updateEnemies = (dt) => {
         const now = Date.now();
+        const profile = getNarrativeProfile();
         const regionSpeed = {
           "myco-kingdom": 34,
           "rougarou-fen": 42,
@@ -4642,7 +4934,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             enemy.directionShiftAt = now + randomBetween(1000, 3200);
           }
 
-          const speed = (enemy.boss ? 26 : (regionSpeed[enemy.region] ?? 36)) * (1 + darkPressure);
+          const speed = (enemy.boss ? 26 : (regionSpeed[enemy.region] ?? 36)) * (1 + darkPressure) * profile.enemyPaceMultiplier;
           const nextX = enemy.x + enemy.wanderDirX * speed * dt;
           const nextY = enemy.y + enemy.wanderDirY * speed * dt;
           const enemyRect = { x: nextX - 18, y: nextY - 18, w: 36, h: 36 };
@@ -4667,11 +4959,17 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const heroRect = getHeroRect();
         const claimPickup = (pickup, fromRoaming = false) => {
           if (pickup.golden) {
+            recordAiSignal("curiosity", fromRoaming ? 1 : 0.5);
             state.hero.goldenSpores += pickup.value;
+            pushStoryEntry(`You recovered a golden spore in ${getCurrentRealm().name}.`, "explore");
             setStatus(fromRoaming ? "Golden roaming spore collected!" : "Golden spore collected! Rare currency increased.");
             playSfx("pickup");
           } else {
+            recordAiSignal("exploration", fromRoaming ? 1.2 : 0.7);
             grantSpores(pickup.value);
+            if (fromRoaming) {
+              pushStoryEntry(`You wandered off-script and found ${pickup.value} roaming blue spores.`, "explore");
+            }
             setStatus(fromRoaming ? `Collected roaming blue spores (+${pickup.value}).` : `Collected ${pickup.value} spores.`);
             playSfx("pickup");
           }
@@ -4735,6 +5033,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const engageEnemy = async (enemy) => {
         if (state.pendingBattle || state.mode === "battle") return;
+        recordAiSignal("combat", enemy.boss ? 1.4 : 0.8);
         state.pendingBattle = true;
         state.mode = "battle";
         state.encounterEnemyId = enemy.id;
@@ -4742,6 +5041,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         resetBattleFx();
         showBossIntro(enemy);
         setStatus(`Enemy contact: ${getEnemyDisplayName(enemy.kind)}. Initiating turn battle...`);
+        pushStoryEntry(`Encounter triggered: ${getEnemyDisplayName(enemy.kind)} challenges your path in ${getCurrentRealm().name}.`, "battle");
         playSfx("battle");
         appendBattleLog(`Encounter: ${getEnemyDisplayName(enemy.kind)}`);
 
@@ -4783,6 +5083,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           state.hero.hp = clamp(Math.round(battle.player.hp), 0, state.hero.maxHp);
         }
         if (battle.status === "won") {
+          recordAiSignal("combat", enemy?.boss ? 3 : 2);
           if (state.hero.hp <= 0) {
             state.hero.hp = Math.max(1, Math.floor(state.hero.maxHp * 0.2));
           }
@@ -4790,9 +5091,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           if (enemy?.boss) {
             state.hero.goldenSpores += 1;
             markBossDefeat(enemy.kind);
+            pushStoryEntry(`Boss Chronicle: ${getEnemyDisplayName(enemy.kind)} fell beneath your banner.`, "battle");
             setStatus(`Boss defeated: ${getEnemyDisplayName(enemy.kind)}. Golden spore gained.`);
             playSfx("win");
           } else {
+            pushStoryEntry(`Field report: ${getEnemyDisplayName(enemy?.kind ?? "hostile")} was defeated in ${getCurrentRealm().name}.`, "battle");
             setStatus(`Victory! +${battle.rewardSpores ?? 0} spores.`);
             playSfx("win");
           }
@@ -4808,18 +5111,24 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
               mycoLabel: "Seal the chain with mercy",
               darkLabel: "Bind the chain with force",
               onMyco: () => {
+                recordAiSignal("compassion", 3);
                 applyMorality(14);
                 addClue("restoration-seed", "Restoration Seed");
+                pushStoryEntry("Finale path chosen: mercy sealed the chain in cooperative light.", "finale");
                 setStatus("Mercy path selected. Cooperative endgame content unlocked.");
               },
               onDark: () => {
+                recordAiSignal("ferocity", 3);
                 applyMorality(-16);
                 state.hero.attack += 1;
+                pushStoryEntry("Finale path chosen: force bound the chain into a harsher era.", "finale");
                 setStatus("Force path selected. Hard-mode branch unlocked.");
               },
             });
           }
         } else if (battle.status === "lost") {
+          recordAiSignal("ferocity", 1);
+          pushStoryEntry(`You were defeated in ${getCurrentRealm().name}, but the chronicle continues from sanctuary.`, "battle");
           applyMorality(-6);
           state.hero.hp = state.hero.maxHp;
           const spawn = REALM_DEFAULT_SPAWNS[state.currentRealmId] ?? { x: 280, y: 500 };
@@ -4894,6 +5203,14 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (!state.battle || state.battle.status !== "active") {
           setStatus("No active battle turn to resolve.", true);
           return;
+        }
+        if (kind === "guard") {
+          recordAiSignal("diplomacy", 0.2);
+        } else if (kind === "skill") {
+          recordAiSignal("rituals", 0.5);
+          recordAiSignal("combat", 0.5);
+        } else {
+          recordAiSignal("ferocity", 0.3);
         }
         const element = dom.elementSelect.value;
         const beforePlayerHp = state.battle.player?.hp;
@@ -4973,6 +5290,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const speed = state.hero.speed * (sprint ? 1.34 : 1);
         const vx = (xAxis / mag) * speed * dt;
         const vy = (yAxis / mag) * speed * dt;
+        const travel = Math.hypot(vx, vy);
+        if (travel > 0) {
+          recordAiSignal("exploration", travel / 120);
+        }
 
         const nextX = state.hero.x + vx;
         if (!isBlocked(nextX, state.hero.y)) {
@@ -4991,6 +5312,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           maintainRoamingSporeSpawns();
         }
         if (state.mode === "intro" || state.intro.active) return;
+        updateLivingStory();
         if (state.activeDialogue) return;
         if (state.cutscene.active || state.mode === "cutscene") return;
         if (state.mode === "interior" || state.interior.active) return;
@@ -5911,9 +6233,22 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const unlockedLore = BACKSTORY_BEATS.filter((entry) => entry.isUnlocked(state));
         const latestLore = unlockedLore[unlockedLore.length - 1];
         const clan = getClanProfile();
+        const narrativeProfile = getNarrativeProfile();
+        const latestStoryEntry = state.story.entries[0];
         dom.storyBackdrop.textContent = latestLore
-          ? `${latestLore.title}: ${latestLore.text} // ${clan.storyThread}`
-          : `${clan.name} lore thread: ${clan.storyThread}`;
+          ? `${latestLore.title}: ${latestLore.text} // ${clan.storyThread} // Adaptive Profile: ${narrativeProfile.text}`
+          : `${clan.name} lore thread: ${clan.storyThread} // Adaptive Profile: ${narrativeProfile.text}`;
+        if (dom.storyPersona) {
+          dom.storyPersona.textContent = `Persona Engine: ${narrativeProfile.text} // Chapter ${state.story.chapter} // ${latestStoryEntry ? "Story pulse active" : "Awaiting first chronicle beat"}`;
+        }
+        if (dom.livingChronicle) {
+          dom.livingChronicle.textContent = state.story.entries.length
+            ? state.story.entries
+                .slice(0, 10)
+                .map((entry) => `• ${entry.text}`)
+                .join("\n")
+            : "The world is quiet... for now.";
+        }
 
         const enterableClears = Array.from(state.progress.solvedStructures).filter((id) => {
           const structure = STRUCTURES.find((entry) => entry.id === id);
@@ -5982,6 +6317,15 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
               { text: "Clear 12 enterable structures (houses, caves, dungeons, castles, towers, shops).", done: enterableClears >= 12 },
             ],
           },
+          {
+            chapter: `Chapter VII - Living Chronicle (${narrativeProfile.profileName})`,
+            hook: "Your playstyle now writes endless narrative branches that evolve this world around you.",
+            objectives: [
+              { text: "Unlock 3 adaptive story beats in the Living Chronicle.", done: state.story.entries.length >= 3 },
+              { text: "Reach a clear persona profile through your choices.", done: narrativeProfile.dominant !== "balanced" || state.story.entries.length >= 8 },
+              { text: "Trigger at least one adaptive cutscene branch.", done: state.progress.cutscenesSeen.has("chronicleEngine") || state.progress.cutscenesSeen.has("endlessFrontier") },
+            ],
+          },
         ];
         const totalObjectives = questEntries.reduce((sum, chapter) => sum + chapter.objectives.length, 0);
         const completedObjectives = questEntries.reduce(
@@ -6006,7 +6350,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           .map((portal) => REALMS.find((entry) => entry.id === portalDestinationRealmId(portal))?.name)
           .filter((name, idx, list) => Boolean(name) && list.indexOf(name) === idx)
           .join(", ");
-        dom.regionHint.textContent = `World region: ${region?.name ?? "Unknown"}\nCurrent realm page: ${realm?.name ?? "Unknown"}\nLinked pages: ${linkedRealms || "None"}\nClan: ${clan.name} // Avatar: ${getSelectedAvatarName()}\n${realm?.label ?? region?.label ?? ""}\nAI directive: ${state.aiDirective}`;
+        dom.regionHint.textContent = `World region: ${region?.name ?? "Unknown"}\nCurrent realm page: ${realm?.name ?? "Unknown"}\nLinked pages: ${linkedRealms || "None"}\nClan: ${clan.name} // Avatar: ${getSelectedAvatarName()}\nNarrative Persona: ${narrativeProfile.text}\n${realm?.label ?? region?.label ?? ""}\nAI directive: ${state.aiDirective}\nStory pulse: ${latestStoryEntry?.text ?? "No active beat yet."}`;
         if (dom.realmBanner) {
           const pathTone = state.hero.morality >= 0 ? "Mycoside" : "Darkside";
           dom.realmBanner.textContent = `${realm?.name ?? "Unknown Realm"} // ${clan.bannerTitle} // ${pathTone} path`;
