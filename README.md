@@ -340,6 +340,7 @@ Workflow behavior:
 - Auto deploys when `main` is pushed (post-merge)
 - Supports manual **Run workflow** dispatch with custom branch/SHA/PM2 app/repo-dir inputs
 - Executes `scripts/ops/finalize-api-deploy.sh` over SSH on the VPS
+- For manual dispatch, `expected_sha` is optional and only enforced when provided
 
 Required GitHub configuration:
 - `VPS_SSH_KEY` as a **Repository Secret** (required)

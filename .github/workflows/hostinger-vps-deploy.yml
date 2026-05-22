@@ -57,9 +57,6 @@ jobs:
             if [[ -z "${DEPLOY_BRANCH}" ]]; then
               DEPLOY_BRANCH="${GITHUB_REF_NAME}"
             fi
-            if [[ -z "${EXPECTED_SHA}" ]]; then
-              EXPECTED_SHA="${GITHUB_SHA}"
-            fi
           else
             DEPLOY_BRANCH="${GITHUB_REF_NAME}"
             EXPECTED_SHA="${GITHUB_SHA}"
@@ -69,7 +66,10 @@ jobs:
           fi
 
           # finalize-api-deploy.sh compares against short HEAD SHA.
-          EXPECTED_SHA="$(printf '%s' "${EXPECTED_SHA}" | cut -c1-7)"
+          # For manual deploys, keep empty when user did not request SHA pinning.
+          if [[ -n "${EXPECTED_SHA}" ]]; then
+            EXPECTED_SHA="$(printf '%s' "${EXPECTED_SHA}" | cut -c1-7)"
+          fi
 
           echo "deploy_branch=${DEPLOY_BRANCH}" >> "$GITHUB_OUTPUT"
           echo "expected_sha=${EXPECTED_SHA}" >> "$GITHUB_OUTPUT"
