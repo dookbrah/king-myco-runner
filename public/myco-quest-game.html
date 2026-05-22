@@ -235,6 +235,130 @@
         margin-bottom: 8px;
         color: #e2e8f0;
       }
+      .dialogue-head {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .dialogue-portrait {
+        width: 52px;
+        height: 52px;
+        border-radius: 10px;
+        border: 1px solid #475f93;
+        background: linear-gradient(145deg, #1f3158, #0f1a34);
+        display: grid;
+        place-items: center;
+        font-size: 24px;
+        font-weight: 700;
+        color: #dbeafe;
+      }
+      .dialogue-portrait small {
+        font-size: 10px;
+        color: #94a3b8;
+      }
+      .journal-progress {
+        margin-top: 8px;
+        font-size: 12px;
+        color: #c7d2fe;
+      }
+      .journal-grid {
+        margin-top: 8px;
+        display: grid;
+        gap: 8px;
+      }
+      .journal-card {
+        border: 1px solid #2e4c83;
+        background: rgba(12, 24, 48, 0.75);
+        border-radius: 10px;
+        padding: 8px;
+      }
+      .journal-card h4 {
+        margin: 0 0 4px;
+        font-size: 13px;
+        color: #e2e8f0;
+      }
+      .journal-card p {
+        margin: 0 0 6px;
+        font-size: 12px;
+        color: #9fb6dd;
+      }
+      .journal-card ul {
+        margin: 0;
+        padding-left: 16px;
+        display: grid;
+        gap: 4px;
+        font-size: 12px;
+      }
+      .journal-card li.done {
+        color: #4ade80;
+      }
+      .title-screen {
+        position: fixed;
+        inset: 0;
+        z-index: 70;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle at 50% 12%, rgba(59, 130, 246, 0.24), rgba(2, 6, 23, 0.96));
+        backdrop-filter: blur(4px);
+      }
+      .title-screen.active {
+        display: flex;
+      }
+      .title-card {
+        width: min(760px, calc(100% - 26px));
+        border: 1px solid #4368a2;
+        border-radius: 16px;
+        padding: 18px;
+        background: rgba(6, 14, 30, 0.95);
+        box-shadow: 0 26px 56px rgba(2, 6, 23, 0.62);
+      }
+      .title-logo {
+        margin-bottom: 8px;
+        font-size: clamp(28px, 4.2vw, 46px);
+        color: #f8fafc;
+        letter-spacing: 0.04em;
+      }
+      .title-lore {
+        margin-top: 10px;
+        white-space: pre-wrap;
+        font-size: 13px;
+        color: #c9d8f6;
+        line-height: 1.45;
+      }
+      .title-actions {
+        margin-top: 14px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .boss-intro {
+        position: fixed;
+        top: max(18px, env(safe-area-inset-top));
+        left: 50%;
+        transform: translate(-50%, -18px);
+        min-width: min(480px, calc(100vw - 20px));
+        border: 1px solid #7f1d1d;
+        border-radius: 12px;
+        background: rgba(45, 7, 7, 0.94);
+        padding: 10px 12px;
+        z-index: 65;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 180ms ease, transform 180ms ease;
+      }
+      .boss-intro.active {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+      .boss-intro h3 {
+        margin-bottom: 3px;
+      }
+      .boss-intro p {
+        font-size: 12px;
+        color: #fecaca;
+      }
       .dialogue-actions {
         display: flex;
         flex-wrap: wrap;
@@ -441,6 +565,29 @@
     </style>
   </head>
   <body>
+    <section id="titleScreen" class="title-screen active">
+      <div class="title-card">
+        <p class="tiny">KINGDOM CHRONICLE // PORTAL EDITION</p>
+        <h1 class="title-logo">MYCO QUEST</h1>
+        <p class="title-lore" id="titleLore">
+Dark Mycelius fractured the royal crown into living memory shards.
+Every realm now floats behind unstable portal locks.
+Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a time.
+        </p>
+        <div class="title-actions">
+          <button id="continueAdventureBtn" class="primary">Continue Adventure</button>
+          <button id="newAdventureBtn">New Adventure</button>
+          <button id="skipIntroBtn">Skip Intro Card</button>
+        </div>
+        <p id="titleHint" class="subtle" style="margin-top: 8px">Loading your chronicle...</p>
+      </div>
+    </section>
+
+    <section id="bossIntroCard" class="boss-intro">
+      <h3 id="bossIntroTitle">Boss Encounter</h3>
+      <p id="bossIntroMeta">Realm - Danger tier</p>
+    </section>
+
     <main>
       <section class="panel">
         <h1>Myco Quest - 32-bit Portal Realms + Contact Battle</h1>
@@ -535,8 +682,9 @@
           </section>
 
           <section id="panelStory" class="panel">
-            <h2>Story Phase + Clues</h2>
-            <ul id="questList" class="quest-list"></ul>
+            <h2>Story Journal + Clues</h2>
+            <p id="questProgressText" class="journal-progress">Campaign progress loading...</p>
+            <div id="questJournal" class="journal-grid"></div>
             <p id="storyBackdrop" class="subtle" style="margin-top: 8px">Lore thread loading...</p>
             <p class="subtle" style="margin-top: 8px">Learned magic</p>
             <div id="magicList" class="chips"></div>
@@ -644,7 +792,13 @@
     </section>
 
     <section id="dialoguePanel" class="dialogue">
-      <h3 id="dialogueTitle">Dialogue</h3>
+      <div class="dialogue-head">
+        <div id="dialoguePortrait" class="dialogue-portrait">?</div>
+        <div>
+          <h3 id="dialogueTitle">Dialogue</h3>
+          <p id="dialogueSubtitle" class="subtle">Speaker profile</p>
+        </div>
+      </div>
       <p id="dialogueBody">...</p>
       <div class="dialogue-actions">
         <button id="choiceMycoBtn" class="primary">Mycoside Choice</button>
@@ -680,6 +834,15 @@
       battleCtx.imageSmoothingEnabled = false;
 
       const dom = {
+        titleScreen: document.getElementById("titleScreen"),
+        titleLore: document.getElementById("titleLore"),
+        titleHint: document.getElementById("titleHint"),
+        continueAdventureBtn: document.getElementById("continueAdventureBtn"),
+        newAdventureBtn: document.getElementById("newAdventureBtn"),
+        skipIntroBtn: document.getElementById("skipIntroBtn"),
+        bossIntroCard: document.getElementById("bossIntroCard"),
+        bossIntroTitle: document.getElementById("bossIntroTitle"),
+        bossIntroMeta: document.getElementById("bossIntroMeta"),
         apiBase: document.getElementById("apiBase"),
         source: document.getElementById("source"),
         externalId: document.getElementById("externalId"),
@@ -702,10 +865,11 @@
         attackStat: document.getElementById("attackStat"),
         defenseStat: document.getElementById("defenseStat"),
         magicStat: document.getElementById("magicStat"),
+        questProgressText: document.getElementById("questProgressText"),
+        questJournal: document.getElementById("questJournal"),
         storyBackdrop: document.getElementById("storyBackdrop"),
         magicList: document.getElementById("magicList"),
         clueList: document.getElementById("clueList"),
-        questList: document.getElementById("questList"),
         inventoryList: document.getElementById("inventoryList"),
         battleSummary: document.getElementById("battleSummary"),
         battleLog: document.getElementById("battleLog"),
@@ -723,7 +887,9 @@
         useManaBtn: document.getElementById("useManaBtn"),
         useBombBtn: document.getElementById("useBombBtn"),
         dialoguePanel: document.getElementById("dialoguePanel"),
+        dialoguePortrait: document.getElementById("dialoguePortrait"),
         dialogueTitle: document.getElementById("dialogueTitle"),
+        dialogueSubtitle: document.getElementById("dialogueSubtitle"),
         dialogueBody: document.getElementById("dialogueBody"),
         choiceMycoBtn: document.getElementById("choiceMycoBtn"),
         choiceDarkBtn: document.getElementById("choiceDarkBtn"),
@@ -1096,6 +1262,22 @@
         "commons-merchant": "Poro's caravan survived every regime by trading stories as carefully as spores, mapping safe lanes across factions.",
       };
 
+      const NPC_PORTRAITS = {
+        "elder-myca": { glyph: "👑", subtitle: "Royal Archivist // Oath Keeper" },
+        "fen-scout": { glyph: "🐺", subtitle: "Fen Vanguard // Moon Trail Ranger" },
+        "drake-hermit": { glyph: "🐉", subtitle: "Ash Hermit // Ember Rune Keeper" },
+        "reef-oracle": { glyph: "🌊", subtitle: "Pearl Choir Oracle // Tide Cipher Keeper" },
+        "chain-smith": { glyph: "⛓️", subtitle: "Chain Smith // Forge Survivor" },
+        "commons-merchant": { glyph: "🛒", subtitle: "Commons Caravan Broker" },
+      };
+
+      const BOSS_INTRO_META = {
+        rougarou: { realm: "Rougarou Fen", tier: "Danger Tier II", caption: "Pack Alpha awakened" },
+        "tri-drake": { realm: "Tri-Drake Peaks", tier: "Danger Tier III", caption: "Triple-head guardian mobilized" },
+        "evil-crab": { realm: "Crimson Tide Shelf", tier: "Danger Tier III", caption: "Abyss shell fortress active" },
+        "dark-mycelius": { realm: "Solana Chainlands", tier: "Danger Tier IV", caption: "Corrupted chain sovereign online" },
+      };
+
       const BASE_ENEMIES = [
         { id: "slime-1", kind: "rot-spore", x: 620, y: 820, lane: "speed", boss: false, region: "myco-kingdom" },
         { id: "slime-2", kind: "mold-raider", x: 1060, y: 930, lane: "precision", boss: false, region: "myco-kingdom" },
@@ -1228,7 +1410,7 @@
       ];
 
       const state = {
-        mode: "explore",
+        mode: "intro",
         pendingBattle: false,
         worldTime: 0,
         camera: { x: 0, y: 0 },
@@ -1242,6 +1424,19 @@
         lastAdvice: "Earn trust in each region to receive reliable guidance.",
         ui: {
           minimalHud: false,
+          titleCardSkipped: false,
+        },
+        intro: {
+          active: true,
+        },
+        visualFx: {
+          portalPulseUntil: 0,
+          portalPulseX: 0,
+          portalPulseY: 0,
+        },
+        bossIntro: {
+          activeUntil: 0,
+          timeoutId: null,
         },
         cutscene: {
           active: false,
@@ -1562,6 +1757,7 @@
           pickup: [740, 0.09, "square", 0.05],
           clue: [620, 0.13, "triangle", 0.06],
           talk: [420, 0.08, "triangle", 0.04],
+          portal: [540, 0.2, "square", 0.07],
           battle: [180, 0.18, "sawtooth", 0.07],
           win: [860, 0.18, "square", 0.06],
           lose: [140, 0.22, "sawtooth", 0.06],
@@ -1616,6 +1812,7 @@
             externalId: dom.externalId.value.trim(),
             sourceToken: dom.sourceToken.value,
             minimalHud: state.ui.minimalHud,
+            titleCardSkipped: state.ui.titleCardSkipped,
           }),
         );
       };
@@ -1630,6 +1827,7 @@
           if (typeof parsed.externalId === "string") dom.externalId.value = parsed.externalId;
           if (typeof parsed.sourceToken === "string") dom.sourceToken.value = parsed.sourceToken;
           if (typeof parsed.minimalHud === "boolean") state.ui.minimalHud = parsed.minimalHud;
+          if (typeof parsed.titleCardSkipped === "boolean") state.ui.titleCardSkipped = parsed.titleCardSkipped;
         } catch (error) {
           console.warn("config load failed", error);
         }
@@ -1718,6 +1916,43 @@
 
       const clearGame = () => {
         localStorage.removeItem(STORAGE_STATE_KEY);
+      };
+
+      const hasSavedGame = () => Boolean(localStorage.getItem(STORAGE_STATE_KEY));
+
+      const refreshTitleScreen = () => {
+        const hasSave = hasSavedGame();
+        if (!dom.continueAdventureBtn) return;
+        dom.continueAdventureBtn.disabled = !hasSave;
+        dom.continueAdventureBtn.textContent = hasSave ? "Continue Adventure" : "No Save Found";
+        if (dom.titleHint) {
+          dom.titleHint.textContent = hasSave
+            ? "Save detected. Continue your chronicle or begin a fresh arc."
+            : "No local save found. Start a new chronicle to begin.";
+        }
+      };
+
+      const startAdventure = () => {
+        if (!state.intro.active) return;
+        state.intro.active = false;
+        state.mode = "explore";
+        dom.titleScreen.classList.remove("active");
+        setStatus("Chronicle initialized. Venture into portals, learn magic, and shape the kingdom.");
+        checkCutsceneTriggers();
+        syncCampaign();
+      };
+
+      const beginFreshAdventure = () => {
+        clearGame();
+        state.ui.titleCardSkipped = false;
+        saveConfig();
+        location.reload();
+      };
+
+      const skipTitleCard = () => {
+        state.ui.titleCardSkipped = true;
+        saveConfig();
+        startAdventure();
       };
 
       const withApiBase = (path) => {
@@ -1859,9 +2094,41 @@
         return map[kind] ?? kind;
       };
 
+      const getDialoguePortrait = (payload) => {
+        if (payload?.portrait && typeof payload.portrait === "object") {
+          return {
+            glyph: payload.portrait.glyph ?? "?",
+            subtitle: payload.portrait.subtitle ?? "Wandering speaker",
+          };
+        }
+        return { glyph: "✨", subtitle: "Nexus Echo" };
+      };
+
+      const showBossIntro = (enemy) => {
+        if (!enemy?.boss || !dom.bossIntroCard) return;
+        const meta = BOSS_INTRO_META[enemy.kind] ?? {
+          realm: getRealmForPoint(enemy.x, enemy.y)?.name ?? "Unknown Realm",
+          tier: "Danger Tier ?",
+          caption: "Hostile signature detected",
+        };
+        dom.bossIntroTitle.textContent = `⚠ ${getEnemyDisplayName(enemy.kind)}`;
+        dom.bossIntroMeta.textContent = `${meta.realm} - ${meta.tier} - ${meta.caption}`;
+        dom.bossIntroCard.classList.add("active");
+        state.bossIntro.activeUntil = Date.now() + 2600;
+        if (state.bossIntro.timeoutId) {
+          clearTimeout(state.bossIntro.timeoutId);
+        }
+        state.bossIntro.timeoutId = window.setTimeout(() => {
+          dom.bossIntroCard.classList.remove("active");
+        }, 2600);
+      };
+
       const openDialogue = (payload) => {
         state.activeDialogue = payload;
+        const portrait = getDialoguePortrait(payload);
         dom.dialogueTitle.textContent = payload.title;
+        dom.dialogueSubtitle.textContent = portrait.subtitle;
+        dom.dialoguePortrait.textContent = portrait.glyph;
         dom.dialogueBody.textContent = payload.body;
         dom.choiceMycoBtn.textContent = payload.mycoLabel ?? "Mycoside Choice";
         dom.choiceDarkBtn.textContent = payload.darkLabel ?? "Darkside Choice";
@@ -1876,6 +2143,8 @@
         state.activeDialogue = null;
         state.contactLockUntil = Date.now() + 1200;
         dom.choiceTradeBtn.style.display = "none";
+        dom.dialogueSubtitle.textContent = "Speaker profile";
+        dom.dialoguePortrait.textContent = "?";
         dom.dialoguePanel.classList.remove("active");
       };
 
@@ -2095,6 +2364,7 @@
 
         return {
           title: npc.name,
+          portrait: NPC_PORTRAITS[npc.id] ?? { glyph: "🧭", subtitle: "Nexus Resident" },
           body,
           mycoLabel: alignment === "dark" ? "Treat Kindly (+morality)" : "Mycoside Path (+morality)",
           darkLabel: alignment === "myco" ? "Treat Rudely (-morality)" : "Darkside Path (-morality)",
@@ -2130,8 +2400,15 @@
 
       const buildStructureEncounter = (nearbyStructure) => {
         const solved = state.progress.solvedStructures.has(nearbyStructure.id);
+        const structurePortrait = {
+          house: { glyph: "🏠", subtitle: "Village Contact" },
+          cave: { glyph: "🕳️", subtitle: "Echoing Cavern" },
+          dungeon: { glyph: "🏛️", subtitle: "Sealed Trial Hall" },
+          shrine: { glyph: "🗿", subtitle: "Mycelic Shrine" },
+        };
         return {
           title: nearbyStructure.name,
+          portrait: structurePortrait[nearbyStructure.type] ?? { glyph: "✨", subtitle: "Ancient Site" },
           body: solved
             ? "You already solved this location's challenge. The echoes still guide your path."
             : nearbyStructure.type === "shrine"
@@ -2189,9 +2466,12 @@
         state.hero.y = portal.destinationY;
         state.contactLockUntil = Date.now() + 900;
         state.contactLatch = { type: "portal", id: portal.id };
+        state.visualFx.portalPulseUntil = Date.now() + 700;
+        state.visualFx.portalPulseX = portal.x + portal.w / 2;
+        state.visualFx.portalPulseY = portal.y + portal.h / 2;
         updateCamera();
         setStatus(portal.arrivalText ?? `${portal.name} activated.`);
-        playSfx("clue");
+        playSfx("portal");
         return true;
       };
 
@@ -2235,6 +2515,9 @@
       };
 
       const interact = () => {
+        if (state.intro.active || state.mode === "intro") {
+          return;
+        }
         if (state.activeDialogue || state.cutscene.active || state.mode === "cutscene") {
           return;
         }
@@ -2395,6 +2678,7 @@
         state.pendingBattle = true;
         state.mode = "battle";
         state.encounterEnemyId = enemy.id;
+        showBossIntro(enemy);
         setStatus(`Enemy contact: ${getEnemyDisplayName(enemy.kind)}. Initiating turn battle...`);
         playSfx("battle");
         appendBattleLog(`Encounter: ${getEnemyDisplayName(enemy.kind)}`);
@@ -2456,6 +2740,7 @@
           if (enemy?.kind === "dark-mycelius") {
             openDialogue({
               title: "Dark Mycelius Defeated",
+              portrait: { glyph: "👑", subtitle: "Final Chronicle Node" },
               body: "You reclaimed your crown flame. The Solana corruption retreats, and the kingdom enters restoration phase.",
               mycoLabel: "Seal the chain with mercy",
               darkLabel: "Bind the chain with force",
@@ -2618,6 +2903,7 @@
 
       const update = async (dt) => {
         state.worldTime += dt;
+        if (state.mode === "intro" || state.intro.active) return;
         if (state.activeDialogue) return;
         if (state.cutscene.active || state.mode === "cutscene") return;
         if (state.mode === "battle") return;
@@ -2863,6 +3149,18 @@
           worldCtx.fillText(portal.name, px - 10, py - 6);
         }
 
+        if (Date.now() < state.visualFx.portalPulseUntil) {
+          const pulseProgress = 1 - (state.visualFx.portalPulseUntil - Date.now()) / 700;
+          const radius = 22 + pulseProgress * 48;
+          const sx = state.visualFx.portalPulseX - state.camera.x;
+          const sy = state.visualFx.portalPulseY - state.camera.y;
+          worldCtx.beginPath();
+          worldCtx.arc(sx, sy, radius, 0, Math.PI * 2);
+          worldCtx.strokeStyle = `rgba(125, 211, 252, ${0.65 - pulseProgress * 0.5})`;
+          worldCtx.lineWidth = 4;
+          worldCtx.stroke();
+        }
+
         // Pickups
         for (const pickup of PICKUPS) {
           if (state.progress.collectedPickups.has(pickup.id)) continue;
@@ -3026,28 +3324,55 @@
 
         const questEntries = [
           {
-            text: "Recover the Royal Oath and learn Mycelic Sight to open the Fen Moon Portal.",
-            done: hasMagic("mycelic-sight"),
+            chapter: "Chapter I - Crownfall Echoes",
+            hook: "Restore the first memory-art to reconnect the Nexus portals.",
+            objectives: [
+              { text: "Recover the Royal Oath from Elder Myca.", done: state.progress.clues.has("royal-oath") },
+              { text: "Learn Mycelic Sight and activate the Fen Moon Portal.", done: hasMagic("mycelic-sight") },
+            ],
           },
           {
-            text: "Track Rougarou, claim the Lunar Wolf Mark, and unlock Fenstride.",
-            done: hasMagic("fenstride") && state.progress.defeatedBosses.has("rougarou"),
+            chapter: "Chapter II - Fenblood Hunt",
+            hook: "Break Rougarou's control over the moon-swamp trails.",
+            objectives: [
+              { text: "Claim the Lunar Wolf Mark clue.", done: state.progress.clues.has("lunar-wolf-mark") },
+              { text: "Defeat Rougarou in Fen battle lanes.", done: state.progress.defeatedBosses.has("rougarou") },
+              { text: "Master Fenstride portal magic.", done: hasMagic("fenstride") },
+            ],
           },
           {
-            text: "Defeat the Three-Headed Dragon to claim Ember Veil and ignite Tidefall routes.",
-            done: hasMagic("ember-veil") && state.progress.defeatedBosses.has("tri-drake"),
+            chapter: "Chapter III - Ember and Tide",
+            hook: "Recover peak and reef arts to reach Chainlands.",
+            objectives: [
+              { text: "Defeat the Three-Headed Dragon and secure Drake Ember.", done: state.progress.defeatedBosses.has("tri-drake") && state.progress.clues.has("drake-ember") },
+              { text: "Defeat Evil Crab and claim Abyss Pearl Cipher.", done: state.progress.defeatedBosses.has("evil-crab") && state.progress.clues.has("abyss-pearl") },
+              { text: "Unlock Ember Veil and Tidecall portal arts.", done: hasMagic("ember-veil") && hasMagic("tidecall") },
+            ],
           },
           {
-            text: "Bring down Evil Crab, claim the Abyss Pearl, and master Tidecall.",
-            done: hasMagic("tidecall") && state.progress.defeatedBosses.has("evil-crab"),
-          },
-          {
-            text: "Forge Chainbind with Vox, enter Chain Core portal, and defeat Dark Mycelius.",
-            done: hasMagic("chainbind") && state.progress.defeatedBosses.has("dark-mycelius"),
+            chapter: "Chapter IV - Chain Sovereign",
+            hook: "Breach the Chain Core and end Dark Mycelius's rewrite.",
+            objectives: [
+              { text: "Earn Solana Anchor Key from Chain Smith Vox.", done: state.progress.clues.has("solana-anchor") },
+              { text: "Learn Chainbind and open the Apex Chain Portal.", done: hasMagic("chainbind") },
+              { text: "Defeat Dark Mycelius.", done: state.progress.defeatedBosses.has("dark-mycelius") },
+            ],
           },
         ];
-        dom.questList.innerHTML = questEntries
-          .map((entry) => `<li class="${entry.done ? "quest-done" : ""}">${entry.done ? "✓ " : ""}${entry.text}</li>`)
+        const totalObjectives = questEntries.reduce((sum, chapter) => sum + chapter.objectives.length, 0);
+        const completedObjectives = questEntries.reduce(
+          (sum, chapter) => sum + chapter.objectives.filter((entry) => entry.done).length,
+          0,
+        );
+        dom.questProgressText.textContent = `Campaign objective tracking: ${completedObjectives}/${totalObjectives} complete.`;
+        dom.questJournal.innerHTML = questEntries
+          .map((chapter) => {
+            const chapterDone = chapter.objectives.every((entry) => entry.done);
+            const objectiveItems = chapter.objectives
+              .map((entry) => `<li class="${entry.done ? "done" : ""}">${entry.done ? "✓ " : ""}${entry.text}</li>`)
+              .join("");
+            return `<article class="journal-card"><h4>${chapterDone ? "✓ " : ""}${chapter.chapter}</h4><p>${chapter.hook}</p><ul>${objectiveItems}</ul></article>`;
+          })
           .join("");
 
         const region = getRegionForPoint(state.hero.x, state.hero.y);
@@ -3118,6 +3443,13 @@
         if (!state.audio.initialized && key !== "f5") {
           initAudio();
         }
+        if (state.intro.active) {
+          if (key === "enter") {
+            startAdventure();
+          }
+          event.preventDefault();
+          return;
+        }
         if (["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d", "shift"].includes(key)) {
           state.keys.add(key);
           event.preventDefault();
@@ -3142,6 +3474,9 @@
       dom.closeDialogueBtn.addEventListener("click", closeDialogue);
       dom.cutsceneNextBtn.addEventListener("click", advanceCutscene);
       dom.cutsceneSkipBtn.addEventListener("click", closeCutscene);
+      dom.continueAdventureBtn.addEventListener("click", startAdventure);
+      dom.newAdventureBtn.addEventListener("click", beginFreshAdventure);
+      dom.skipIntroBtn.addEventListener("click", skipTitleCard);
 
       dom.audioEnableBtn.addEventListener("click", async () => {
         await initAudio();
@@ -3197,6 +3532,7 @@
       loadGame();
       setupCornerMenus();
       setupMobileControls();
+      refreshTitleScreen();
       dom.choiceTradeBtn.style.display = "none";
       applyHudMode();
       updateAudioUi();
@@ -3206,8 +3542,11 @@
       drawWorld();
       drawBattleScene();
       requestAnimationFrame(frameLoop);
-      syncCampaign();
-      checkCutsceneTriggers();
+      if (state.ui.titleCardSkipped) {
+        startAdventure();
+      } else {
+        dom.titleScreen.classList.add("active");
+      }
       setInterval(() => {
         requestAiCoaching();
       }, 50000);
@@ -3218,7 +3557,9 @@
         },
         { once: true },
       );
-      setStatus("Prototype loaded. Explore the world and touch enemies to start turn battles.");
+      if (state.intro.active) {
+        setStatus("Chronicle standby. Use title card to continue or begin a fresh run.");
+      }
     </script>
   </body>
 </html>
