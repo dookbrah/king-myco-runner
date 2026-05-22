@@ -231,6 +231,38 @@
       .interior-screen.active {
         display: flex;
       }
+      .burn-pit-screen {
+        position: fixed;
+        inset: 0;
+        z-index: 78;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(3, 8, 20, 0.9);
+        padding: 12px;
+      }
+      .burn-pit-screen.active {
+        display: flex;
+      }
+      .burn-pit-card {
+        width: min(760px, 100%);
+        border: 1px solid #4f6f9f;
+        border-radius: 12px;
+        background: linear-gradient(180deg, rgba(8, 16, 34, 0.98), rgba(5, 11, 24, 0.99));
+        padding: 12px;
+        box-shadow: 0 22px 44px rgba(2, 6, 23, 0.58);
+      }
+      .burn-pit-grid {
+        margin-top: 10px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      @media (max-width: 620px) {
+        .burn-pit-grid {
+          grid-template-columns: 1fr;
+        }
+      }
       .interior-card {
         width: min(1020px, 100%);
         border: 1px solid #3b5a93;
@@ -1056,10 +1088,37 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       </article>
     </section>
 
+    <section id="burnPitScreen" class="burn-pit-screen">
+      <article class="burn-pit-card">
+        <h3 id="burnPitTitle">Burn Pit</h3>
+        <p id="burnPitSubtitle" class="subtle">Offer spores to the Sunday token burn ritual.</p>
+        <div class="burn-pit-grid">
+          <label>
+            Spores to Burn
+            <input id="burnPitAmountInput" type="number" min="1" max="1000" step="1" value="100" />
+          </label>
+          <label>
+            Daily Limit
+            <input id="burnPitDailyLimit" value="1000 spores" readonly />
+          </label>
+        </div>
+        <p id="burnPitHint" class="subtle" style="margin-top: 10px">
+          Burn up to 1000 spores per day. Burns are recorded for KING MYCO Sunday 0.25 token burn alignment.
+        </p>
+        <div class="actions">
+          <button id="burnPitBurnBtn" class="primary">Burn Spores</button>
+          <button id="burnPitMaxBtn">Burn Max Today</button>
+          <button id="burnPitCloseBtn">Close Burn Pit</button>
+        </div>
+      </article>
+    </section>
+
     <script>
       const STORAGE_CONFIG_KEY = "mycoQuestPlayableConfig";
       const STORAGE_STATE_KEY = "mycoQuestOverworldStateV2";
       const STORAGE_LEADERBOARD_KEY = "mycoQuestClanLeaderboardV1";
+      const DAILY_SPORE_BURN_LIMIT = 1000;
+      const WEEKLY_TOKEN_BURN_AMOUNT = 0.25;
       const TILE = 48;
       const WORLD_WIDTH = 6200;
       const WORLD_HEIGHT = 4200;
@@ -1166,6 +1225,15 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         interiorHint: document.getElementById("interiorHint"),
         interiorSearchBtn: document.getElementById("interiorSearchBtn"),
         interiorExitBtn: document.getElementById("interiorExitBtn"),
+        burnPitScreen: document.getElementById("burnPitScreen"),
+        burnPitTitle: document.getElementById("burnPitTitle"),
+        burnPitSubtitle: document.getElementById("burnPitSubtitle"),
+        burnPitAmountInput: document.getElementById("burnPitAmountInput"),
+        burnPitDailyLimit: document.getElementById("burnPitDailyLimit"),
+        burnPitHint: document.getElementById("burnPitHint"),
+        burnPitBurnBtn: document.getElementById("burnPitBurnBtn"),
+        burnPitMaxBtn: document.getElementById("burnPitMaxBtn"),
+        burnPitCloseBtn: document.getElementById("burnPitCloseBtn"),
         audioEnableBtn: document.getElementById("audioEnableBtn"),
         musicToggleBtn: document.getElementById("musicToggleBtn"),
         sfxToggleBtn: document.getElementById("sfxToggleBtn"),
@@ -1499,6 +1567,14 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         { id: "castle-obsidian-1", type: "castle", x: 2860, y: 3500, w: 260, h: 180, name: "Black Crown Redoubt", solid: true },
         { id: "shop-obsidian-1", type: "mushroom-shop", x: 2140, y: 3870, w: 174, h: 120, name: "Riftcap Curio Shop", solid: true },
         { id: "house-obsidian-1", type: "house", x: 980, y: 3720, w: 156, h: 110, name: "Warden's Ember Home", solid: true },
+
+        { id: "burnpit-myco", type: "burn-pit", x: 780, y: 640, w: 108, h: 96, name: "Royal Spore Burn Pit", solid: false },
+        { id: "burnpit-fen", type: "burn-pit", x: 2380, y: 740, w: 108, h: 96, name: "Fen Moon Burn Pit", solid: false },
+        { id: "burnpit-tri", type: "burn-pit", x: 4180, y: 900, w: 108, h: 96, name: "Ember Nest Burn Pit", solid: false },
+        { id: "burnpit-crimson", type: "burn-pit", x: 2480, y: 2760, w: 108, h: 96, name: "Tide Vault Burn Pit", solid: false },
+        { id: "burnpit-chain", type: "burn-pit", x: 4960, y: 2700, w: 108, h: 96, name: "Chain Reactor Burn Pit", solid: false },
+        { id: "burnpit-commons", type: "burn-pit", x: 980, y: 2600, w: 108, h: 96, name: "Commons Guild Burn Pit", solid: false },
+        { id: "burnpit-obsidian", type: "burn-pit", x: 1740, y: 3820, w: 108, h: 96, name: "Obsidian Oath Burn Pit", solid: false },
 
         { id: "shrine-1", type: "shrine", x: 1080, y: 760, w: 90, h: 90, name: "Myco Shrine", solid: false },
         { id: "shrine-2", type: "shrine", x: 2460, y: 2240, w: 90, h: 90, name: "Tidal Rune Shrine", solid: false },
@@ -2237,6 +2313,16 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           impacts: [],
           popups: [],
         },
+        burnPit: {
+          active: false,
+          structureId: null,
+        },
+        burn: {
+          dayKey: "",
+          burnedToday: 0,
+          totalBurned: 0,
+          events: [],
+        },
         campaignSnapshot: null,
         enemies: [],
         audio: {
@@ -2952,6 +3038,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           lastAdvice: state.lastAdvice,
           playerClan: state.playerClan,
           playerAvatar: state.playerAvatar,
+          burn: state.burn,
           enemyStates: state.enemies.map((enemy) => ({
             id: enemy.id,
             active: enemy.active,
@@ -3018,6 +3105,14 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             }
             if (typeof parsed.playerAvatar === "string") {
               state.playerAvatar = parsed.playerAvatar;
+            }
+            if (parsed.burn && typeof parsed.burn === "object") {
+              state.burn = {
+                ...state.burn,
+                ...parsed.burn,
+              };
+              if (!Array.isArray(state.burn.events)) state.burn.events = [];
+              refreshDailyBurnQuota();
             }
             for (const enemyState of parsed.enemyStates ?? []) {
               if (!enemyState || typeof enemyState !== "object") continue;
@@ -3119,6 +3214,179 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           throw new Error(`${response.status} ${response.statusText}: ${text}`);
         }
         return response.json();
+      };
+
+      const getLocalDayKey = (time = Date.now()) => {
+        const date = new Date(time);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      };
+
+      const getNextSunday = (time = Date.now()) => {
+        const date = new Date(time);
+        const day = date.getDay();
+        const delta = (7 - day) % 7;
+        date.setHours(0, 0, 0, 0);
+        date.setDate(date.getDate() + delta);
+        return date;
+      };
+
+      const formatShortDate = (dateInput) => {
+        const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      };
+
+      const isSundayNow = () => new Date().getDay() === 0;
+
+      const refreshDailyBurnQuota = () => {
+        const today = getLocalDayKey();
+        if (state.burn.dayKey !== today) {
+          state.burn.dayKey = today;
+          state.burn.burnedToday = 0;
+        }
+      };
+
+      const getBurnRemainingToday = () => {
+        refreshDailyBurnQuota();
+        return Math.max(0, DAILY_SPORE_BURN_LIMIT - state.burn.burnedToday);
+      };
+
+      const getBurnPitStructure = () => STRUCTURES.find((entry) => entry.id === state.burnPit.structureId && entry.type === "burn-pit");
+
+      const renderBurnPitScreen = () => {
+        if (!state.burnPit.active) return;
+        const pit = getBurnPitStructure();
+        if (!pit) return;
+        const clan = getClanProfile();
+        const remaining = getBurnRemainingToday();
+        const nextSunday = getNextSunday();
+        const sundayLabel = formatShortDate(nextSunday);
+        if (dom.burnPitTitle) dom.burnPitTitle.textContent = pit.name;
+        if (dom.burnPitSubtitle) {
+          dom.burnPitSubtitle.textContent = `${getCurrentRealm().name} burn pit // Clan ${clan.name}`;
+        }
+        if (dom.burnPitDailyLimit) {
+          dom.burnPitDailyLimit.value = `${state.burn.burnedToday}/${DAILY_SPORE_BURN_LIMIT} used today`;
+        }
+        if (dom.burnPitAmountInput) {
+          const maxValue = Math.max(1, remaining);
+          dom.burnPitAmountInput.max = String(maxValue);
+          if (Number(dom.burnPitAmountInput.value) > maxValue) {
+            dom.burnPitAmountInput.value = String(maxValue);
+          }
+        }
+        if (dom.burnPitBurnBtn) {
+          dom.burnPitBurnBtn.disabled = remaining <= 0;
+        }
+        if (dom.burnPitMaxBtn) {
+          dom.burnPitMaxBtn.disabled = remaining <= 0;
+        }
+        if (dom.burnPitHint) {
+          dom.burnPitHint.textContent = `Daily cap remaining: ${remaining} spores. Sunday burn window: ${sundayLabel} (0.25 KING MYCO token schedule). Total burned by this player: ${state.burn.totalBurned}.`;
+        }
+      };
+
+      const openBurnPit = (pit) => {
+        state.keys.clear();
+        state.burnPit.active = true;
+        state.burnPit.structureId = pit.id;
+        state.mode = "burn-pit";
+        if (dom.burnPitScreen) dom.burnPitScreen.classList.add("active");
+        renderBurnPitScreen();
+      };
+
+      const closeBurnPit = () => {
+        if (!state.burnPit.active) return;
+        state.burnPit.active = false;
+        state.burnPit.structureId = null;
+        if (dom.burnPitScreen) dom.burnPitScreen.classList.remove("active");
+        if (state.mode === "burn-pit") state.mode = "explore";
+        state.contactLockUntil = Date.now() + 600;
+      };
+
+      const recordBurnPitEventRemote = async (eventRecord) => {
+        const base = dom.apiBase.value.trim();
+        if (!base) return "local-only";
+        try {
+          await callApi("/api/rpg/burn-pit/record", {
+            ...requestBase(),
+            sporesBurned: eventRecord.sporesBurned,
+            pitId: eventRecord.pitId,
+            pitName: eventRecord.pitName,
+            realmId: eventRecord.realmId,
+            clanId: eventRecord.clanId,
+            avatarId: eventRecord.avatarId,
+            sundayWindow: eventRecord.sundayWindow,
+            sundayTokenBurnAmount: WEEKLY_TOKEN_BURN_AMOUNT,
+            clientDayKey: state.burn.dayKey,
+          });
+          return "synced";
+        } catch (_error) {
+          return "queued";
+        }
+      };
+
+      const burnSporesAtPit = async (requestedAmount) => {
+        const pit = getBurnPitStructure();
+        if (!pit) return;
+        refreshDailyBurnQuota();
+        const remaining = getBurnRemainingToday();
+        if (remaining <= 0) {
+          setStatus(`Daily burn limit reached (${DAILY_SPORE_BURN_LIMIT} spores). Return tomorrow.`, true);
+          playSfx("error");
+          renderBurnPitScreen();
+          return;
+        }
+        const parsed = Math.floor(Number(requestedAmount));
+        if (!Number.isFinite(parsed) || parsed <= 0) {
+          setStatus("Enter a valid burn amount.", true);
+          playSfx("error");
+          return;
+        }
+        const burnAmount = Math.min(parsed, remaining);
+        if (state.hero.spores < burnAmount) {
+          setStatus(`Need ${burnAmount} spores to burn at ${pit.name}.`, true);
+          playSfx("error");
+          return;
+        }
+
+        state.hero.spores -= burnAmount;
+        state.burn.burnedToday += burnAmount;
+        state.burn.totalBurned += burnAmount;
+        const now = Date.now();
+        const sundayWindow = formatShortDate(getNextSunday(now));
+        const eventRecord = {
+          id: `burn-${now}`,
+          pitId: pit.id,
+          pitName: pit.name,
+          realmId: state.currentRealmId,
+          clanId: state.playerClan,
+          avatarId: state.playerAvatar,
+          sporesBurned: burnAmount,
+          recordedAt: now,
+          sundayWindow,
+          sundayTokenBurnAmount: WEEKLY_TOKEN_BURN_AMOUNT,
+          sundayBurnActive: isSundayNow(),
+          remoteStatus: "local",
+        };
+        state.burn.events.unshift(eventRecord);
+        state.burn.events = state.burn.events.slice(0, 30);
+        playSfx("portal");
+        const remoteStatus = await recordBurnPitEventRemote(eventRecord);
+        eventRecord.remoteStatus = remoteStatus;
+        if (remoteStatus === "synced") {
+          setStatus(`Burned ${burnAmount} spores at ${pit.name}. Recorded to kingmyco.io burn pit (${WEEKLY_TOKEN_BURN_AMOUNT} token Sunday schedule).`);
+        } else if (remoteStatus === "queued") {
+          setStatus(`Burned ${burnAmount} spores at ${pit.name}. Burn record queued for kingmyco.io sync.`);
+        } else {
+          setStatus(`Burned ${burnAmount} spores at ${pit.name}. Local burn ledger updated.`);
+        }
+        updateLeaderboardEntry();
+        renderBurnPitScreen();
+        renderHud();
+        saveGame();
       };
 
       const createEnemyState = () =>
@@ -3866,6 +4134,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           castle: { glyph: "🏰", subtitle: "Royal Fortified Keep" },
           tower: { glyph: "🗼", subtitle: "Signal Relay Tower" },
           "mushroom-shop": { glyph: "🍄", subtitle: "Mushroom Supply Market" },
+          "burn-pit": { glyph: "🔥", subtitle: "Spore Burn Pit" },
           shrine: { glyph: "🗿", subtitle: "Mycelic Shrine" },
         };
         return {
@@ -3885,6 +4154,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
                       ? "A market quarter offers rare mushroom brews and whispered route intel."
                       : nearbyStructure.type === "house"
                         ? "A household asks for aid and offers local intelligence in return."
+                      : nearbyStructure.type === "burn-pit"
+                        ? "The burn pit pulses with ritual heat. Offer spores to align with the Sunday token burn."
                         : "A villager asks for aid against roaming rot packs.",
           mycoLabel: solved ? "Close" : "Resolve peacefully",
           darkLabel: solved ? "Close" : "Force through",
@@ -3996,8 +4267,27 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           return;
         }
 
+        const bumpBurnPit = STRUCTURES.find(
+          (entry) =>
+            entry.type === "burn-pit" &&
+            isInCurrentRealm(entry) &&
+            dist(state.hero.x, state.hero.y, entry.x + entry.w / 2, entry.y + entry.h / 2) < 42,
+        );
+        if (bumpBurnPit) {
+          if (state.contactLatch?.type === "structure" && state.contactLatch.id === bumpBurnPit.id) {
+            return;
+          }
+          state.contactLockUntil = now + 1200;
+          state.contactLatch = { type: "structure", id: bumpBurnPit.id };
+          openBurnPit(bumpBurnPit);
+          return;
+        }
+
         const bumpStructure = STRUCTURES.find(
-          (entry) => isInCurrentRealm(entry) && dist(state.hero.x, state.hero.y, entry.x + entry.w / 2, entry.y + entry.h / 2) < 44,
+          (entry) =>
+            entry.type !== "burn-pit" &&
+            isInCurrentRealm(entry) &&
+            dist(state.hero.x, state.hero.y, entry.x + entry.w / 2, entry.y + entry.h / 2) < 44,
         );
         if (bumpStructure) {
           if (state.contactLatch?.type === "structure" && state.contactLatch.id === bumpStructure.id) {
@@ -4015,6 +4305,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const interact = () => {
         if (state.intro.active || state.mode === "intro") {
+          return;
+        }
+        if (state.mode === "burn-pit" || state.burnPit.active) {
+          closeBurnPit();
           return;
         }
         if (state.mode === "interior" || state.interior.active) {
@@ -4040,6 +4334,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           (entry) => isInCurrentRealm(entry) && dist(state.hero.x, state.hero.y, entry.x + entry.w / 2, entry.y + entry.h / 2) < 88,
         );
         if (nearbyStructure) {
+          if (nearbyStructure.type === "burn-pit") {
+            openBurnPit(nearbyStructure);
+            return;
+          }
           if (isEnterableStructure(nearbyStructure)) {
             openInterior(nearbyStructure);
           } else {
@@ -4444,6 +4742,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (state.activeDialogue) return;
         if (state.cutscene.active || state.mode === "cutscene") return;
         if (state.mode === "interior" || state.interior.active) return;
+        if (state.mode === "burn-pit" || state.burnPit.active) return;
         if (state.mode === "battle") return;
         moveHero(dt);
         updateEnemies(dt);
@@ -4822,6 +5121,19 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           ctx.fillRect(sx + 76, sy + 40, 12, 10);
           ctx.fillStyle = "#fca5a5";
           ctx.fillRect(sx + structure.w / 2 - 10, sy + structure.h - 26, 20, 16);
+        } else if (structure.type === "burn-pit") {
+          ctx.fillStyle = "#1f2937";
+          ctx.fillRect(sx, sy + 18, structure.w, structure.h - 18);
+          ctx.fillStyle = "#374151";
+          ctx.fillRect(sx + 8, sy + 26, structure.w - 16, structure.h - 26);
+          ctx.fillStyle = "#111827";
+          ctx.fillRect(sx + 20, sy + 32, structure.w - 40, structure.h - 36);
+          ctx.fillStyle = "#f97316";
+          ctx.fillRect(sx + structure.w / 2 - 10, sy + 10, 20, 12);
+          ctx.fillStyle = "#facc15";
+          ctx.fillRect(sx + structure.w / 2 - 6, sy + 6, 12, 8);
+          ctx.fillStyle = "#22c55e";
+          ctx.fillRect(sx + structure.w / 2 - 3, sy + 2, 6, 4);
         } else if (structure.type === "shrine") {
           ctx.fillStyle = "#0f766e";
           ctx.fillRect(sx, sy, structure.w, structure.h);
@@ -5274,6 +5586,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       };
 
       const renderHud = () => {
+        refreshDailyBurnQuota();
         const hpRatio = state.hero.maxHp > 0 ? state.hero.hp / state.hero.maxHp : 0;
         dom.hpFill.style.width = `${Math.floor(clamp(hpRatio, 0, 1) * 100)}%`;
         dom.hpText.textContent = `${state.hero.hp} / ${state.hero.maxHp}`;
@@ -5425,6 +5738,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const syncAge = state.web3.lastSyncedAt
           ? `${Math.max(0, Math.floor((Date.now() - state.web3.lastSyncedAt) / 1000))}s ago`
           : "never";
+        const burnRemaining = getBurnRemainingToday();
+        const nextSundayLabel = formatShortDate(getNextSunday());
+        const latestBurnEvent = state.burn.events[0] ?? null;
         dom.web3Status.textContent = connected
           ? `Wallet: ${shortWallet(state.web3.wallet)} // ${state.web3.chainRank}`
           : "Wallet: not connected";
@@ -5432,13 +5748,23 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           `<span class="chip">Relic Power ${state.web3.relicPower}</span>`,
           `<span class="chip">Bosses Synced ${state.progress.defeatedBosses.size}</span>`,
           `<span class="chip">Last Sync ${syncAge}</span>`,
+          `<span class="chip">Spore Burn Today ${state.burn.burnedToday}/${DAILY_SPORE_BURN_LIMIT}</span>`,
+          `<span class="chip">Burn Remaining ${burnRemaining}</span>`,
+          `<span class="chip">Sunday Token Burn ${WEEKLY_TOKEN_BURN_AMOUNT} KING MYCO (${nextSundayLabel})</span>`,
         ].join("");
-        dom.web3Relics.innerHTML = state.web3.mintedRelics.length
+        const relicChips = state.web3.mintedRelics.length
           ? state.web3.mintedRelics.map((relic) => `<span class="chip">${relic}</span>`).join("")
           : `<span class="chip">No minted relics</span>`;
+        const burnChip = latestBurnEvent
+          ? `<span class="chip">Last Burn ${latestBurnEvent.sporesBurned} @ ${latestBurnEvent.pitName} (${latestBurnEvent.remoteStatus})</span>`
+          : `<span class="chip">No burn pit records yet</span>`;
+        dom.web3Relics.innerHTML = `${relicChips}${burnChip}`;
         dom.connectWalletBtn.textContent = connected ? "Wallet Connected" : "Connect Wallet (Demo)";
         dom.syncWeb3Btn.disabled = !connected;
         dom.mintSigilBtn.disabled = !connected;
+        if (state.burnPit.active) {
+          renderBurnPitScreen();
+        }
 
         const battleOverlayActive = state.mode === "battle" || state.pendingBattle;
         setBattlePopupActive(battleOverlayActive);
@@ -5512,6 +5838,15 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (state.intro.active) {
           if (key === "enter") {
             startAdventure();
+          }
+          event.preventDefault();
+          return;
+        }
+        if (state.mode === "burn-pit" || state.burnPit.active) {
+          if (key === "escape" || key === "e") {
+            closeBurnPit();
+          } else if (key === "enter" || key === " ") {
+            burnSporesAtPit(dom.burnPitAmountInput.value);
           }
           event.preventDefault();
           return;
@@ -5603,6 +5938,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       dom.mintSigilBtn.addEventListener("click", mintVictorySigil);
       dom.interiorSearchBtn.addEventListener("click", searchInterior);
       dom.interiorExitBtn.addEventListener("click", closeInterior);
+      dom.burnPitBurnBtn.addEventListener("click", () => burnSporesAtPit(dom.burnPitAmountInput.value));
+      dom.burnPitMaxBtn.addEventListener("click", () => burnSporesAtPit(getBurnRemainingToday()));
+      dom.burnPitCloseBtn.addEventListener("click", closeBurnPit);
 
       dom.upgradeAttackBtn.addEventListener("click", () => tryUpgrade("attack"));
       dom.upgradeDefenseBtn.addEventListener("click", () => tryUpgrade("defense"));

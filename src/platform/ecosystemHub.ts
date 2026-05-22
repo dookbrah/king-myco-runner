@@ -44,6 +44,8 @@ import {
   RewardBreakdown,
   RpgBattleReceipt,
   RpgBattleStartRequest,
+  RpgBurnPitRecordReceipt,
+  RpgBurnPitRecordRequest,
   RpgMapRequest,
   RpgMapSnapshot,
   RpgTravelRequest,
@@ -69,6 +71,7 @@ import {
 
 const DEFAULT_MODE = "myco-quest";
 const DEFAULT_CHALLENGE_TTL_MS = 10 * 60 * 1000;
+const BURN_PIT_DAILY_LIMIT = 1000;
 
 const scaleLimitByRisk = (
   baseLimit: number,
@@ -673,6 +676,93 @@ export class KingMycoEcosystemHub {
       playerId,
       campaign: nextCampaign,
       battle,
+    };
+  }
+
+  async recordRpgBurnPit(
+    request: RpgBurnPitRecordRequest,
+  ): Promise<RpgBurnPitRecordReceipt> {
+    const playerId = this.repository.resolveOrCreatePlayer(
+      request.source,
+      request.externalId,
+      request.claims,
+    );
+    const nowIso = new Date().toISOString();
+    const dayKey =
+      typeof request.clientDayKey === "string" && /^\d{4}-\d{2}-\d{2}$/.test(request.clientDayKey)
+        ? request.clientDayKey
+        : nowIso.slice(0, 10);
+    const requestedSpores = Math.max(0, Math.floor(request.sporesBurned));
+    if (requestedSpores <= 0) {
+      throw new Error("sporesBurned must be greater than 0");
+    }
+
+    const ledger = this.repository.getBurnPitLedger(playerId);
+    const burnedToday = ledger.dailyBurned[dayKey] ?? 0;
+    const remaining = Math.max(0, BURN_PIT_DAILY_LIMIT - burnedToday);
+    if (remaining <= 0) {
+      throw new Error(`Daily burn limit reached (${BURN_PIT_DAILY_LIMIT} spores)`);
+    }
+
+    const acceptedSpores = Math.min(requestedSpores, remaining);
+    const tokenBurnAmount =
+      typeof request.sundayTokenBurnAmount === "number" &&
+      Number.isFinite(request.sundayTokenBurnAmount)
+        ? Math.max(0, request.sundayTokenBurnAmount)
+        : 0.25;
+    const sundayWindow =
+      typeof request.sundayWindow === "string" && request.sundayWindow.trim().length > 0
+        ? request.sundayWindow.trim()
+        : dayKey;
+
+    const nextLedger = this.repository.recordBurnPitEvent(playerId, {
+      timestamp: nowIso,
+      dayKey,
+      sporesBurned: acceptedSpores,
+      pitId: request.pitId,
+      pitName: request.pitName,
+      realmId: request.realmId,
+      clanId: request.clanId,
+      avatarId: request.avatarId,
+      sundayWindow,
+      sundayTokenBurnAmount: tokenBurnAmount,
+    });
+    const nextBurnedToday = nextLedger.dailyBurned[dayKey] ?? 0;
+    const nextRemaining = Math.max(0, BURN_PIT_DAILY_LIMIT - nextBurnedToday);
+
+    await this.emitEvent("spore_burn_recorded", {
+      playerId,
+      source: request.source,
+      mode: "myco-quest-burn-pit",
+      payload: {
+        acceptedSpores,
+        requestedSpores,
+        dayKey,
+        burnedToday: nextBurnedToday,
+        remainingToday: nextRemaining,
+        dailyLimit: BURN_PIT_DAILY_LIMIT,
+        pitId: request.pitId,
+        pitName: request.pitName,
+        realmId: request.realmId,
+        clanId: request.clanId,
+        avatarId: request.avatarId,
+        sundayWindow,
+        sundayTokenBurnAmount: tokenBurnAmount,
+      },
+    });
+
+    await this.repository.save();
+
+    return {
+      playerId,
+      acceptedSpores,
+      burnedToday: nextBurnedToday,
+      remainingToday: nextRemaining,
+      dailyLimit: BURN_PIT_DAILY_LIMIT,
+      totalBurned: nextLedger.totalBurned,
+      tokenBurnAmount,
+      sundayWindow,
+      recordedAt: nowIso,
     };
   }
 

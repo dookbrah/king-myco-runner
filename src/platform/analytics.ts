@@ -22,6 +22,7 @@ const initBreakdown = (): Record<PlatformEventType, number> => ({
   rpg_region_traveled: 0,
   rpg_battle_started: 0,
   rpg_turn_resolved: 0,
+  spore_burn_recorded: 0,
 });
 
 const createSourceStatus = (

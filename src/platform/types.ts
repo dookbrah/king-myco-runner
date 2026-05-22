@@ -157,7 +157,8 @@ export type PlatformEventType =
   | "reward_intent_status_updated"
   | "rpg_region_traveled"
   | "rpg_battle_started"
-  | "rpg_turn_resolved";
+  | "rpg_turn_resolved"
+  | "spore_burn_recorded";
 
 export interface PlatformEvent {
   id: string;
@@ -225,6 +226,30 @@ export interface RpgBattleStartRequest extends IdentityLinkRequest {
 
 export interface RpgTurnActionRequest extends IdentityLinkRequest {
   action: TurnActionInput;
+}
+
+export interface RpgBurnPitRecordRequest extends IdentityLinkRequest {
+  sporesBurned: number;
+  pitId?: string;
+  pitName?: string;
+  realmId?: string;
+  clanId?: string;
+  avatarId?: string;
+  sundayWindow?: string;
+  sundayTokenBurnAmount?: number;
+  clientDayKey?: string;
+}
+
+export interface RpgBurnPitRecordReceipt {
+  playerId: string;
+  acceptedSpores: number;
+  burnedToday: number;
+  remainingToday: number;
+  dailyLimit: number;
+  totalBurned: number;
+  tokenBurnAmount: number;
+  sundayWindow: string;
+  recordedAt: string;
 }
 
 export interface RpgMapSnapshot {

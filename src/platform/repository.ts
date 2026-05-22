@@ -8,6 +8,8 @@ import { clamp } from "../utils/math";
 import { LiveOpsConfig } from "./liveOps";
 import { PostgresRedisAdapter } from "./postgresRedisAdapter";
 import {
+  BurnPitEventRecord,
+  BurnPitLedger,
   createDefaultWallet,
   emptyLeaderboardTable,
   normalizePersistentState,
@@ -224,6 +226,52 @@ export class KingMycoRepository {
 
   setWallet(playerId: string, wallet: PlayerWallet): void {
     this.state.wallets[playerId] = wallet;
+  }
+
+  getBurnPitLedger(playerId: string): BurnPitLedger {
+    const existing = this.state.burnPitLedgers[playerId];
+    if (existing) {
+      const normalized: BurnPitLedger = {
+        totalBurned: Math.max(0, Math.floor(existing.totalBurned ?? 0)),
+        dailyBurned: existing.dailyBurned ?? {},
+        lastBurnAt: existing.lastBurnAt,
+        events: Array.isArray(existing.events) ? existing.events.slice(-80) : [],
+      };
+      this.state.burnPitLedgers[playerId] = normalized;
+      return normalized;
+    }
+
+    const created: BurnPitLedger = {
+      totalBurned: 0,
+      dailyBurned: {},
+      events: [],
+    };
+    this.state.burnPitLedgers[playerId] = created;
+    return created;
+  }
+
+  recordBurnPitEvent(
+    playerId: string,
+    event: Omit<BurnPitEventRecord, "id">,
+  ): BurnPitLedger {
+    const ledger = this.getBurnPitLedger(playerId);
+    const amount = Math.max(0, Math.floor(event.sporesBurned));
+    const dayKey = event.dayKey;
+    ledger.totalBurned += amount;
+    ledger.dailyBurned[dayKey] = (ledger.dailyBurned[dayKey] ?? 0) + amount;
+    ledger.lastBurnAt = event.timestamp;
+    ledger.events.unshift({
+      id: randomUUID(),
+      ...event,
+      sporesBurned: amount,
+    });
+    ledger.events = ledger.events.slice(0, 80);
+    const keptDays = Object.entries(ledger.dailyBurned)
+      .sort((left, right) => left[0].localeCompare(right[0]))
+      .slice(-45);
+    ledger.dailyBurned = Object.fromEntries(keptDays);
+    this.state.burnPitLedgers[playerId] = ledger;
+    return ledger;
   }
 
 
@@ -761,6 +809,31 @@ export class KingMycoRepository {
     }
     this.state.claimLedgers[targetId] = targetLedger;
 
+    const targetBurnLedger = this.state.burnPitLedgers[targetId] ?? {
+      totalBurned: 0,
+      dailyBurned: {},
+      events: [],
+    };
+    const fromBurnLedger = this.state.burnPitLedgers[fromId];
+    if (fromBurnLedger) {
+      targetBurnLedger.totalBurned += Math.max(0, Math.floor(fromBurnLedger.totalBurned ?? 0));
+      for (const [day, amount] of Object.entries(fromBurnLedger.dailyBurned ?? {})) {
+        targetBurnLedger.dailyBurned[day] =
+          (targetBurnLedger.dailyBurned[day] ?? 0) + Math.max(0, Math.floor(amount));
+      }
+      targetBurnLedger.events = [
+        ...(Array.isArray(fromBurnLedger.events) ? fromBurnLedger.events : []),
+        ...targetBurnLedger.events,
+      ].slice(0, 80);
+      if (
+        fromBurnLedger.lastBurnAt &&
+        (!targetBurnLedger.lastBurnAt || fromBurnLedger.lastBurnAt > targetBurnLedger.lastBurnAt)
+      ) {
+        targetBurnLedger.lastBurnAt = fromBurnLedger.lastBurnAt;
+      }
+    }
+    this.state.burnPitLedgers[targetId] = targetBurnLedger;
+
     const targetRisk = this.state.adaptiveRisk.playerScores[targetId];
     const fromRisk = this.state.adaptiveRisk.playerScores[fromId];
     if (fromRisk) {
@@ -805,6 +878,7 @@ export class KingMycoRepository {
     delete this.state.lastRunByPlayer[fromId];
     delete this.state.campaigns[fromId];
     delete this.state.claimLedgers[fromId];
+    delete this.state.burnPitLedgers[fromId];
     delete this.state.adaptiveRisk.playerScores[fromId];
   }
 

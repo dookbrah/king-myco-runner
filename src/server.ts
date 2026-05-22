@@ -8,6 +8,7 @@ import {
   ECOSYSTEM_SOURCES,
   EcosystemSource,
   RpgBattleStartRequest,
+  RpgBurnPitRecordRequest,
   RpgMapRequest,
   RpgTravelRequest,
   RpgTurnActionRequest,
@@ -411,6 +412,35 @@ const start = async (): Promise<void> => {
           claims: (body.claims ?? {}) as never,
           action: parseTurnAction(body.action),
         } satisfies RpgTurnActionRequest);
+
+        return sendJson(response, 200, receipt);
+      }
+
+      if (method === "POST" && routePath === "/api/rpg/burn-pit/record") {
+        const rawBody = await readRawBody(request);
+        const body = parseJsonBody<Record<string, unknown>>(rawBody);
+        const source = parseSource(body.source);
+        authorizeSource(request, source, "rpg:play");
+
+        const receipt = await hub.recordRpgBurnPit({
+          source,
+          externalId: requiredString(body.externalId, "externalId"),
+          claims: (body.claims ?? {}) as never,
+          sporesBurned: requiredNumber(body.sporesBurned, "sporesBurned"),
+          pitId: typeof body.pitId === "string" ? body.pitId : undefined,
+          pitName: typeof body.pitName === "string" ? body.pitName : undefined,
+          realmId: typeof body.realmId === "string" ? body.realmId : undefined,
+          clanId: typeof body.clanId === "string" ? body.clanId : undefined,
+          avatarId: typeof body.avatarId === "string" ? body.avatarId : undefined,
+          sundayWindow:
+            typeof body.sundayWindow === "string" ? body.sundayWindow : undefined,
+          sundayTokenBurnAmount:
+            typeof body.sundayTokenBurnAmount === "number"
+              ? body.sundayTokenBurnAmount
+              : undefined,
+          clientDayKey:
+            typeof body.clientDayKey === "string" ? body.clientDayKey : undefined,
+        } satisfies RpgBurnPitRecordRequest);
 
         return sendJson(response, 200, receipt);
       }
