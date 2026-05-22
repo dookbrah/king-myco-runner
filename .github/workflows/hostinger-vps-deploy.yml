@@ -105,6 +105,7 @@ jobs:
           APP_NAME: ${{ steps.inputs.outputs.app_name }}
           PUBLIC_BASE_URL: ${{ steps.inputs.outputs.public_base_url }}
           REPO_DIR: ${{ steps.inputs.outputs.repo_dir }}
+          SOURCE_TOKEN: ${{ secrets.PLAYGROUND_SOURCE_TOKEN }}
         run: |
           set -euo pipefail
           PORT="${VPS_PORT:-22}"

@@ -346,6 +346,7 @@ Required GitHub configuration:
 - `VPS_SSH_KEY` as a **Repository Secret** (required)
 - `VPS_HOST` and `VPS_USER` as either **Repository Secrets** or **Repository Variables**
 - `VPS_PORT` as Secret/Variable (optional; defaults to `22`)
+- `PLAYGROUND_SOURCE_TOKEN` as Secret (optional; enables strict `/api/run/generate` objective validation during finalize deploys when source auth is enforced)
 
 ### 4) Reverse proxy / TLS
 
