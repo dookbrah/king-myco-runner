@@ -1,0 +1,108 @@
+name: Hostinger VPS Deploy
+
+on:
+  push:
+    branches:
+      - cursor/playable-game-view-ae3a
+  workflow_dispatch:
+    inputs:
+      deploy_branch:
+        description: "Branch to deploy on VPS"
+        required: false
+        default: ""
+      expected_sha:
+        description: "Optional short/long commit SHA to enforce"
+        required: false
+        default: ""
+      app_name:
+        description: "PM2 app name"
+        required: false
+        default: "king-myco-web"
+      public_base_url:
+        description: "Public API base URL"
+        required: false
+        default: "https://api.kingmyco.io"
+      repo_dir:
+        description: "Repo directory on VPS"
+        required: false
+        default: "/opt/kingmyco-runner"
+
+concurrency:
+  group: hostinger-vps-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Resolve deploy inputs
+        id: inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            DEPLOY_BRANCH="${{ github.event.inputs.deploy_branch }}"
+            EXPECTED_SHA="${{ github.event.inputs.expected_sha }}"
+            APP_NAME="${{ github.event.inputs.app_name }}"
+            PUBLIC_BASE_URL="${{ github.event.inputs.public_base_url }}"
+            REPO_DIR="${{ github.event.inputs.repo_dir }}"
+
+            if [[ -z "${DEPLOY_BRANCH}" ]]; then
+              DEPLOY_BRANCH="${GITHUB_REF_NAME}"
+            fi
+            if [[ -z "${EXPECTED_SHA}" ]]; then
+              EXPECTED_SHA="${GITHUB_SHA}"
+            fi
+          else
+            DEPLOY_BRANCH="${GITHUB_REF_NAME}"
+            EXPECTED_SHA="${GITHUB_SHA}"
+            APP_NAME="king-myco-web"
+            PUBLIC_BASE_URL="https://api.kingmyco.io"
+            REPO_DIR="/opt/kingmyco-runner"
+          fi
+
+          echo "deploy_branch=${DEPLOY_BRANCH}" >> "$GITHUB_OUTPUT"
+          echo "expected_sha=${EXPECTED_SHA}" >> "$GITHUB_OUTPUT"
+          echo "app_name=${APP_NAME}" >> "$GITHUB_OUTPUT"
+          echo "public_base_url=${PUBLIC_BASE_URL}" >> "$GITHUB_OUTPUT"
+          echo "repo_dir=${REPO_DIR}" >> "$GITHUB_OUTPUT"
+
+      - name: Validate required secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${{ secrets.VPS_HOST }}" ]] || { echo "Missing secret: VPS_HOST"; exit 1; }
+          [[ -n "${{ secrets.VPS_USER }}" ]] || { echo "Missing secret: VPS_USER"; exit 1; }
+          [[ -n "${{ secrets.VPS_SSH_KEY }}" ]] || { echo "Missing secret: VPS_SSH_KEY"; exit 1; }
+
+      - name: Configure SSH key
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_vps
+          chmod 600 ~/.ssh/id_vps
+          ssh-keyscan -p "${{ secrets.VPS_PORT || '22' }}" "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy via finalize-api-deploy.sh
+        shell: bash
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          DEPLOY_BRANCH: ${{ steps.inputs.outputs.deploy_branch }}
+          EXPECTED_SHA: ${{ steps.inputs.outputs.expected_sha }}
+          APP_NAME: ${{ steps.inputs.outputs.app_name }}
+          PUBLIC_BASE_URL: ${{ steps.inputs.outputs.public_base_url }}
+          REPO_DIR: ${{ steps.inputs.outputs.repo_dir }}
+        run: |
+          set -euo pipefail
+          PORT="${VPS_PORT:-22}"
+
+          ssh -i ~/.ssh/id_vps -p "$PORT" "${VPS_USER}@${VPS_HOST}" \
+            "set -euo pipefail; cd '${REPO_DIR}'; BRANCH='${DEPLOY_BRANCH}' EXPECTED_SHA='${EXPECTED_SHA}' APP_NAME='${APP_NAME}' PUBLIC_BASE_URL='${PUBLIC_BASE_URL}' bash scripts/ops/finalize-api-deploy.sh"
