@@ -933,8 +933,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const STORAGE_CONFIG_KEY = "mycoQuestPlayableConfig";
       const STORAGE_STATE_KEY = "mycoQuestOverworldStateV2";
       const TILE = 48;
-      const WORLD_WIDTH = 4600;
-      const WORLD_HEIGHT = 3200;
+      const WORLD_WIDTH = 6200;
+      const WORLD_HEIGHT = 4200;
       const BASE_MAX_HP = 126;
       const WORLD_CAMERA_ZOOM = 1.7;
 
@@ -1070,77 +1070,77 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           name: "Royal Grove",
           x: 0,
           y: 0,
-          w: 1400,
-          h: 1300,
+          w: 1800,
+          h: 1700,
           colorA: "#2f6b3f",
           colorB: "#234f32",
-          label: "The home realm where King Myco's memory was first shattered.",
+          label: "The expanded crownwood heartland where King Myco's memory was first shattered.",
         },
         {
           id: "rougarou-fen",
           name: "Rougarou Fen",
-          x: 1400,
+          x: 1800,
           y: 0,
-          w: 1200,
-          h: 1100,
+          w: 1500,
+          h: 1600,
           colorA: "#56753f",
           colorB: "#415a30",
-          label: "Moon-swamp hunting ground of Rougarou's packs.",
+          label: "Moon-swamp hunting grounds packed with cursed dens, towers, and fog markets.",
         },
         {
           id: "tri-drake-peaks",
           name: "Tri-Drake Peaks",
-          x: 2600,
+          x: 3300,
           y: 0,
-          w: 1200,
-          h: 1300,
+          w: 1700,
+          h: 1800,
           colorA: "#545468",
           colorB: "#414155",
-          label: "Ash ridges where three dragon heads guard ember sigils.",
+          label: "A wider ash range of fortress towers and sky roads ruled by drake cults.",
         },
         {
           id: "crimson-tide",
           name: "Crimson Tide Shelf",
-          x: 1400,
-          y: 1100,
-          w: 1400,
-          h: 1500,
+          x: 1800,
+          y: 1600,
+          w: 1700,
+          h: 1800,
           colorA: "#14586d",
           colorB: "#11485b",
-          label: "Flooded reef vaults ruled by the Evil Crab court.",
+          label: "Flooded reef districts, vault ports, and hidden mushroom stalls under tidal courts.",
         },
         {
           id: "solana-chainlands",
           name: "Solana Chainlands",
-          x: 2800,
-          y: 1300,
-          w: 1800,
-          h: 1700,
+          x: 3500,
+          y: 1800,
+          w: 2700,
+          h: 2400,
           colorA: "#2f2a63",
           colorB: "#251f45",
-          label: "Corrupted blockchain frontier where Dark Mycelius forges rot protocols.",
+          label: "A larger corrupted blockchain frontier layered with citadels, relay towers, and chain crypts.",
         },
         {
           id: "verdant-commons",
           name: "Verdant Commons",
           x: 0,
-          y: 1300,
-          w: 1400,
-          h: 1200,
+          y: 1700,
+          w: 1800,
+          h: 1600,
           colorA: "#2f7f58",
           colorB: "#236043",
-          label: "Trade roads, relic inns, and rumor-rich village caravans.",
+          label: "Grand trade sprawl of mushroom shops, homes, and mercenary roads.",
         },
         {
           id: "obsidian-wilds",
           name: "Obsidian Wilds",
           x: 0,
-          y: 2500,
-          w: 2200,
-          h: 700,
+          y: 3300,
+          w: 3500,
+          h: 900,
           colorA: "#3f434f",
           colorB: "#2d313a",
-          label: "Blackstone trenches where forgotten guardians still test intruders.",
+          label: "A broad blackstone frontier of broken towers and buried royal trials.",
         },
       ];
 
@@ -1148,13 +1148,13 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         REALMS.find((realm) => x >= realm.x && x <= realm.x + realm.w && y >= realm.y && y <= realm.y + realm.h)?.id ?? null;
 
       const REALM_DEFAULT_SPAWNS = {
-        "myco-kingdom": { x: 280, y: 500 },
-        "rougarou-fen": { x: 1660, y: 560 },
-        "tri-drake-peaks": { x: 2860, y: 520 },
-        "crimson-tide": { x: 1680, y: 1700 },
-        "solana-chainlands": { x: 3040, y: 1880 },
-        "verdant-commons": { x: 720, y: 1760 },
-        "obsidian-wilds": { x: 860, y: 2840 },
+        "myco-kingdom": { x: 340, y: 620 },
+        "rougarou-fen": { x: 2140, y: 620 },
+        "tri-drake-peaks": { x: 3640, y: 620 },
+        "crimson-tide": { x: 2140, y: 2140 },
+        "solana-chainlands": { x: 3840, y: 2380 },
+        "verdant-commons": { x: 760, y: 2200 },
+        "obsidian-wilds": { x: 980, y: 3740 },
       };
 
       const parseInitialRealmId = () => {
@@ -1166,12 +1166,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         {
           id: "portal-fen",
           name: "Fen Moon Portal",
-          x: 1328,
-          y: 560,
-          w: 52,
-          h: 52,
-          destinationX: 1660,
-          destinationY: 560,
+          x: 1740,
+          y: 620,
+          w: 56,
+          h: 56,
+          destinationX: 2080,
+          destinationY: 620,
           requiredMagic: ["mycelic-sight"],
           hint: "Learn Mycelic Sight from Elder Myca to stabilize this moon portal.",
           arrivalText: "Portal opened: Rougarou Fen",
@@ -1179,12 +1179,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         {
           id: "portal-fen-return",
           name: "Royal Return Portal",
-          x: 1452,
-          y: 560,
-          w: 52,
-          h: 52,
-          destinationX: 1180,
-          destinationY: 560,
+          x: 1868,
+          y: 620,
+          w: 56,
+          h: 56,
+          destinationX: 1520,
+          destinationY: 620,
           requiredMagic: [],
           hint: "Return stream to the Royal Grove.",
           arrivalText: "Portal opened: Royal Grove",
@@ -1192,12 +1192,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         {
           id: "portal-drake",
           name: "Ember Ascension Portal",
-          x: 2520,
-          y: 520,
-          w: 52,
-          h: 52,
-          destinationX: 2860,
-          destinationY: 520,
+          x: 3240,
+          y: 640,
+          w: 56,
+          h: 56,
+          destinationX: 3560,
+          destinationY: 640,
           requiredMagic: ["fenstride"],
           hint: "Learn Fenstride to keep balance while crossing ember winds.",
           arrivalText: "Portal opened: Tri-Drake Peaks",
@@ -1205,12 +1205,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         {
           id: "portal-drake-return",
           name: "Fen Recall Portal",
-          x: 2648,
-          y: 520,
-          w: 52,
-          h: 52,
-          destinationX: 2320,
-          destinationY: 520,
+          x: 3368,
+          y: 640,
+          w: 56,
+          h: 56,
+          destinationX: 3040,
+          destinationY: 640,
           requiredMagic: [],
           hint: "Backtrail stream to the Fen.",
           arrivalText: "Portal opened: Rougarou Fen",
@@ -1218,12 +1218,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         {
           id: "portal-crimson",
           name: "Tidefall Portal",
-          x: 1328,
-          y: 1700,
-          w: 52,
-          h: 52,
-          destinationX: 1680,
-          destinationY: 1700,
+          x: 1740,
+          y: 2140,
+          w: 56,
+          h: 56,
+          destinationX: 2080,
+          destinationY: 2140,
           requiredMagic: ["ember-veil"],
           hint: "Learn Ember Veil in the peaks to survive reef pressure.",
           arrivalText: "Portal opened: Crimson Tide Shelf",
@@ -1231,12 +1231,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         {
           id: "portal-crimson-return",
           name: "Commons Recall Portal",
-          x: 1452,
-          y: 1700,
-          w: 52,
-          h: 52,
-          destinationX: 1180,
-          destinationY: 1700,
+          x: 1868,
+          y: 2140,
+          w: 56,
+          h: 56,
+          destinationX: 1520,
+          destinationY: 2140,
           requiredMagic: [],
           hint: "Return stream to Verdant Commons.",
           arrivalText: "Portal opened: Verdant Commons",
@@ -1244,12 +1244,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         {
           id: "portal-solana",
           name: "Chainlands Breach Portal",
-          x: 2720,
-          y: 1880,
-          w: 52,
-          h: 52,
-          destinationX: 3040,
-          destinationY: 1880,
+          x: 3440,
+          y: 2460,
+          w: 56,
+          h: 56,
+          destinationX: 3780,
+          destinationY: 2460,
           requiredMagic: ["tidecall"],
           hint: "Learn Tidecall after claiming the Abyss Pearl to breach chain distortion.",
           arrivalText: "Portal opened: Solana Chainlands",
@@ -1257,12 +1257,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         {
           id: "portal-solana-return",
           name: "Reef Recall Portal",
-          x: 2848,
-          y: 1880,
-          w: 52,
-          h: 52,
-          destinationX: 2520,
-          destinationY: 1880,
+          x: 3568,
+          y: 2460,
+          w: 56,
+          h: 56,
+          destinationX: 3220,
+          destinationY: 2460,
           requiredMagic: [],
           hint: "Return stream to Crimson Tide Shelf.",
           arrivalText: "Portal opened: Crimson Tide Shelf",
@@ -1270,49 +1270,114 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         {
           id: "portal-chain-core",
           name: "Apex Chain Portal",
-          x: 3440,
-          y: 1820,
-          w: 58,
-          h: 58,
-          destinationX: 3780,
-          destinationY: 2260,
+          x: 4680,
+          y: 2580,
+          w: 62,
+          h: 62,
+          destinationX: 5440,
+          destinationY: 3220,
           requiredMagic: ["chainbind"],
           hint: "Learn Chainbind from Chain Smith Vox before entering Dark Mycelius's core.",
           arrivalText: "Portal opened: Chain Core",
         },
+        {
+          id: "portal-obsidian",
+          name: "Obsidian Gate",
+          x: 1120,
+          y: 3260,
+          w: 56,
+          h: 56,
+          destinationX: 1460,
+          destinationY: 3560,
+          requiredMagic: ["fenstride"],
+          hint: "Master Fenstride to stabilize the obsidian trench route.",
+          arrivalText: "Portal opened: Obsidian Wilds",
+        },
+        {
+          id: "portal-obsidian-return",
+          name: "Commons Rift Return",
+          x: 1248,
+          y: 3560,
+          w: 56,
+          h: 56,
+          destinationX: 960,
+          destinationY: 3140,
+          requiredMagic: [],
+          hint: "Return stream to Verdant Commons.",
+          arrivalText: "Portal opened: Verdant Commons",
+        },
       ];
 
       const REALM_BARRIERS = [
-        { x: 1388, y: 0, w: 24, h: 2600 },
-        { x: 2588, y: 0, w: 24, h: 1300 },
-        { x: 2788, y: 1300, w: 24, h: 1700 },
+        { x: 1788, y: 0, w: 24, h: 4200 },
+        { x: 3288, y: 0, w: 24, h: 1800 },
+        { x: 3488, y: 1800, w: 24, h: 2400 },
       ];
 
       const STRUCTURES = [
-        { id: "house-1", type: "house", x: 190, y: 180, w: 148, h: 110, name: "Sporecap Cottage", solid: true },
-        { id: "house-2", type: "house", x: 440, y: 270, w: 138, h: 100, name: "Healer Hut", solid: true },
-        { id: "house-3", type: "house", x: 760, y: 170, w: 152, h: 114, name: "Elder Archive", solid: true },
-        { id: "castle-1", type: "castle", x: 960, y: 320, w: 240, h: 168, name: "Crownwatch Keep", solid: true },
-        { id: "house-4", type: "house", x: 360, y: 1540, w: 150, h: 108, name: "Commons Trade Hall", solid: true },
-        { id: "house-5", type: "house", x: 950, y: 1760, w: 160, h: 112, name: "Caravan Inn", solid: true },
-        { id: "castle-2", type: "castle", x: 3360, y: 2040, w: 250, h: 176, name: "Chain Bastion Citadel", solid: true },
-        { id: "cave-1", type: "cave", x: 1470, y: 340, w: 134, h: 98, name: "Fen Echo Cave", solid: true },
-        { id: "cave-2", type: "cave", x: 320, y: 2670, w: 150, h: 108, name: "Obsidian Rift Cave", solid: true },
-        { id: "dungeon-1", type: "dungeon", x: 2870, y: 300, w: 176, h: 132, name: "Drake Bastion", solid: true },
-        { id: "dungeon-2", type: "dungeon", x: 1660, y: 1810, w: 176, h: 130, name: "Crimson Reef Vault", solid: true },
-        { id: "dungeon-3", type: "dungeon", x: 3240, y: 1840, w: 210, h: 142, name: "Chain Crypt", solid: true },
-        { id: "dungeon-4", type: "dungeon", x: 1190, y: 2670, w: 188, h: 130, name: "Obsidian Trial Den", solid: true },
-        { id: "shrine-1", type: "shrine", x: 920, y: 700, w: 90, h: 90, name: "Myco Shrine", solid: false },
-        { id: "shrine-2", type: "shrine", x: 1960, y: 1450, w: 90, h: 90, name: "Tidal Rune Shrine", solid: false },
-        { id: "shrine-3", type: "shrine", x: 630, y: 2320, w: 90, h: 90, name: "Commons Memory Shrine", solid: false },
+        { id: "house-1", type: "house", x: 240, y: 220, w: 158, h: 112, name: "Sporecap Cottage", solid: true },
+        { id: "house-2", type: "house", x: 620, y: 360, w: 152, h: 108, name: "Healer Hut", solid: true },
+        { id: "house-3", type: "house", x: 980, y: 230, w: 162, h: 116, name: "Elder Archive", solid: true },
+        { id: "castle-1", type: "castle", x: 1240, y: 360, w: 270, h: 188, name: "Crownwatch Keep", solid: true },
+        { id: "shop-myco-1", type: "mushroom-shop", x: 560, y: 980, w: 170, h: 118, name: "Royal Spore Bazaar", solid: true },
+        { id: "tower-myco-1", type: "tower", x: 1520, y: 840, w: 150, h: 210, name: "Myco Signal Tower", solid: true },
+        { id: "cave-myco-1", type: "cave", x: 1460, y: 1220, w: 150, h: 110, name: "Rootveil Cavern", solid: true },
+        { id: "dungeon-myco-1", type: "dungeon", x: 900, y: 1260, w: 190, h: 138, name: "Crownfall Vault", solid: true },
+
+        { id: "house-fen-1", type: "house", x: 2040, y: 240, w: 150, h: 110, name: "Fen Refuge Lodge", solid: true },
+        { id: "shop-fen-1", type: "mushroom-shop", x: 2320, y: 940, w: 170, h: 118, name: "Mirecap Exchange", solid: true },
+        { id: "tower-fen-1", type: "tower", x: 3020, y: 540, w: 150, h: 210, name: "Moon Marsh Watchtower", solid: true },
+        { id: "cave-1", type: "cave", x: 1960, y: 420, w: 150, h: 108, name: "Fen Echo Cave", solid: true },
+        { id: "cave-fen-2", type: "cave", x: 2820, y: 1080, w: 160, h: 114, name: "Wolfmark Sink Cave", solid: true },
+        { id: "dungeon-fen-1", type: "dungeon", x: 2480, y: 300, w: 186, h: 134, name: "Rougarou Kennel Depths", solid: true },
+
+        { id: "dungeon-1", type: "dungeon", x: 3740, y: 300, w: 188, h: 140, name: "Drake Bastion", solid: true },
+        { id: "tower-tri-1", type: "tower", x: 4580, y: 620, w: 150, h: 216, name: "Ashlight Spire", solid: true },
+        { id: "castle-tri-1", type: "castle", x: 4200, y: 260, w: 260, h: 184, name: "Cinder Crown Fort", solid: true },
+        { id: "cave-tri-1", type: "cave", x: 3440, y: 980, w: 154, h: 112, name: "Ember Rift Cave", solid: true },
+        { id: "shop-tri-1", type: "mushroom-shop", x: 3560, y: 1240, w: 170, h: 118, name: "Ashcap Smithy Shop", solid: true },
+        { id: "house-tri-1", type: "house", x: 3860, y: 1320, w: 154, h: 110, name: "Peak Hermit Quarters", solid: true },
+
+        { id: "house-crimson-1", type: "house", x: 2080, y: 1980, w: 154, h: 110, name: "Tide Dock Home", solid: true },
+        { id: "cave-crimson-1", type: "cave", x: 1880, y: 2900, w: 160, h: 114, name: "Brinecut Grotto", solid: true },
+        { id: "dungeon-2", type: "dungeon", x: 2260, y: 2480, w: 190, h: 138, name: "Crimson Reef Vault", solid: true },
+        { id: "tower-crimson-1", type: "tower", x: 3200, y: 2140, w: 150, h: 216, name: "Abyss Beacon Tower", solid: true },
+        { id: "shop-crimson-1", type: "mushroom-shop", x: 2860, y: 3020, w: 172, h: 120, name: "Pearlcap Dock Market", solid: true },
+        { id: "castle-crimson-1", type: "castle", x: 3000, y: 1700, w: 250, h: 176, name: "Coral Regent Keep", solid: true },
+
+        { id: "house-5", type: "house", x: 980, y: 2160, w: 160, h: 112, name: "Caravan Inn", solid: true },
+        { id: "house-6", type: "house", x: 420, y: 2440, w: 156, h: 110, name: "Commons Trade Hall", solid: true },
+        { id: "shop-commons-1", type: "mushroom-shop", x: 640, y: 2740, w: 172, h: 120, name: "Grand Myco Market", solid: true },
+        { id: "tower-commons-1", type: "tower", x: 1460, y: 2560, w: 150, h: 214, name: "Roadward Relay Tower", solid: true },
+        { id: "cave-verdant-1", type: "cave", x: 1280, y: 3060, w: 154, h: 110, name: "Commons Root Cave", solid: true },
+
+        { id: "house-chain-1", type: "house", x: 4320, y: 2060, w: 158, h: 110, name: "Nodewright Shelter", solid: true },
+        { id: "shop-chain-1", type: "mushroom-shop", x: 4000, y: 2200, w: 176, h: 122, name: "Ledgercap Vault Shop", solid: true },
+        { id: "dungeon-3", type: "dungeon", x: 4640, y: 2780, w: 220, h: 148, name: "Chain Crypt", solid: true },
+        { id: "castle-2", type: "castle", x: 5100, y: 2480, w: 280, h: 190, name: "Chain Bastion Citadel", solid: true },
+        { id: "tower-chain-1", type: "tower", x: 5800, y: 2160, w: 160, h: 220, name: "Validator Spire", solid: true },
+        { id: "tower-chain-2", type: "tower", x: 5600, y: 3320, w: 160, h: 220, name: "Hash Sentinel Tower", solid: true },
+        { id: "cave-chain-1", type: "cave", x: 3700, y: 3340, w: 164, h: 116, name: "Packet Drift Cave", solid: true },
+
+        { id: "cave-2", type: "cave", x: 360, y: 3560, w: 164, h: 116, name: "Obsidian Rift Cave", solid: true },
+        { id: "dungeon-4", type: "dungeon", x: 1640, y: 3560, w: 196, h: 138, name: "Obsidian Trial Den", solid: true },
+        { id: "tower-obsidian-1", type: "tower", x: 2480, y: 3440, w: 158, h: 220, name: "Basalt Beacon", solid: true },
+        { id: "castle-obsidian-1", type: "castle", x: 2860, y: 3500, w: 260, h: 180, name: "Black Crown Redoubt", solid: true },
+        { id: "shop-obsidian-1", type: "mushroom-shop", x: 2140, y: 3870, w: 174, h: 120, name: "Riftcap Curio Shop", solid: true },
+        { id: "house-obsidian-1", type: "house", x: 980, y: 3720, w: 156, h: 110, name: "Warden's Ember Home", solid: true },
+
+        { id: "shrine-1", type: "shrine", x: 1080, y: 760, w: 90, h: 90, name: "Myco Shrine", solid: false },
+        { id: "shrine-2", type: "shrine", x: 2460, y: 2240, w: 90, h: 90, name: "Tidal Rune Shrine", solid: false },
+        { id: "shrine-3", type: "shrine", x: 700, y: 2880, w: 90, h: 90, name: "Commons Memory Shrine", solid: false },
+        { id: "shrine-4", type: "shrine", x: 3040, y: 3900, w: 90, h: 90, name: "Obsidian Oath Shrine", solid: false },
       ];
 
       const NPCS = [
         {
           id: "elder-myca",
           name: "Elder Myca",
-          x: 800,
-          y: 360,
+          x: 920,
+          y: 420,
           clueId: "royal-oath",
           clueLabel: "Royal Oath Fragment",
           tradeItem: "mycoPotion",
@@ -1325,10 +1390,42 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           intro: "Your crown dims, but your spirit can relight the kingdom. Seek clues to restore your sorcery.",
         },
         {
+          id: "myco-captain",
+          name: "Captain Brindle",
+          x: 1480,
+          y: 940,
+          clueId: "crown-route-map",
+          clueLabel: "Crown Route Map",
+          tradeItem: "smokeBomb",
+          tradeCost: 20,
+          tradeQty: 1,
+          adviceGood: "Secure towers and inns first; those routes cut enemy ambush odds.",
+          adviceBad: "Ignore towers. Sprinting blind is always faster. (Usually fatal.)",
+          mycoText: "You held the line for civilians. Take the route map and rally beacons.",
+          darkText: "You chased glory over safety. Keep the map, but the roads fear your name.",
+          intro: "Royal patrols still answer crown signals. Rebuild tower routes and the kingdom can breathe again.",
+        },
+        {
+          id: "myco-shopkeep",
+          name: "Shopkeep Luma",
+          x: 640,
+          y: 1040,
+          clueId: "myco-market-seal",
+          clueLabel: "Myco Market Seal",
+          tradeItem: "mycoPotion",
+          tradeCost: 14,
+          tradeQty: 2,
+          adviceGood: "Mushroom shops share intel when paid fairly. Keep your morality above neutral.",
+          adviceBad: "Threaten every merchant and prices drop forever. (False.)",
+          mycoText: "Your fair trade restored trust. The market seal now opens hidden supply rooms.",
+          darkText: "You forced a bargain. The seal still works, but caravans moved their best stock.",
+          intro: "The bazaar tracks every hero. Your reputation decides which relic shelves unlock.",
+        },
+        {
           id: "fen-scout",
           name: "Fen Scout Rill",
-          x: 1600,
-          y: 440,
+          x: 2200,
+          y: 520,
           clueId: "lunar-wolf-mark",
           clueLabel: "Lunar Wolf Mark",
           tradeItem: "smokeBomb",
@@ -1341,10 +1438,26 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           intro: "Rougarou hunts by moon scent. Read his trails and you'll survive the Fen.",
         },
         {
+          id: "fen-archivist",
+          name: "Bog Archivist Thren",
+          x: 2780,
+          y: 1140,
+          clueId: "bog-glyph",
+          clueLabel: "Bog Glyph Tablet",
+          tradeItem: "manaDew",
+          tradeCost: 24,
+          tradeQty: 1,
+          adviceGood: "Fen towers mark safe mud depth lines. Follow them to avoid swarm packs.",
+          adviceBad: "All swamp routes are the same, choose at random. (Wrong.)",
+          mycoText: "You listened to the old scripts. This glyph unlocks deeper marsh lore.",
+          darkText: "You scorched the archives. The glyph survived, but the fen remembers.",
+          intro: "Pre-crown druids etched warning glyphs in stone reeds. Read them and routes unfold.",
+        },
+        {
           id: "drake-hermit",
           name: "Hermit Cindr",
-          x: 3060,
-          y: 560,
+          x: 3920,
+          y: 640,
           clueId: "drake-ember",
           clueLabel: "Drake Ember Sigil",
           tradeItem: "manaDew",
@@ -1357,10 +1470,26 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           intro: "Three heads, three lies. Only a balanced flame can shatter the dragon ward.",
         },
         {
+          id: "tri-sentinel",
+          name: "Sentinel Arak",
+          x: 4580,
+          y: 1320,
+          clueId: "peak-sky-map",
+          clueLabel: "Peak Sky Map",
+          tradeItem: "smokeBomb",
+          tradeCost: 28,
+          tradeQty: 1,
+          adviceGood: "Secure each mountain tower and glide routes unlock between peak fortresses.",
+          adviceBad: "Ignore high routes. Valley roads are always safer. (Not in ash storms.)",
+          mycoText: "You held the ridgeline with honor. Take this sky map and rally the sentries.",
+          darkText: "You pushed through with force. The map is yours, but watchtowers distrust you.",
+          intro: "The peaks are a layered battlefield. Tower relays decide who controls the sky roads.",
+        },
+        {
           id: "reef-oracle",
           name: "Oracle Neri",
-          x: 1880,
-          y: 1480,
+          x: 2480,
+          y: 2140,
           clueId: "abyss-pearl",
           clueLabel: "Abyss Pearl Cipher",
           tradeItem: "mycoPotion",
@@ -1373,10 +1502,26 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           intro: "The evil crab hides between currents. Read this cipher to open the Solana tide lock.",
         },
         {
+          id: "tide-smuggler",
+          name: "Smuggler Vexa",
+          x: 3160,
+          y: 3040,
+          clueId: "reef-smuggler-code",
+          clueLabel: "Smuggler Tide Code",
+          tradeItem: "goldenSpore",
+          tradeCost: 46,
+          tradeQty: 1,
+          adviceGood: "Dock markets hide shortcuts to castle vaults. Track lantern colors at night.",
+          adviceBad: "Any tide path works if you sprint. (Many routes drown.)",
+          mycoText: "You paid crews fairly. The tide code now reveals hidden dock lanes.",
+          darkText: "You seized the code by threat. It works, but smugglers mark your trail.",
+          intro: "Reef smugglers mapped routes even the court couldn't patrol. Their code opens forgotten lanes.",
+        },
+        {
           id: "chain-smith",
           name: "Chain Smith Vox",
-          x: 3380,
-          y: 2140,
+          x: 4680,
+          y: 2740,
           clueId: "solana-anchor",
           clueLabel: "Solana Anchor Key",
           tradeItem: "smokeBomb",
@@ -1389,10 +1534,26 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           intro: "Dark Mycelius bends corrupted blocks. Anchor your will before you face him.",
         },
         {
+          id: "chain-librarian",
+          name: "Ledger Warden Iri",
+          x: 5860,
+          y: 2260,
+          clueId: "ledger-fragment",
+          clueLabel: "Ledger Fragment",
+          tradeItem: "manaDew",
+          tradeCost: 28,
+          tradeQty: 2,
+          adviceGood: "Chain towers synchronize enemy patrol loops. Hack them and pressure drops.",
+          adviceBad: "All chain nodes are cosmetic. Ignore them. (Fatal error.)",
+          mycoText: "You preserved the archive code. This fragment decrypts hidden chain encounters.",
+          darkText: "You purged entries for speed. The fragment still runs, but with unstable routes.",
+          intro: "Every chain battle is logged in warden ledgers. Fragments can predict attack cadence.",
+        },
+        {
           id: "commons-merchant",
           name: "Merchant Poro",
-          x: 520,
-          y: 1710,
+          x: 760,
+          y: 2320,
           clueId: "trade-charter",
           clueLabel: "Trade Charter",
           tradeItem: "goldenSpore",
@@ -1404,24 +1565,72 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           darkText: "You bargained with threats. The charter is real, but your reputation sinks.",
           intro: "Commons caravans know every road. Trade honestly and you'll unlock the long routes.",
         },
+        {
+          id: "commons-scribe",
+          name: "Ballad Scribe Unel",
+          x: 1360,
+          y: 2800,
+          clueId: "commons-ballad",
+          clueLabel: "Commons Ballad Verse",
+          tradeItem: "mycoPotion",
+          tradeCost: 18,
+          tradeQty: 2,
+          adviceGood: "Stories from inns expose hidden house interiors and vault doors.",
+          adviceBad: "Lore is fluff. Skip dialogue. (You'll miss half the map.)",
+          mycoText: "You kept the old songs alive. This ballad reveals forgotten tavern routes.",
+          darkText: "You silenced the chorus, but stole the verse. The commons won't forget.",
+          intro: "The commons sing route maps into traveling ballads. Every verse is a landmark key.",
+        },
+        {
+          id: "obsidian-ranger",
+          name: "Ranger Keth",
+          x: 2680,
+          y: 3820,
+          clueId: "obsidian-oath",
+          clueLabel: "Obsidian Oath",
+          tradeItem: "smokeBomb",
+          tradeCost: 30,
+          tradeQty: 1,
+          adviceGood: "Obsidian towers suppress void swarms. Activate them before deep cave raids.",
+          adviceBad: "Obsidian wilds are empty. Travel without prep. (Disaster.)",
+          mycoText: "You restored the ward lines. The Obsidian Oath now binds your frontier allies.",
+          darkText: "You took the oath by force. It binds, but the frontier guards you at spearpoint.",
+          intro: "The wilds were the kingdom's final defense. Their oath still decides who may pass.",
+        },
       ];
 
       const NPC_BACKSTORIES = {
         "elder-myca": "Elder Myca served as Keeper of the Crown Archives and was the last to witness King Myco before the crownfall.",
+        "myco-captain": "Captain Brindle commanded the crownwatch outriders and built the first relay-tower defense web.",
+        "myco-shopkeep": "Luma's family founded the royal mushroom exchange, where trade seals doubled as intelligence codes.",
         "fen-scout": "Rill once guided moon pilgrims through the marsh. Rougarou's rot took their squad and left only coded trail songs.",
+        "fen-archivist": "Thren records swamp history on stone reeds, preserving warnings that even kings forgot.",
         "drake-hermit": "Hermit Cindr was the Tri-Drake's handler before the mountain temples were burned by corrupted ember rituals.",
+        "tri-sentinel": "Arak led peak watchtowers that once controlled sky roads between all drake fortresses.",
         "reef-oracle": "Oracle Neri belongs to the Pearl Choir, a tide order sworn to hide anti-corruption runes beneath reef vaults.",
+        "tide-smuggler": "Vexa mapped tidal black routes used to move medicine during wartime blockades.",
         "chain-smith": "Vox forged sovereign wards for the old kingdom. Dark Mycelius stole that forge logic to weaponize blockchain rot.",
+        "chain-librarian": "Iri curated chain ledgers that predicted realm breaches before they happened.",
         "commons-merchant": "Poro's caravan survived every regime by trading stories as carefully as spores, mapping safe lanes across factions.",
+        "commons-scribe": "Unel rewrote battlefield routes into tavern songs so refugees could navigate safely.",
+        "obsidian-ranger": "Keth guards the last basalt oathstones that once marked the kingdom's final fallback line.",
       };
 
       const NPC_PORTRAITS = {
         "elder-myca": { glyph: "👑", subtitle: "Royal Archivist // Oath Keeper" },
+        "myco-captain": { glyph: "🛡️", subtitle: "Crownwatch Captain // Route Commander" },
+        "myco-shopkeep": { glyph: "🍄", subtitle: "Royal Mushroom Merchant" },
         "fen-scout": { glyph: "🐺", subtitle: "Fen Vanguard // Moon Trail Ranger" },
+        "fen-archivist": { glyph: "📜", subtitle: "Bog Archivist // Glyph Keeper" },
         "drake-hermit": { glyph: "🐉", subtitle: "Ash Hermit // Ember Rune Keeper" },
+        "tri-sentinel": { glyph: "🗼", subtitle: "Peak Sentinel // Sky Road Marshal" },
         "reef-oracle": { glyph: "🌊", subtitle: "Pearl Choir Oracle // Tide Cipher Keeper" },
+        "tide-smuggler": { glyph: "⚓", subtitle: "Reef Smuggler // Dock Route Broker" },
         "chain-smith": { glyph: "⛓️", subtitle: "Chain Smith // Forge Survivor" },
+        "chain-librarian": { glyph: "📘", subtitle: "Ledger Warden // Chain Archivist" },
         "commons-merchant": { glyph: "🛒", subtitle: "Commons Caravan Broker" },
+        "commons-scribe": { glyph: "🎼", subtitle: "Ballad Scribe // Route Chronicler" },
+        "obsidian-ranger": { glyph: "🪨", subtitle: "Wilds Ranger // Oath Guardian" },
       };
 
       const BOSS_INTRO_META = {
@@ -1432,24 +1641,47 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       };
 
       const BASE_ENEMIES = [
-        { id: "slime-1", kind: "rot-spore", x: 620, y: 820, lane: "speed", boss: false, region: "myco-kingdom" },
-        { id: "slime-2", kind: "mold-raider", x: 1060, y: 930, lane: "precision", boss: false, region: "myco-kingdom" },
-        { id: "fen-1", kind: "fen-stalker", x: 1700, y: 670, lane: "survival", boss: false, region: "rougarou-fen" },
-        { id: "fen-2", kind: "rot-jackal", x: 2280, y: 760, lane: "speed", boss: false, region: "rougarou-fen" },
-        { id: "boss-rougarou", kind: "rougarou", x: 2040, y: 320, lane: "survival", boss: true, region: "rougarou-fen" },
-        { id: "drake-1", kind: "ember-drone", x: 2860, y: 760, lane: "precision", boss: false, region: "tri-drake-peaks" },
-        { id: "drake-2", kind: "ash-ripper", x: 3500, y: 860, lane: "tactical", boss: false, region: "tri-drake-peaks" },
-        { id: "boss-drake", kind: "tri-drake", x: 3260, y: 360, lane: "tactical", boss: true, region: "tri-drake-peaks" },
-        { id: "reef-1", kind: "shell-rot", x: 1540, y: 1860, lane: "puzzle", boss: false, region: "crimson-tide" },
-        { id: "reef-2", kind: "spine-fin", x: 2580, y: 1940, lane: "survival", boss: false, region: "crimson-tide" },
-        { id: "boss-crab", kind: "evil-crab", x: 2140, y: 1360, lane: "tactical", boss: true, region: "crimson-tide" },
-        { id: "chain-1", kind: "block-wraith", x: 3080, y: 1580, lane: "precision", boss: false, region: "solana-chainlands" },
-        { id: "chain-2", kind: "ledger-specter", x: 4100, y: 1960, lane: "puzzle", boss: false, region: "solana-chainlands" },
-        { id: "boss-dark", kind: "dark-mycelius", x: 3780, y: 2320, lane: "tactical", boss: true, region: "solana-chainlands" },
-        { id: "commons-1", kind: "thorn-bandit", x: 840, y: 2060, lane: "speed", boss: false, region: "verdant-commons" },
-        { id: "commons-2", kind: "spore-thief", x: 1180, y: 1580, lane: "precision", boss: false, region: "verdant-commons" },
-        { id: "obsidian-1", kind: "basalt-hound", x: 620, y: 2860, lane: "survival", boss: false, region: "obsidian-wilds" },
-        { id: "obsidian-2", kind: "void-miner", x: 1780, y: 2960, lane: "tactical", boss: false, region: "obsidian-wilds" },
+        { id: "slime-1", kind: "rot-spore", x: 620, y: 920, lane: "speed", boss: false, region: "myco-kingdom" },
+        { id: "slime-2", kind: "mold-raider", x: 1240, y: 1180, lane: "precision", boss: false, region: "myco-kingdom" },
+        { id: "myco-3", kind: "thorn-scout", x: 1540, y: 860, lane: "tactical", boss: false, region: "myco-kingdom" },
+        { id: "myco-4", kind: "fungal-boar", x: 980, y: 1460, lane: "survival", boss: false, region: "myco-kingdom" },
+        { id: "myco-5", kind: "spore-imp", x: 420, y: 1320, lane: "puzzle", boss: false, region: "myco-kingdom" },
+
+        { id: "fen-1", kind: "fen-stalker", x: 2140, y: 760, lane: "survival", boss: false, region: "rougarou-fen" },
+        { id: "fen-2", kind: "rot-jackal", x: 2860, y: 860, lane: "speed", boss: false, region: "rougarou-fen" },
+        { id: "fen-3", kind: "mire-lurker", x: 2420, y: 1260, lane: "tactical", boss: false, region: "rougarou-fen" },
+        { id: "fen-4", kind: "fang-mildew", x: 3100, y: 1020, lane: "precision", boss: false, region: "rougarou-fen" },
+        { id: "boss-rougarou", kind: "rougarou", x: 2620, y: 420, lane: "survival", boss: true, region: "rougarou-fen" },
+
+        { id: "drake-1", kind: "ember-drone", x: 3660, y: 860, lane: "precision", boss: false, region: "tri-drake-peaks" },
+        { id: "drake-2", kind: "ash-ripper", x: 4420, y: 980, lane: "tactical", boss: false, region: "tri-drake-peaks" },
+        { id: "drake-3", kind: "cinder-harpy", x: 4860, y: 740, lane: "speed", boss: false, region: "tri-drake-peaks" },
+        { id: "drake-4", kind: "basalt-drakelet", x: 4120, y: 1460, lane: "survival", boss: false, region: "tri-drake-peaks" },
+        { id: "boss-drake", kind: "tri-drake", x: 4340, y: 420, lane: "tactical", boss: true, region: "tri-drake-peaks" },
+
+        { id: "reef-1", kind: "shell-rot", x: 2140, y: 2540, lane: "puzzle", boss: false, region: "crimson-tide" },
+        { id: "reef-2", kind: "spine-fin", x: 3160, y: 2360, lane: "survival", boss: false, region: "crimson-tide" },
+        { id: "reef-3", kind: "tide-reaver", x: 2860, y: 3120, lane: "speed", boss: false, region: "crimson-tide" },
+        { id: "reef-4", kind: "coral-wretch", x: 1980, y: 1880, lane: "precision", boss: false, region: "crimson-tide" },
+        { id: "boss-crab", kind: "evil-crab", x: 2620, y: 1840, lane: "tactical", boss: true, region: "crimson-tide" },
+
+        { id: "chain-1", kind: "block-wraith", x: 3860, y: 2240, lane: "precision", boss: false, region: "solana-chainlands" },
+        { id: "chain-2", kind: "ledger-specter", x: 5320, y: 2520, lane: "puzzle", boss: false, region: "solana-chainlands" },
+        { id: "chain-3", kind: "hash-raider", x: 5860, y: 3380, lane: "tactical", boss: false, region: "solana-chainlands" },
+        { id: "chain-4", kind: "shard-lich", x: 4480, y: 3640, lane: "survival", boss: false, region: "solana-chainlands" },
+        { id: "chain-5", kind: "nonce-hunter", x: 3740, y: 3120, lane: "speed", boss: false, region: "solana-chainlands" },
+        { id: "boss-dark", kind: "dark-mycelius", x: 5480, y: 3340, lane: "tactical", boss: true, region: "solana-chainlands" },
+
+        { id: "commons-1", kind: "thorn-bandit", x: 860, y: 2480, lane: "speed", boss: false, region: "verdant-commons" },
+        { id: "commons-2", kind: "spore-thief", x: 1320, y: 2220, lane: "precision", boss: false, region: "verdant-commons" },
+        { id: "commons-3", kind: "briar-sneak", x: 1460, y: 3020, lane: "tactical", boss: false, region: "verdant-commons" },
+        { id: "commons-4", kind: "bloom-raider", x: 420, y: 2860, lane: "survival", boss: false, region: "verdant-commons" },
+
+        { id: "obsidian-1", kind: "basalt-hound", x: 760, y: 3720, lane: "survival", boss: false, region: "obsidian-wilds" },
+        { id: "obsidian-2", kind: "void-miner", x: 1860, y: 3860, lane: "tactical", boss: false, region: "obsidian-wilds" },
+        { id: "obsidian-3", kind: "rift-shade", x: 2620, y: 3640, lane: "puzzle", boss: false, region: "obsidian-wilds" },
+        { id: "obsidian-4", kind: "slag-stalker", x: 3180, y: 3920, lane: "speed", boss: false, region: "obsidian-wilds" },
+        { id: "obsidian-5", kind: "dark-larva", x: 1320, y: 4060, lane: "precision", boss: false, region: "obsidian-wilds" },
       ];
 
       const PICKUPS = [
@@ -1467,6 +1699,14 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         { id: "gold-2", x: 3240, y: 460, value: 1, golden: true },
         { id: "gold-3", x: 3340, y: 2280, value: 1, golden: true },
         { id: "gold-4", x: 1160, y: 2740, value: 1, golden: true },
+        { id: "spore-11", x: 2380, y: 1400, value: 24, golden: false },
+        { id: "spore-12", x: 4720, y: 1120, value: 26, golden: false },
+        { id: "spore-13", x: 5260, y: 2600, value: 28, golden: false },
+        { id: "spore-14", x: 5880, y: 3740, value: 32, golden: false },
+        { id: "spore-15", x: 2420, y: 3680, value: 30, golden: false },
+        { id: "spore-16", x: 1340, y: 4010, value: 34, golden: false },
+        { id: "gold-5", x: 4860, y: 3320, value: 1, golden: true },
+        { id: "gold-6", x: 3020, y: 3900, value: 1, golden: true },
       ];
 
       const SCENIC_PROPS = [
@@ -1511,6 +1751,27 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         { id: "obsidian-4", kind: "rock", x: 620, y: 2960, realm: "obsidian-wilds" },
         { id: "obsidian-5", kind: "bush", x: 1420, y: 2780, realm: "obsidian-wilds" },
         { id: "obsidian-6", kind: "mushroom", x: 1880, y: 2860, realm: "obsidian-wilds" },
+        { id: "grove-9", kind: "tree", x: 1560, y: 1420, realm: "myco-kingdom" },
+        { id: "grove-10", kind: "mushroom", x: 420, y: 1460, realm: "myco-kingdom" },
+        { id: "grove-11", kind: "rock", x: 1680, y: 620, realm: "myco-kingdom" },
+        { id: "fen-7", kind: "reed", x: 3140, y: 1320, realm: "rougarou-fen" },
+        { id: "fen-8", kind: "totem", x: 2860, y: 520, realm: "rougarou-fen" },
+        { id: "fen-9", kind: "mushroom", x: 2020, y: 1320, realm: "rougarou-fen" },
+        { id: "drake-6", kind: "crystal", x: 4580, y: 1220, realm: "tri-drake-peaks" },
+        { id: "drake-7", kind: "rock", x: 4780, y: 1520, realm: "tri-drake-peaks" },
+        { id: "drake-8", kind: "totem", x: 3520, y: 1480, realm: "tri-drake-peaks" },
+        { id: "tide-6", kind: "reef", x: 3220, y: 2860, realm: "crimson-tide" },
+        { id: "tide-7", kind: "crystal", x: 2860, y: 1920, realm: "crimson-tide" },
+        { id: "tide-8", kind: "mushroom", x: 1980, y: 3180, realm: "crimson-tide" },
+        { id: "chain-6", kind: "obelisk", x: 5740, y: 2180, realm: "solana-chainlands" },
+        { id: "chain-7", kind: "crystal", x: 5480, y: 3540, realm: "solana-chainlands" },
+        { id: "chain-8", kind: "rock", x: 3860, y: 3380, realm: "solana-chainlands" },
+        { id: "commons-7", kind: "tree", x: 1540, y: 3140, realm: "verdant-commons" },
+        { id: "commons-8", kind: "mushroom", x: 680, y: 3020, realm: "verdant-commons" },
+        { id: "commons-9", kind: "totem", x: 1180, y: 3200, realm: "verdant-commons" },
+        { id: "obsidian-7", kind: "obelisk", x: 3020, y: 3660, realm: "obsidian-wilds" },
+        { id: "obsidian-8", kind: "crystal", x: 2480, y: 3960, realm: "obsidian-wilds" },
+        { id: "obsidian-9", kind: "rock", x: 1120, y: 4040, realm: "obsidian-wilds" },
       ];
 
       const CUTSCENES = {
@@ -1519,7 +1780,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           pages: [
             "On the Night of Silent Spores, Dark Mycelius shattered King Myco's crown and scattered six memory-arts across the land.",
             "Each henchman now rules a realm anchor: Rougarou in the Fen, the Tri-Drake in the Peaks, Evil Crab in the Tides, and Dark Mycelius in Chainlands.",
-            "The Nexus remains one world, but realm walls are sealed. Only learned magic can stabilize the portals between them.",
+            "The Nexus now spans larger realm pages packed with towers, markets, castles, caves, and deep interior routes.",
           ],
         },
         fenUnlocked: {
@@ -1529,6 +1790,20 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             "Mycoside players open safer support loops; Darkside players unlock riskier routes with heavier drops.",
           ],
         },
+        commonsRise: {
+          title: "Caravan Uprising",
+          pages: [
+            "Merchants across Verdant Commons rally behind your banner as mushroom shops reopen.",
+            "Trade caravans now reveal tower relays, hidden house interiors, and black-market dock routes.",
+          ],
+        },
+        towerSignals: {
+          title: "Signals Across The Peaks",
+          pages: [
+            "Reactivated towers begin exchanging pulse-fire across the drake ridges.",
+            "Sky roads awaken, exposing deeper dungeons and rapid routes between castles.",
+          ],
+        },
         solanaReady: {
           title: "The Chain Breach",
           pages: [
@@ -1536,11 +1811,18 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             "One final portal can pierce into Solana Chainlands, where Dark Mycelius rewrites kingdom memory as corrupted code.",
           ],
         },
+        obsidianAwakening: {
+          title: "Oathstones Rekindled",
+          pages: [
+            "The Obsidian Wilds answer your signal, and dormant oathstones ignite beneath basalt towers.",
+            "New frontier interiors and war routes open for heroes who can hold both mercy and force in balance.",
+          ],
+        },
         epilogue: {
           title: "Kingdom Rewritten",
           pages: [
             "The final battle is done, but your moral signature now defines the kingdom timeline.",
-            "Your campaign remains unique: NPC loyalty, portal guidance, and encounter pressure continue adapting to your path.",
+            "Your campaign remains unique: NPC loyalty, portal guidance, encounter pressure, and interior routes continue adapting to your path.",
           ],
         },
       };
@@ -1581,10 +1863,22 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           isUnlocked: () => true,
         },
         {
+          id: "market-seal",
+          title: "The Bazaar Pact",
+          text: "Mushroom guilds once financed crown defenses. Their market seals now gate crucial supply routes and hidden interiors.",
+          isUnlocked: (state) => state.progress.clues.has("myco-market-seal"),
+        },
+        {
           id: "rougarou-oath",
           title: "Rougarou's Debt",
           text: "Rougarou served as royal ranger before rot whispers rewrote his instincts. The Lunar Mark remembers his former vow.",
           isUnlocked: (state) => state.progress.clues.has("lunar-wolf-mark"),
+        },
+        {
+          id: "tower-net",
+          title: "Signal Tower Covenant",
+          text: "Relay towers linked every region long before portals existed. Their reactivation restores kingdom command lines.",
+          isUnlocked: (state) => state.progress.clues.has("peak-sky-map"),
         },
         {
           id: "drake-fracture",
@@ -1599,10 +1893,22 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           isUnlocked: (state) => state.progress.clues.has("abyss-pearl"),
         },
         {
+          id: "smuggler-lanes",
+          title: "Dockside Shadow Routes",
+          text: "Smuggler tide codes mapped hidden lanes between castles, caves, and black markets during wartime.",
+          isUnlocked: (state) => state.progress.clues.has("reef-smuggler-code"),
+        },
+        {
           id: "chain-traitor",
           title: "The Archivist's Betrayal",
           text: "Chain Smith Vox forged the first seal to stop Dark Mycelius, then vanished into the Chainlands forge halls.",
           isUnlocked: (state) => state.progress.clues.has("solana-anchor"),
+        },
+        {
+          id: "obsidian-oath",
+          title: "The Last Frontier Oath",
+          text: "Obsidian rangers swore to defend the final fallback line. Their oathstones still answer worthy monarchs.",
+          isUnlocked: (state) => state.progress.clues.has("obsidian-oath"),
         },
       ];
 
@@ -2418,11 +2724,14 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           .map((magicId) => MAGIC_SKILLS[magicId]?.name ?? magicId);
 
       const staticObstacles = [
-        { x: 1180, y: 360, w: 90, h: 360 },
-        { x: 1320, y: 620, w: 44, h: 420 },
-        { x: 1620, y: 1260, w: 320, h: 92 },
-        { x: 2820, y: 1120, w: 320, h: 92 },
-        { x: 2300, y: 2580, w: 360, h: 80 },
+        { x: 1360, y: 420, w: 110, h: 420 },
+        { x: 1720, y: 760, w: 52, h: 520 },
+        { x: 2280, y: 1460, w: 340, h: 92 },
+        { x: 3840, y: 1320, w: 340, h: 92 },
+        { x: 2740, y: 2960, w: 420, h: 86 },
+        { x: 4520, y: 2120, w: 260, h: 84 },
+        { x: 5200, y: 3620, w: 320, h: 88 },
+        { x: 1180, y: 3540, w: 560, h: 78 },
       ];
 
       const isBlocked = (nextX, nextY) => {
@@ -2480,16 +2789,39 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const map = {
           "rot-spore": "Rot Spore",
           "mold-raider": "Mold Raider",
+          "thorn-scout": "Thorn Scout",
+          "fungal-boar": "Fungal Boar",
+          "spore-imp": "Spore Imp",
           "fen-stalker": "Fen Stalker",
           "rot-jackal": "Rot Jackal",
+          "mire-lurker": "Mire Lurker",
+          "fang-mildew": "Fang Mildew",
           rougarou: "Rougarou",
           "ember-drone": "Ember Drone",
+          "ash-ripper": "Ash Ripper",
+          "cinder-harpy": "Cinder Harpy",
+          "basalt-drakelet": "Basalt Drakelet",
           "tri-drake": "Three-Headed Dragon",
           "shell-rot": "Shell Rot",
           "spine-fin": "Spine Fin",
+          "tide-reaver": "Tide Reaver",
+          "coral-wretch": "Coral Wretch",
           "evil-crab": "Evil Crab",
           "block-wraith": "Block Wraith",
+          "ledger-specter": "Ledger Specter",
+          "hash-raider": "Hash Raider",
+          "shard-lich": "Shard Lich",
+          "nonce-hunter": "Nonce Hunter",
           "dark-mycelius": "Dark Mycelius",
+          "thorn-bandit": "Thorn Bandit",
+          "spore-thief": "Spore Thief",
+          "briar-sneak": "Briar Sneak",
+          "bloom-raider": "Bloom Raider",
+          "basalt-hound": "Basalt Hound",
+          "void-miner": "Void Miner",
+          "rift-shade": "Rift Shade",
+          "slag-stalker": "Slag Stalker",
+          "dark-larva": "Dark Larva",
         };
         return map[kind] ?? kind;
       };
@@ -2616,10 +2948,33 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           return;
         }
         if (
+          state.progress.clues.has("trade-charter") &&
+          state.progress.clues.size >= 6 &&
+          !state.progress.cutscenesSeen.has("commonsRise")
+        ) {
+          openCutscene("commonsRise");
+          return;
+        }
+        if (
+          state.progress.clues.has("peak-sky-map") &&
+          state.progress.defeatedBosses.has("tri-drake") &&
+          !state.progress.cutscenesSeen.has("towerSignals")
+        ) {
+          openCutscene("towerSignals");
+          return;
+        }
+        if (
           hasMagic("tidecall") &&
           !state.progress.cutscenesSeen.has("solanaReady")
         ) {
           openCutscene("solanaReady");
+          return;
+        }
+        if (
+          state.progress.clues.has("obsidian-oath") &&
+          !state.progress.cutscenesSeen.has("obsidianAwakening")
+        ) {
+          openCutscene("obsidianAwakening");
           return;
         }
         if (
@@ -2798,7 +3153,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         };
       };
 
-      const ENTERABLE_STRUCTURE_TYPES = new Set(["house", "cave", "dungeon", "castle"]);
+      const ENTERABLE_STRUCTURE_TYPES = new Set(["house", "cave", "dungeon", "castle", "tower", "mushroom-shop"]);
 
       const isEnterableStructure = (structure) => ENTERABLE_STRUCTURE_TYPES.has(structure.type);
 
@@ -2809,7 +3164,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         state.mode = "interior";
         dom.interiorScreen.classList.add("active");
         dom.interiorTitle.textContent = structure.name;
-        dom.interiorSubtitle.textContent = `${structure.type.toUpperCase()} INTERIOR // ${getCurrentRealm().name}`;
+        dom.interiorSubtitle.textContent = `${structure.type.replace(/-/g, " ").toUpperCase()} INTERIOR // ${getCurrentRealm().name}`;
         dom.interiorHint.textContent = "Search for relics, clues, and supplies. Press E or Exit to leave.";
         drawInteriorScene(structure);
       };
@@ -2837,6 +3192,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           cave: ["#334155", "#0f172a", "#a5b4fc"],
           dungeon: ["#27272a", "#6d28d9", "#ddd6fe"],
           castle: ["#1e293b", "#2563eb", "#bfdbfe"],
+          tower: ["#1f2937", "#475569", "#cbd5e1"],
+          "mushroom-shop": ["#7c2d12", "#ef4444", "#fee2e2"],
         };
         const [base, accent, glow] = palette[structure.type] ?? ["#1f2937", "#4b5563", "#e2e8f0"];
         const roomGradient = interiorCtx.createLinearGradient(0, 0, width, height);
@@ -2897,6 +3254,24 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           interiorCtx.fillRect(width - 178, height - 130, 36, 36);
           interiorCtx.fillStyle = "#bfdbfe";
           interiorCtx.fillRect(width - 170, height - 120, 20, 14);
+        } else if (structure.type === "tower") {
+          interiorCtx.fillStyle = "#0f172a";
+          interiorCtx.fillRect(width - 230, height - 260, 120, 182);
+          interiorCtx.fillStyle = "#334155";
+          interiorCtx.fillRect(width - 216, height - 248, 92, 156);
+          interiorCtx.fillStyle = "#94a3b8";
+          interiorCtx.fillRect(width - 194, height - 220, 12, 12);
+          interiorCtx.fillRect(width - 162, height - 190, 12, 12);
+          interiorCtx.fillRect(width - 194, height - 160, 12, 12);
+        } else if (structure.type === "mushroom-shop") {
+          interiorCtx.fillStyle = "#7c2d12";
+          interiorCtx.fillRect(80, height - 178, 220, 98);
+          interiorCtx.fillStyle = "#ef4444";
+          interiorCtx.fillRect(66, height - 190, 248, 20);
+          interiorCtx.fillStyle = "#fecaca";
+          interiorCtx.fillRect(112, height - 146, 18, 14);
+          interiorCtx.fillRect(160, height - 146, 18, 14);
+          interiorCtx.fillRect(208, height - 146, 18, 14);
         }
 
         interiorCtx.fillStyle = "#f8fafc";
@@ -2936,6 +3311,15 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           state.hero.goldenSpores += 1;
           addClue("restoration-seed", "Restoration Seed");
           dom.interiorHint.textContent = "Castle vault opened: +1 Golden Spore and Restoration Seed clue.";
+        } else if (structure.type === "tower") {
+          grantSpores(26);
+          state.hero.magic += 1;
+          dom.interiorHint.textContent = "Tower relay calibrated: +26 Spores and +1 Magic.";
+        } else if (structure.type === "mushroom-shop") {
+          state.inventory.mycoPotion += 1;
+          state.inventory.manaDew += 1;
+          grantSpores(14);
+          dom.interiorHint.textContent = "Shop cache brokered: +1 Potion, +1 Mana Dew, +14 Spores.";
         }
         playSfx("pickup");
         drawInteriorScene(structure);
@@ -2948,6 +3332,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           cave: { glyph: "🕳️", subtitle: "Echoing Cavern" },
           dungeon: { glyph: "🏛️", subtitle: "Sealed Trial Hall" },
           castle: { glyph: "🏰", subtitle: "Royal Fortified Keep" },
+          tower: { glyph: "🗼", subtitle: "Signal Relay Tower" },
+          "mushroom-shop": { glyph: "🍄", subtitle: "Mushroom Supply Market" },
           shrine: { glyph: "🗿", subtitle: "Mycelic Shrine" },
         };
         return {
@@ -2961,9 +3347,13 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
                 ? "A locked sigil puzzle blocks the inner chamber."
                 : nearbyStructure.type === "castle"
                   ? "A fortified hall hums with old crown wards and sealed relic doors."
-                : nearbyStructure.type === "house"
-                  ? "A household asks for aid and offers local intelligence in return."
-                  : "A villager asks for aid against roaming rot packs.",
+                  : nearbyStructure.type === "tower"
+                    ? "A relay tower calibration console flickers with unstable routes."
+                    : nearbyStructure.type === "mushroom-shop"
+                      ? "A market quarter offers rare mushroom brews and whispered route intel."
+                      : nearbyStructure.type === "house"
+                        ? "A household asks for aid and offers local intelligence in return."
+                        : "A villager asks for aid against roaming rot packs.",
           mycoLabel: solved ? "Close" : "Resolve peacefully",
           darkLabel: solved ? "Close" : "Force through",
           onMyco: () => {
@@ -2979,6 +3369,13 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
               }
               if (nearbyStructure.type === "castle") {
                 state.hero.goldenSpores += 1;
+              }
+              if (nearbyStructure.type === "tower") {
+                state.hero.magic += 1;
+              }
+              if (nearbyStructure.type === "mushroom-shop") {
+                state.inventory.mycoPotion += 1;
+                state.inventory.manaDew += 1;
               }
               if (nearbyStructure.type === "house") {
                 state.hero.hp = state.hero.maxHp;
@@ -3588,22 +3985,39 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const kindPalette = {
           "rot-spore": ["#ef4444", "#fca5a5"],
           "mold-raider": ["#f97316", "#fdba74"],
+          "thorn-scout": ["#65a30d", "#d9f99d"],
+          "fungal-boar": ["#78350f", "#fbbf24"],
+          "spore-imp": ["#dc2626", "#fecaca"],
           "fen-stalker": ["#84cc16", "#d9f99d"],
           "rot-jackal": ["#65a30d", "#bef264"],
+          "mire-lurker": ["#3f6212", "#a3e635"],
+          "fang-mildew": ["#4d7c0f", "#d9f99d"],
           rougarou: ["#7e22ce", "#d8b4fe"],
           "ember-drone": ["#fb923c", "#fdba74"],
           "ash-ripper": ["#ea580c", "#fdba74"],
+          "cinder-harpy": ["#f97316", "#fed7aa"],
+          "basalt-drakelet": ["#57534e", "#d6d3d1"],
           "tri-drake": ["#dc2626", "#fca5a5"],
           "shell-rot": ["#0891b2", "#67e8f9"],
           "spine-fin": ["#0e7490", "#a5f3fc"],
+          "tide-reaver": ["#0f766e", "#99f6e4"],
+          "coral-wretch": ["#14b8a6", "#99f6e4"],
           "evil-crab": ["#ef4444", "#fecaca"],
           "block-wraith": ["#7c3aed", "#c4b5fd"],
           "ledger-specter": ["#6366f1", "#a5b4fc"],
+          "hash-raider": ["#4338ca", "#c7d2fe"],
+          "shard-lich": ["#312e81", "#a5b4fc"],
+          "nonce-hunter": ["#4f46e5", "#c4b5fd"],
           "dark-mycelius": ["#111827", "#22c55e"],
           "thorn-bandit": ["#16a34a", "#86efac"],
           "spore-thief": ["#059669", "#6ee7b7"],
+          "briar-sneak": ["#15803d", "#4ade80"],
+          "bloom-raider": ["#65a30d", "#bef264"],
           "basalt-hound": ["#52525b", "#d4d4d8"],
           "void-miner": ["#1e293b", "#94a3b8"],
+          "rift-shade": ["#334155", "#cbd5e1"],
+          "slag-stalker": ["#78716c", "#e7e5e4"],
+          "dark-larva": ["#374151", "#9ca3af"],
         };
         const [base, accent] = kindPalette[enemy.kind] ?? ["#f97316", "#7c2d12"];
 
@@ -3716,6 +4130,30 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           ctx.fillRect(sx + 22, sy + 10, 24, 7);
           ctx.fillRect(sx + structure.w - 46, sy + 10, 24, 7);
           ctx.fillRect(sx + structure.w / 2 - 9, sy + 40, 18, 14);
+        } else if (structure.type === "tower") {
+          ctx.fillStyle = "#1f2937";
+          ctx.fillRect(sx + 24, sy + 8, structure.w - 48, structure.h - 8);
+          ctx.fillStyle = "#334155";
+          ctx.fillRect(sx + 34, sy + 18, structure.w - 68, structure.h - 32);
+          ctx.fillStyle = "#94a3b8";
+          for (let y = sy + 34; y < sy + structure.h - 38; y += 30) {
+            ctx.fillRect(sx + structure.w / 2 - 9, y, 18, 10);
+          }
+          ctx.fillStyle = "#111827";
+          ctx.fillRect(sx + structure.w / 2 - 12, sy + structure.h - 28, 24, 20);
+          ctx.fillStyle = "#64748b";
+          ctx.fillRect(sx + structure.w / 2 - 18, sy, 36, 10);
+        } else if (structure.type === "mushroom-shop") {
+          ctx.fillStyle = "#7c2d12";
+          ctx.fillRect(sx, sy + 24, structure.w, structure.h - 24);
+          ctx.fillStyle = "#ef4444";
+          ctx.fillRect(sx - 10, sy + 10, structure.w + 20, 18);
+          ctx.fillStyle = "#fecaca";
+          ctx.fillRect(sx + 16, sy + 40, 12, 10);
+          ctx.fillRect(sx + 46, sy + 40, 12, 10);
+          ctx.fillRect(sx + 76, sy + 40, 12, 10);
+          ctx.fillStyle = "#fca5a5";
+          ctx.fillRect(sx + structure.w / 2 - 10, sy + structure.h - 26, 20, 16);
         } else if (structure.type === "shrine") {
           ctx.fillStyle = "#0f766e";
           ctx.fillRect(sx, sy, structure.w, structure.h);
@@ -4103,6 +4541,19 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           ? `${latestLore.title}: ${latestLore.text}`
           : "Lore thread dormant.";
 
+        const enterableClears = Array.from(state.progress.solvedStructures).filter((id) => {
+          const structure = STRUCTURES.find((entry) => entry.id === id);
+          return structure && isEnterableStructure(structure);
+        }).length;
+        const towerClears = Array.from(state.progress.solvedStructures).filter((id) => {
+          const structure = STRUCTURES.find((entry) => entry.id === id);
+          return structure?.type === "tower";
+        }).length;
+        const shopClears = Array.from(state.progress.solvedStructures).filter((id) => {
+          const structure = STRUCTURES.find((entry) => entry.id === id);
+          return structure?.type === "mushroom-shop";
+        }).length;
+
         const questEntries = [
           {
             chapter: "Chapter I - Crownfall Echoes",
@@ -4137,6 +4588,24 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
               { text: "Earn Solana Anchor Key from Chain Smith Vox.", done: state.progress.clues.has("solana-anchor") },
               { text: "Learn Chainbind and open the Apex Chain Portal.", done: hasMagic("chainbind") },
               { text: "Defeat Dark Mycelius.", done: state.progress.defeatedBosses.has("dark-mycelius") },
+            ],
+          },
+          {
+            chapter: "Chapter V - Markets and Relay Towers",
+            hook: "Secure mushroom shops and tower relays to stabilize larger realm logistics.",
+            objectives: [
+              { text: "Recover the Myco Market Seal and Commons Ballad Verse.", done: state.progress.clues.has("myco-market-seal") && state.progress.clues.has("commons-ballad") },
+              { text: "Clear at least 3 relay towers.", done: towerClears >= 3 },
+              { text: "Reopen 4 mushroom shops by clearing their interiors.", done: shopClears >= 4 },
+            ],
+          },
+          {
+            chapter: "Chapter VI - Deep Frontier Oaths",
+            hook: "Push into the expanded Obsidian Wilds and bind the final frontier alliances.",
+            objectives: [
+              { text: "Earn Obsidian Oath and Ledger Fragment clues.", done: state.progress.clues.has("obsidian-oath") && state.progress.clues.has("ledger-fragment") },
+              { text: "Recruit 10 NPC allies across all regions.", done: state.progress.interactedNpcs.size >= 10 },
+              { text: "Clear 12 enterable structures (houses, caves, dungeons, castles, towers, shops).", done: enterableClears >= 12 },
             ],
           },
         ];
