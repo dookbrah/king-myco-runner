@@ -1919,6 +1919,19 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         { id: "gold-6", x: 3020, y: 3900, value: 1, golden: true },
       ];
 
+      const ROAMING_SPORE_SETTINGS = {
+        blueTargetPerRealm: 7,
+        goldenTargetPerRealm: 2,
+        spawnMargin: 54,
+        pickupSpacing: 34,
+        heroSafeRadius: 130,
+        blueRespawnMinMs: 2200,
+        blueRespawnMaxMs: 5200,
+        goldenRespawnMinMs: 9600,
+        goldenRespawnMaxMs: 17000,
+        spawnAttemptsPerTick: 28,
+      };
+
       const SCENIC_PROPS = [
         { id: "grove-1", kind: "tree", x: 220, y: 420, realm: "myco-kingdom" },
         { id: "grove-2", kind: "tree", x: 520, y: 860, realm: "myco-kingdom" },
@@ -2322,6 +2335,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           burnedToday: 0,
           totalBurned: 0,
           events: [],
+        },
+        roamingSpores: {
+          seq: 0,
+          active: [],
+          nextBlueByRealm: {},
+          nextGoldenByRealm: {},
         },
         campaignSnapshot: null,
         enemies: [],
@@ -3555,6 +3574,123 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         return false;
       };
 
+      const scheduleRoamingSporeRespawn = (realmId, golden, now = Date.now(), forceFast = false) => {
+        const minMs = golden ? ROAMING_SPORE_SETTINGS.goldenRespawnMinMs : ROAMING_SPORE_SETTINGS.blueRespawnMinMs;
+        const maxMs = golden ? ROAMING_SPORE_SETTINGS.goldenRespawnMaxMs : ROAMING_SPORE_SETTINGS.blueRespawnMaxMs;
+        const delayMs = forceFast ? randomBetween(250, 1300) : randomBetween(minMs, maxMs);
+        const target = golden ? state.roamingSpores.nextGoldenByRealm : state.roamingSpores.nextBlueByRealm;
+        target[realmId] = now + delayMs;
+      };
+
+      const ensureRoamingSporeTimers = () => {
+        const now = Date.now();
+        for (const realm of REALMS) {
+          if (!Number.isFinite(state.roamingSpores.nextBlueByRealm[realm.id])) {
+            scheduleRoamingSporeRespawn(realm.id, false, now, true);
+          }
+          if (!Number.isFinite(state.roamingSpores.nextGoldenByRealm[realm.id])) {
+            scheduleRoamingSporeRespawn(realm.id, true, now, true);
+          }
+        }
+      };
+
+      const pickupCollisionBlocked = (realm, x, y) => {
+        const half = 10;
+        const testRect = { x: x - half, y: y - half, w: half * 2, h: half * 2 };
+        if (
+          testRect.x < realm.x ||
+          testRect.y < realm.y ||
+          testRect.x + testRect.w > realm.x + realm.w ||
+          testRect.y + testRect.h > realm.y + realm.h
+        ) {
+          return true;
+        }
+
+        for (const structure of STRUCTURES) {
+          if (!structure.solid) continue;
+          if (getEntityRealmId(structure) !== realm.id) continue;
+          if (intersectsRect(testRect, structure)) return true;
+        }
+        for (const wall of staticObstacles) {
+          if (getEntityRealmId(wall) !== realm.id) continue;
+          if (intersectsRect(testRect, wall)) return true;
+        }
+        for (const barrier of REALM_BARRIERS) {
+          if (getEntityRealmId(barrier) !== realm.id) continue;
+          if (intersectsRect(testRect, barrier)) return true;
+        }
+        for (const portal of PORTALS) {
+          if (portalSourceRealmId(portal) !== realm.id) continue;
+          if (dist(x, y, portal.x + portal.w / 2, portal.y + portal.h / 2) < 48) return true;
+        }
+        if (realm.id === state.currentRealmId && dist(x, y, state.hero.x, state.hero.y) < ROAMING_SPORE_SETTINGS.heroSafeRadius) {
+          return true;
+        }
+
+        for (const pickup of PICKUPS) {
+          if (getEntityRealmId(pickup) !== realm.id) continue;
+          if (dist(x, y, pickup.x, pickup.y) < ROAMING_SPORE_SETTINGS.pickupSpacing) return true;
+        }
+        for (const pickup of state.roamingSpores.active) {
+          if (pickup.region !== realm.id) continue;
+          if (dist(x, y, pickup.x, pickup.y) < ROAMING_SPORE_SETTINGS.pickupSpacing) return true;
+        }
+        return false;
+      };
+
+      const spawnRoamingSporeInRealm = (realm, golden, now = Date.now()) => {
+        const margin = ROAMING_SPORE_SETTINGS.spawnMargin;
+        const minX = realm.x + margin;
+        const maxX = realm.x + realm.w - margin;
+        const minY = realm.y + margin;
+        const maxY = realm.y + realm.h - margin;
+        if (maxX <= minX || maxY <= minY) return false;
+
+        for (let attempt = 0; attempt < ROAMING_SPORE_SETTINGS.spawnAttemptsPerTick; attempt += 1) {
+          const x = Math.round(randomBetween(minX, maxX));
+          const y = Math.round(randomBetween(minY, maxY));
+          if (pickupCollisionBlocked(realm, x, y)) continue;
+          const value = golden ? 1 : Math.round(randomBetween(10, 28));
+          state.roamingSpores.active.push({
+            id: `roam-${golden ? "gold" : "blue"}-${state.roamingSpores.seq}`,
+            region: realm.id,
+            x,
+            y,
+            value,
+            golden,
+            spawnedAt: now,
+          });
+          state.roamingSpores.seq += 1;
+          return true;
+        }
+        return false;
+      };
+
+      const maintainRoamingSporeSpawns = () => {
+        ensureRoamingSporeTimers();
+        const now = Date.now();
+        state.roamingSpores.active = state.roamingSpores.active.filter((pickup) =>
+          REALMS.some((realm) => realm.id === pickup.region),
+        );
+
+        for (const realm of REALMS) {
+          const activeInRealm = state.roamingSpores.active.filter((pickup) => pickup.region === realm.id);
+          const activeBlue = activeInRealm.filter((pickup) => !pickup.golden).length;
+          const activeGold = activeInRealm.filter((pickup) => pickup.golden).length;
+          const nextBlueAt = state.roamingSpores.nextBlueByRealm[realm.id] ?? 0;
+          const nextGoldAt = state.roamingSpores.nextGoldenByRealm[realm.id] ?? 0;
+
+          if (activeBlue < ROAMING_SPORE_SETTINGS.blueTargetPerRealm && now >= nextBlueAt) {
+            const spawned = spawnRoamingSporeInRealm(realm, false, now);
+            scheduleRoamingSporeRespawn(realm.id, false, now, !spawned);
+          }
+          if (activeGold < ROAMING_SPORE_SETTINGS.goldenTargetPerRealm && now >= nextGoldAt) {
+            const spawned = spawnRoamingSporeInRealm(realm, true, now);
+            scheduleRoamingSporeRespawn(realm.id, true, now, !spawned);
+          }
+        }
+      };
+
       const updateCamera = () => {
         const realm = getCurrentRealm();
         const maxX = Math.max(realm.x, realm.x + realm.w - worldCanvas.width);
@@ -4430,21 +4566,34 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const updatePickups = () => {
         const heroRect = getHeroRect();
+        const claimPickup = (pickup, fromRoaming = false) => {
+          if (pickup.golden) {
+            state.hero.goldenSpores += pickup.value;
+            setStatus(fromRoaming ? "Golden roaming spore collected!" : "Golden spore collected! Rare currency increased.");
+            playSfx("pickup");
+          } else {
+            grantSpores(pickup.value);
+            setStatus(fromRoaming ? `Collected roaming blue spores (+${pickup.value}).` : `Collected ${pickup.value} spores.`);
+            playSfx("pickup");
+          }
+        };
+
         for (const pickup of PICKUPS) {
           if (!isInCurrentRealm(pickup)) continue;
           if (state.progress.collectedPickups.has(pickup.id)) continue;
           const pickupRect = { x: pickup.x - 10, y: pickup.y - 10, w: 20, h: 20 };
           if (!intersectsRect(heroRect, pickupRect)) continue;
           state.progress.collectedPickups.add(pickup.id);
-          if (pickup.golden) {
-            state.hero.goldenSpores += pickup.value;
-            setStatus("Golden spore collected! Rare currency increased.");
-            playSfx("pickup");
-          } else {
-            grantSpores(pickup.value);
-            setStatus(`Collected ${pickup.value} spores.`);
-            playSfx("pickup");
-          }
+          claimPickup(pickup, false);
+        }
+
+        for (let index = state.roamingSpores.active.length - 1; index >= 0; index -= 1) {
+          const pickup = state.roamingSpores.active[index];
+          if (pickup.region !== state.currentRealmId) continue;
+          const pickupRect = { x: pickup.x - 10, y: pickup.y - 10, w: 20, h: 20 };
+          if (!intersectsRect(heroRect, pickupRect)) continue;
+          state.roamingSpores.active.splice(index, 1);
+          claimPickup(pickup, true);
         }
       };
 
@@ -4738,6 +4887,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const update = async (dt) => {
         state.worldTime += dt;
+        if (state.mode !== "intro" && !state.intro.active) {
+          maintainRoamingSporeSpawns();
+        }
         if (state.mode === "intro" || state.intro.active) return;
         if (state.activeDialogue) return;
         if (state.cutscene.active || state.mode === "cutscene") return;
@@ -5392,6 +5544,18 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           worldCtx.fillRect(Math.round(sx - 6), Math.round(sy - 6), 12, 12);
           worldCtx.fillStyle = "#f8fafc";
           worldCtx.fillRect(Math.round(sx - 2), Math.round(sy - 2), 4, 4);
+        }
+        for (const pickup of state.roamingSpores.active) {
+          if (pickup.region !== state.currentRealmId) continue;
+          if (!visible(pickup.x - 10, pickup.y - 10, 20, 20)) continue;
+          const sx = pickup.x - state.camera.x;
+          const sy = pickup.y - state.camera.y;
+          worldCtx.fillStyle = pickup.golden ? "#fbbf24" : "#22d3ee";
+          worldCtx.fillRect(Math.round(sx - 7), Math.round(sy - 7), 14, 14);
+          worldCtx.fillStyle = pickup.golden ? "#fde68a" : "#bae6fd";
+          worldCtx.fillRect(Math.round(sx - 2), Math.round(sy - 2), 4, 4);
+          worldCtx.strokeStyle = pickup.golden ? "rgba(251, 191, 36, 0.72)" : "rgba(56, 189, 248, 0.72)";
+          worldCtx.strokeRect(Math.round(sx - 8), Math.round(sy - 8), 16, 16);
         }
 
         for (const structure of STRUCTURES) {
