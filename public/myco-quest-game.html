@@ -936,6 +936,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const WORLD_WIDTH = 4600;
       const WORLD_HEIGHT = 3200;
       const BASE_MAX_HP = 126;
+      const WORLD_CAMERA_ZOOM = 1.7;
 
       const worldCanvas = document.getElementById("worldCanvas");
       const worldCtx = worldCanvas.getContext("2d");
@@ -1473,24 +1474,43 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         { id: "grove-2", kind: "tree", x: 520, y: 860, realm: "myco-kingdom" },
         { id: "grove-3", kind: "tree", x: 1030, y: 520, realm: "myco-kingdom" },
         { id: "grove-4", kind: "mushroom", x: 1180, y: 280, realm: "myco-kingdom" },
+        { id: "grove-5", kind: "bush", x: 360, y: 620, realm: "myco-kingdom" },
+        { id: "grove-6", kind: "rock", x: 880, y: 760, realm: "myco-kingdom" },
+        { id: "grove-7", kind: "mushroom", x: 620, y: 420, realm: "myco-kingdom" },
+        { id: "grove-8", kind: "bush", x: 1100, y: 930, realm: "myco-kingdom" },
         { id: "fen-1", kind: "reed", x: 1650, y: 240, realm: "rougarou-fen" },
         { id: "fen-2", kind: "reed", x: 2080, y: 640, realm: "rougarou-fen" },
         { id: "fen-3", kind: "totem", x: 2360, y: 280, realm: "rougarou-fen" },
+        { id: "fen-4", kind: "bush", x: 1840, y: 520, realm: "rougarou-fen" },
+        { id: "fen-5", kind: "rock", x: 2480, y: 710, realm: "rougarou-fen" },
+        { id: "fen-6", kind: "mushroom", x: 1710, y: 860, realm: "rougarou-fen" },
         { id: "drake-1", kind: "crystal", x: 2740, y: 280, realm: "tri-drake-peaks" },
         { id: "drake-2", kind: "crystal", x: 3380, y: 620, realm: "tri-drake-peaks" },
         { id: "drake-3", kind: "totem", x: 3660, y: 230, realm: "tri-drake-peaks" },
+        { id: "drake-4", kind: "rock", x: 3100, y: 910, realm: "tri-drake-peaks" },
+        { id: "drake-5", kind: "bush", x: 2820, y: 740, realm: "tri-drake-peaks" },
         { id: "tide-1", kind: "reef", x: 1540, y: 1320, realm: "crimson-tide" },
         { id: "tide-2", kind: "reef", x: 2380, y: 1680, realm: "crimson-tide" },
         { id: "tide-3", kind: "crystal", x: 2630, y: 2340, realm: "crimson-tide" },
+        { id: "tide-4", kind: "bush", x: 1840, y: 1940, realm: "crimson-tide" },
+        { id: "tide-5", kind: "rock", x: 2460, y: 2140, realm: "crimson-tide" },
         { id: "chain-1", kind: "obelisk", x: 3140, y: 1460, realm: "solana-chainlands" },
         { id: "chain-2", kind: "obelisk", x: 3960, y: 1700, realm: "solana-chainlands" },
         { id: "chain-3", kind: "crystal", x: 4240, y: 2420, realm: "solana-chainlands" },
+        { id: "chain-4", kind: "rock", x: 3340, y: 2360, realm: "solana-chainlands" },
+        { id: "chain-5", kind: "bush", x: 3680, y: 1560, realm: "solana-chainlands" },
         { id: "commons-1", kind: "tree", x: 320, y: 1480, realm: "verdant-commons" },
         { id: "commons-2", kind: "mushroom", x: 1180, y: 2220, realm: "verdant-commons" },
         { id: "commons-3", kind: "totem", x: 780, y: 2420, realm: "verdant-commons" },
+        { id: "commons-4", kind: "bush", x: 520, y: 1960, realm: "verdant-commons" },
+        { id: "commons-5", kind: "rock", x: 1360, y: 2080, realm: "verdant-commons" },
+        { id: "commons-6", kind: "tree", x: 980, y: 2440, realm: "verdant-commons" },
         { id: "obsidian-1", kind: "obelisk", x: 240, y: 2700, realm: "obsidian-wilds" },
         { id: "obsidian-2", kind: "crystal", x: 980, y: 2860, realm: "obsidian-wilds" },
         { id: "obsidian-3", kind: "reef", x: 1860, y: 3040, realm: "obsidian-wilds" },
+        { id: "obsidian-4", kind: "rock", x: 620, y: 2960, realm: "obsidian-wilds" },
+        { id: "obsidian-5", kind: "bush", x: 1420, y: 2780, realm: "obsidian-wilds" },
+        { id: "obsidian-6", kind: "mushroom", x: 1880, y: 2860, realm: "obsidian-wilds" },
       ];
 
       const CUTSCENES = {
@@ -1789,8 +1809,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const resizeCanvases = () => {
         const dpr = Math.min(2, window.devicePixelRatio || 1);
         const worldRect = worldCanvas.getBoundingClientRect();
-        const worldW = Math.max(320, Math.round(worldRect.width * dpr));
-        const worldH = Math.max(220, Math.round(worldRect.height * dpr));
+        const worldW = Math.max(320, Math.round((worldRect.width * dpr) / WORLD_CAMERA_ZOOM));
+        const worldH = Math.max(220, Math.round((worldRect.height * dpr) / WORLD_CAMERA_ZOOM));
         if (worldCanvas.width !== worldW || worldCanvas.height !== worldH) {
           worldCanvas.width = worldW;
           worldCanvas.height = worldH;
@@ -2844,6 +2864,41 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         interiorCtx.fillStyle = glow;
         interiorCtx.fillRect(width * 0.5 - 20, height * 0.38 + 16, 40, 40);
 
+        if (structure.type === "house") {
+          interiorCtx.fillStyle = "#7c2d12";
+          interiorCtx.fillRect(90, height - 150, 120, 64);
+          interiorCtx.fillStyle = "#f59e0b";
+          interiorCtx.fillRect(98, height - 142, 104, 10);
+          interiorCtx.fillStyle = "#fef3c7";
+          interiorCtx.fillRect(110, height - 126, 16, 14);
+          interiorCtx.fillRect(172, height - 126, 16, 14);
+        } else if (structure.type === "cave") {
+          interiorCtx.fillStyle = "#0f172a";
+          interiorCtx.fillRect(width - 250, height - 170, 170, 92);
+          interiorCtx.fillStyle = "#334155";
+          interiorCtx.fillRect(width - 238, height - 162, 146, 12);
+          interiorCtx.fillStyle = "#64748b";
+          interiorCtx.fillRect(width - 210, height - 132, 18, 14);
+          interiorCtx.fillRect(width - 142, height - 132, 18, 14);
+        } else if (structure.type === "dungeon") {
+          interiorCtx.fillStyle = "#111827";
+          interiorCtx.fillRect(72, height - 174, 190, 96);
+          interiorCtx.fillStyle = "#6d28d9";
+          interiorCtx.fillRect(84, height - 166, 166, 10);
+          interiorCtx.fillStyle = "#c4b5fd";
+          interiorCtx.fillRect(114, height - 130, 18, 18);
+          interiorCtx.fillRect(200, height - 130, 18, 18);
+        } else if (structure.type === "castle") {
+          interiorCtx.fillStyle = "#1e293b";
+          interiorCtx.fillRect(width - 280, height - 190, 220, 112);
+          interiorCtx.fillStyle = "#334155";
+          interiorCtx.fillRect(width - 266, height - 178, 192, 84);
+          interiorCtx.fillStyle = "#60a5fa";
+          interiorCtx.fillRect(width - 178, height - 130, 36, 36);
+          interiorCtx.fillStyle = "#bfdbfe";
+          interiorCtx.fillRect(width - 170, height - 120, 20, 14);
+        }
+
         interiorCtx.fillStyle = "#f8fafc";
         interiorCtx.font = "700 16px sans-serif";
         interiorCtx.fillText(structure.name, 26, 34);
@@ -3601,40 +3656,66 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           ctx.fillStyle = "rgba(2, 6, 23, 0.45)";
           ctx.fillRect(sx - 2, sy + structure.h - 10, structure.w + 4, 8);
           ctx.fillStyle = "#7c2d12";
-          ctx.fillRect(sx, sy + 22, structure.w, structure.h - 22);
+          ctx.fillRect(sx, sy + 26, structure.w, structure.h - 26);
           ctx.fillStyle = "#b45309";
-          ctx.fillRect(sx + 6, sy + 30, structure.w - 12, structure.h - 30);
+          ctx.fillRect(sx + 8, sy + 34, structure.w - 16, structure.h - 34);
           ctx.fillStyle = "#7c2d12";
-          ctx.fillRect(sx - 10, sy + 8, structure.w + 20, 22);
+          ctx.fillRect(sx - 12, sy + 8, structure.w + 24, 22);
           ctx.fillStyle = "#f59e0b";
-          ctx.fillRect(sx + structure.w / 2 - 7, sy + structure.h - 26, 14, 18);
-        } else if (structure.type === "cave") {
-          ctx.fillStyle = "#334155";
-          ctx.fillRect(sx, sy + 8, structure.w, structure.h - 8);
-          ctx.fillStyle = "#0f172a";
-          ctx.fillRect(sx + 16, sy + 20, structure.w - 32, structure.h - 28);
-          ctx.fillStyle = "#64748b";
-          ctx.fillRect(sx + 6, sy + 10, structure.w - 12, 8);
-        } else if (structure.type === "dungeon") {
-          ctx.fillStyle = "#3f3f46";
-          ctx.fillRect(sx, sy, structure.w, structure.h);
-          ctx.fillStyle = "#6d28d9";
-          ctx.fillRect(sx + 8, sy + 8, structure.w - 16, 10);
-          ctx.fillStyle = "#111827";
-          ctx.fillRect(sx + 24, sy + 34, structure.w - 48, structure.h - 46);
-        } else if (structure.type === "castle") {
+          ctx.fillRect(sx - 8, sy + 12, structure.w + 16, 7);
           ctx.fillStyle = "#1e293b";
-          ctx.fillRect(sx, sy + 18, structure.w, structure.h - 18);
-          ctx.fillStyle = "#334155";
-          ctx.fillRect(sx + 12, sy + 26, structure.w - 24, structure.h - 32);
-          ctx.fillStyle = "#60a5fa";
-          ctx.fillRect(sx + structure.w / 2 - 14, sy + structure.h - 42, 28, 22);
+          ctx.fillRect(sx + structure.w / 2 - 8, sy + structure.h - 27, 16, 20);
+          ctx.fillStyle = "#fef3c7";
+          ctx.fillRect(sx + 18, sy + 44, 14, 12);
+          ctx.fillRect(sx + structure.w - 32, sy + 44, 14, 12);
+          ctx.fillStyle = "#facc15";
+          ctx.fillRect(sx + 22, sy + 48, 6, 4);
+          ctx.fillRect(sx + structure.w - 28, sy + 48, 6, 4);
+        } else if (structure.type === "cave") {
+          ctx.fillStyle = "#475569";
+          ctx.fillRect(sx, sy + 10, structure.w, structure.h - 10);
+          ctx.fillStyle = "#64748b";
+          ctx.fillRect(sx + 8, sy + 8, structure.w - 16, 10);
+          ctx.fillStyle = "#1e293b";
+          ctx.fillRect(sx + 16, sy + 20, structure.w - 32, structure.h - 28);
+          ctx.fillStyle = "#020617";
+          ctx.fillRect(sx + 26, sy + 28, structure.w - 52, structure.h - 36);
+          ctx.fillStyle = "#94a3b8";
+          ctx.fillRect(sx + 14, sy + 34, 8, 6);
+          ctx.fillRect(sx + structure.w - 22, sy + 34, 8, 6);
+        } else if (structure.type === "dungeon") {
+          ctx.fillStyle = "#27272a";
+          ctx.fillRect(sx, sy, structure.w, structure.h);
+          ctx.fillStyle = "#3f3f46";
+          ctx.fillRect(sx + 8, sy + 8, structure.w - 16, structure.h - 16);
+          ctx.fillStyle = "#6d28d9";
+          ctx.fillRect(sx + 10, sy + 10, structure.w - 20, 10);
+          ctx.fillRect(sx + 20, sy + 24, 12, 12);
+          ctx.fillRect(sx + structure.w - 32, sy + 24, 12, 12);
+          ctx.fillStyle = "#111827";
+          ctx.fillRect(sx + 26, sy + 38, structure.w - 52, structure.h - 50);
+          ctx.fillStyle = "#c4b5fd";
+          ctx.fillRect(sx + structure.w / 2 - 9, sy + structure.h - 36, 18, 12);
+        } else if (structure.type === "castle") {
           ctx.fillStyle = "#0f172a";
-          ctx.fillRect(sx + 18, sy + 4, 34, 26);
-          ctx.fillRect(sx + structure.w - 52, sy + 4, 34, 26);
+          ctx.fillRect(sx, sy + 20, structure.w, structure.h - 20);
+          ctx.fillStyle = "#334155";
+          ctx.fillRect(sx + 10, sy + 26, structure.w - 20, structure.h - 34);
+          ctx.fillStyle = "#475569";
+          for (let i = 0; i < 8; i += 1) {
+            ctx.fillRect(sx + 14 + i * Math.floor((structure.w - 30) / 8), sy + 14, 14, 10);
+          }
+          ctx.fillStyle = "#1e293b";
+          ctx.fillRect(sx + structure.w / 2 - 20, sy + structure.h - 50, 40, 30);
+          ctx.fillStyle = "#60a5fa";
+          ctx.fillRect(sx + structure.w / 2 - 14, sy + structure.h - 42, 28, 18);
+          ctx.fillStyle = "#0f172a";
+          ctx.fillRect(sx + 16, sy + 2, 36, 28);
+          ctx.fillRect(sx + structure.w - 52, sy + 2, 36, 28);
           ctx.fillStyle = "#93c5fd";
-          ctx.fillRect(sx + 24, sy + 11, 22, 5);
-          ctx.fillRect(sx + structure.w - 46, sy + 11, 22, 5);
+          ctx.fillRect(sx + 22, sy + 10, 24, 7);
+          ctx.fillRect(sx + structure.w - 46, sy + 10, 24, 7);
+          ctx.fillRect(sx + structure.w / 2 - 9, sy + 40, 18, 14);
         } else if (structure.type === "shrine") {
           ctx.fillStyle = "#0f766e";
           ctx.fillRect(sx, sy, structure.w, structure.h);
@@ -3646,19 +3727,23 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const drawScenicProp = (ctx, prop, sx, sy) => {
         if (prop.kind === "tree") {
           ctx.fillStyle = "#713f12";
-          ctx.fillRect(sx - 3, sy - 2, 6, 14);
+          ctx.fillRect(sx - 4, sy - 2, 8, 16);
           ctx.fillStyle = "#166534";
-          ctx.fillRect(sx - 12, sy - 15, 24, 13);
+          ctx.fillRect(sx - 14, sy - 17, 28, 16);
           ctx.fillStyle = "#22c55e";
-          ctx.fillRect(sx - 8, sy - 11, 16, 7);
+          ctx.fillRect(sx - 10, sy - 12, 20, 9);
+          ctx.fillStyle = "#86efac";
+          ctx.fillRect(sx - 5, sy - 10, 10, 3);
         } else if (prop.kind === "mushroom") {
           ctx.fillStyle = "#f8fafc";
-          ctx.fillRect(sx - 3, sy - 2, 6, 11);
+          ctx.fillRect(sx - 4, sy - 2, 8, 12);
           ctx.fillStyle = "#ef4444";
-          ctx.fillRect(sx - 12, sy - 10, 24, 8);
+          ctx.fillRect(sx - 13, sy - 11, 26, 9);
           ctx.fillStyle = "#fecaca";
-          ctx.fillRect(sx - 5, sy - 8, 3, 2);
-          ctx.fillRect(sx + 2, sy - 8, 3, 2);
+          ctx.fillRect(sx - 6, sy - 9, 4, 2);
+          ctx.fillRect(sx + 3, sy - 9, 4, 2);
+          ctx.fillStyle = "#fda4af";
+          ctx.fillRect(sx - 1, sy - 7, 2, 2);
         } else if (prop.kind === "reed") {
           ctx.fillStyle = "#14532d";
           ctx.fillRect(sx - 6, sy - 11, 2, 14);
@@ -3684,6 +3769,20 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           ctx.fillRect(sx - 7, sy - 14, 14, 19);
           ctx.fillStyle = "#22c55e";
           ctx.fillRect(sx - 1, sy - 8, 2, 8);
+        } else if (prop.kind === "rock") {
+          ctx.fillStyle = "#475569";
+          ctx.fillRect(sx - 10, sy - 6, 20, 12);
+          ctx.fillStyle = "#64748b";
+          ctx.fillRect(sx - 6, sy - 4, 12, 5);
+          ctx.fillStyle = "#94a3b8";
+          ctx.fillRect(sx - 2, sy - 3, 4, 2);
+        } else if (prop.kind === "bush") {
+          ctx.fillStyle = "#14532d";
+          ctx.fillRect(sx - 11, sy - 6, 22, 12);
+          ctx.fillStyle = "#16a34a";
+          ctx.fillRect(sx - 8, sy - 9, 16, 7);
+          ctx.fillStyle = "#4ade80";
+          ctx.fillRect(sx - 3, sy - 8, 6, 3);
         }
       };
 
