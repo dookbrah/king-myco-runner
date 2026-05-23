@@ -28,6 +28,21 @@
         display: grid;
         gap: 10px;
       }
+      .top-config-panel details {
+        border: 1px solid #355487;
+        background: rgba(8, 15, 32, 0.7);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .top-config-panel summary {
+        cursor: pointer;
+        font-weight: 700;
+        padding: 10px 12px;
+        background: #0f1d39;
+      }
+      .top-config-panel-body {
+        padding: 10px 12px 12px;
+      }
       .panel {
         border: 1px solid #2f4678;
         background: linear-gradient(180deg, rgba(14, 28, 56, 0.9), rgba(8, 14, 30, 0.92));
@@ -130,9 +145,9 @@
         image-rendering: auto;
       }
       #worldCanvas {
-        height: calc(100vh - 260px);
+        height: min(74dvh, calc(100dvh - 132px));
         max-height: none;
-        min-height: 560px;
+        min-height: 340px;
         filter: saturate(1.14) contrast(1.06);
       }
       .hint {
@@ -615,6 +630,12 @@
       .corner-menu .panel {
         margin: 8px;
       }
+      .menu-dropdown-body {
+        padding: 8px;
+      }
+      .menu-dropdown-body .panel {
+        margin: 0;
+      }
       .hidden {
         display: none !important;
       }
@@ -739,8 +760,8 @@
           font-size: 20px;
         }
         #worldCanvas {
-          height: calc(100vh - 300px);
-          min-height: 420px;
+          height: min(70dvh, calc(100dvh - 152px));
+          min-height: 300px;
         }
         .corner-menu {
           width: min(46vw, 340px);
@@ -764,12 +785,12 @@
           grid-template-columns: repeat(2, minmax(120px, 1fr));
         }
         #worldCanvas {
-          height: calc(100vh - 350px);
-          min-height: 280px;
+          height: calc(100dvh - 198px);
+          min-height: 220px;
         }
         .corner-menu {
           top: 6px;
-          width: calc(50vw - 10px);
+          width: calc(50vw - 8px);
           max-height: 46vh;
         }
         .corner-menu.left {
@@ -785,6 +806,16 @@
         .corner-menu .panel {
           margin: 6px;
           padding: 8px;
+        }
+        .top-config-panel summary {
+          font-size: 12px;
+          padding: 8px 10px;
+        }
+        .top-config-panel-body {
+          padding: 8px;
+        }
+        #regionHint {
+          display: none;
         }
         .dialogue {
           bottom: 112px;
@@ -811,7 +842,7 @@
       }
       @media (max-width: 950px) and (orientation: landscape) and (hover: none) and (pointer: coarse) {
         #worldCanvas {
-          height: calc(100vh - 170px);
+          height: calc(100dvh - 124px);
           min-height: 210px;
         }
         .corner-menu {
@@ -893,45 +924,50 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
     <div id="portalFlash" class="portal-flash"></div>
 
     <main>
-      <section class="panel">
-        <h1>Myco Quest - Nexus Legends Web3 RPG</h1>
-        <p class="tiny">
-          Inspiration blend: exploration adventure + creature encounters + turn RPG strategy. Explore one massive overworld,
-          learn forgotten magic, and open portal routes into corrupted realms ruled by Dark Mycelius's lieutenants.
-          <a href="/dev/myco-quest" target="_blank" rel="noreferrer">Open Dev HUD</a>
-        </p>
+      <section class="panel top-config-panel">
+        <details id="topConfigMenu">
+          <summary>Game Menu + Sync</summary>
+          <div class="top-config-panel-body">
+            <h1>Myco Quest - Nexus Legends Web3 RPG</h1>
+            <p class="tiny" style="margin-top: 6px">
+              Inspiration blend: exploration adventure + creature encounters + turn RPG strategy. Explore one massive overworld,
+              learn forgotten magic, and open portal routes into corrupted realms ruled by Dark Mycelius's lieutenants.
+              <a href="/dev/myco-quest" target="_blank" rel="noreferrer">Open Dev HUD</a>
+            </p>
 
-        <div class="top-grid">
-          <label>
-            API Base (optional)
-            <input id="apiBase" placeholder="https://api.kingmyco.io" />
-          </label>
-          <label>
-            Source
-            <input id="source" value="kingmyco.io" />
-          </label>
-          <label>
-            Player Nickname
-            <input id="externalId" value="myco-player-01" maxlength="24" />
-          </label>
-          <label>
-            X-Source-Token (optional)
-            <input id="sourceToken" placeholder="only if source auth enabled" />
-          </label>
-          <label>
-            Region Page
-            <select id="realmPageSelect"></select>
-          </label>
-        </div>
+            <div class="top-grid">
+              <label>
+                API Base (optional)
+                <input id="apiBase" placeholder="https://api.kingmyco.io" />
+              </label>
+              <label>
+                Source
+                <input id="source" value="kingmyco.io" />
+              </label>
+              <label>
+                Player Nickname
+                <input id="externalId" value="myco-player-01" maxlength="24" />
+              </label>
+              <label>
+                X-Source-Token (optional)
+                <input id="sourceToken" placeholder="only if source auth enabled" />
+              </label>
+              <label>
+                Region Page
+                <select id="realmPageSelect"></select>
+              </label>
+            </div>
 
-        <div class="actions">
-          <button id="syncBtn" class="primary">Sync Campaign</button>
-          <button id="switchRealmBtn">Open Region Page</button>
-          <button id="saveBtn">Save Progress</button>
-          <button id="resetBtn" class="warn">Reset Local Progress</button>
-          <button id="minimalHudBtn">Minimal HUD: Off</button>
-        </div>
-        <p id="status" class="status"></p>
+            <div class="actions">
+              <button id="syncBtn" class="primary">Sync Campaign</button>
+              <button id="switchRealmBtn">Open Region Page</button>
+              <button id="saveBtn">Save Progress</button>
+              <button id="resetBtn" class="warn">Reset Local Progress</button>
+              <button id="minimalHudBtn">Minimal HUD: Off</button>
+            </div>
+            <p id="status" class="status"></p>
+          </div>
+        </details>
       </section>
 
       <section class="layout">
@@ -1127,17 +1163,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
     </main>
 
     <section class="corner-menu left">
-      <details open>
-        <summary>World + Story</summary>
-        <div id="leftMenuContent"></div>
-      </details>
+      <div id="leftMenuContent"></div>
     </section>
 
     <section class="corner-menu right">
-      <details open>
-        <summary>Character + Inventory + Web3 + Leaderboard + Battle + Audio</summary>
-        <div id="rightMenuContent"></div>
-      </details>
+      <div id="rightMenuContent"></div>
     </section>
 
     <button id="minimalHudFloating" class="hud-toggle-floating">Show HUD</button>
@@ -1266,6 +1296,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         titleWalletInput: document.getElementById("titleWalletInput"),
         titleWalletConnectBtn: document.getElementById("titleWalletConnectBtn"),
         titleWalletStatus: document.getElementById("titleWalletStatus"),
+        topConfigMenu: document.getElementById("topConfigMenu"),
         clanSelect: document.getElementById("clanSelect"),
         avatarSelect: document.getElementById("avatarSelect"),
         clanBannerPreview: document.getElementById("clanBannerPreview"),
@@ -3847,14 +3878,37 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const left = dom.leftMenuContent;
         const right = dom.rightMenuContent;
         if (!left || !right) return;
-        if (dom.panelStory) left.appendChild(dom.panelStory);
-        if (dom.panelControls) left.appendChild(dom.panelControls);
-        if (dom.panelStatus) right.appendChild(dom.panelStatus);
-        if (dom.panelInventory) right.appendChild(dom.panelInventory);
-        if (dom.panelWeb3) right.appendChild(dom.panelWeb3);
-        if (dom.panelLeaderboard) right.appendChild(dom.panelLeaderboard);
-        if (dom.panelBattle) right.appendChild(dom.panelBattle);
-        if (dom.panelAudio) right.appendChild(dom.panelAudio);
+        const compactUi =
+          window.matchMedia("(max-width: 900px)").matches ||
+          window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+        const createMenuDropdown = (container, title, panel, openByDefault = false) => {
+          if (!container || !panel) return null;
+          const details = document.createElement("details");
+          if (openByDefault) details.open = true;
+          const summary = document.createElement("summary");
+          summary.textContent = title;
+          const host = document.createElement("div");
+          host.className = "menu-dropdown-body";
+          details.appendChild(summary);
+          details.appendChild(host);
+          host.appendChild(panel);
+          container.appendChild(details);
+          return host;
+        };
+        left.innerHTML = "";
+        right.innerHTML = "";
+        createMenuDropdown(left, "Story Journal", dom.panelStory, !compactUi);
+        createMenuDropdown(left, "Controls + Tips", dom.panelControls, false);
+        createMenuDropdown(right, "Character Status", dom.panelStatus, !compactUi);
+        createMenuDropdown(right, "Inventory + Shop", dom.panelInventory, false);
+        createMenuDropdown(right, "Web3 Deck", dom.panelWeb3, false);
+        createMenuDropdown(right, "Leaderboards", dom.panelLeaderboard, false);
+        const battleHost = createMenuDropdown(right, "Battle Menu", dom.panelBattle, false);
+        createMenuDropdown(right, "Audio", dom.panelAudio, false);
+        dom.battleMenuHost = battleHost;
+        if (dom.topConfigMenu) {
+          dom.topConfigMenu.open = !compactUi;
+        }
         if (dom.hudAside) {
           dom.hudAside.classList.add("hidden");
         }
@@ -3864,7 +3918,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (!dom.panelBattle) return;
         const popupClass = "battle-popup-active";
         const hasClass = dom.panelBattle.classList.contains(popupClass);
-        const expectedParent = active ? document.body : dom.rightMenuContent;
+        const expectedParent = active ? document.body : (dom.battleMenuHost ?? dom.rightMenuContent);
         if (hasClass === active && dom.panelBattle.parentElement === expectedParent) return;
 
         if (active) {
@@ -3876,12 +3930,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         } else {
           dom.panelBattle.classList.remove(popupClass);
           document.body.classList.remove("battle-popup-active");
-          if (dom.rightMenuContent) {
-            if (dom.panelAudio && dom.panelAudio.parentElement === dom.rightMenuContent) {
-              dom.rightMenuContent.insertBefore(dom.panelBattle, dom.panelAudio);
-            } else {
-              dom.rightMenuContent.appendChild(dom.panelBattle);
-            }
+          if (dom.battleMenuHost) {
+            dom.battleMenuHost.appendChild(dom.panelBattle);
+          } else if (dom.rightMenuContent) {
+            dom.rightMenuContent.appendChild(dom.panelBattle);
           }
         }
         resizeCanvases();
@@ -9197,6 +9249,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       window.addEventListener("beforeunload", saveGame);
       window.addEventListener("resize", () => {
+        if (!document.body.classList.contains("battle-popup-active")) {
+          setupCornerMenus();
+        }
         resizeCanvases();
       });
 
