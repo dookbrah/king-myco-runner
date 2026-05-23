@@ -5376,15 +5376,6 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         ctx.restore();
       };
 
-      const drawCutoutOutline = (ctx, left, top, width, height) => {
-        ctx.strokeStyle = "rgba(2, 6, 23, 0.88)";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(left, top, width, height);
-        ctx.strokeStyle = "rgba(248, 250, 252, 0.22)";
-        ctx.lineWidth = 1;
-        ctx.strokeRect(left + 1, top + 1, Math.max(2, width - 2), Math.max(2, height - 2));
-      };
-
       const drawPixelCharacter = (ctx, screenX, screenY) => {
         const x = Math.round(screenX);
         const y = Math.round(screenY + Math.sin(state.worldTime * 8) * 1.2);
@@ -5394,11 +5385,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const robeColor = clan.colors.robe;
         const eyeColor = clan.colors.eye;
 
-        ctx.fillStyle = "rgba(2, 6, 23, 0.5)";
-        ctx.fillRect(x - 13, y + 12, 26, 5);
+        ctx.fillStyle = "rgba(2, 6, 23, 0.35)";
+        ctx.beginPath();
+        ctx.ellipse(x, y + 14, 13, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
 
         withPaperPose(ctx, x, y, 0.25, () => {
-          drawCutoutOutline(ctx, -13, -30, 28, 46);
           ctx.fillStyle = aura;
           ctx.fillRect(-12, -15, 24, 4);
 
@@ -5487,10 +5479,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         ];
         const [cloak, accent, eye] = palettes[tone];
 
-        ctx.fillStyle = "rgba(2, 6, 23, 0.42)";
-        ctx.fillRect(x - 11, y + 7, 22, 4);
+        ctx.fillStyle = "rgba(2, 6, 23, 0.3)";
+        ctx.beginPath();
+        ctx.ellipse(x, y + 9, 11, 3.5, 0, 0, Math.PI * 2);
+        ctx.fill();
         withPaperPose(ctx, x, y, tone + 0.5, () => {
-          drawCutoutOutline(ctx, -11, -16, 22, 24);
           ctx.fillStyle = cloak;
           ctx.fillRect(-10, -15, 20, 21);
           ctx.fillStyle = accent;
@@ -5545,10 +5538,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         };
         const [base, accent] = kindPalette[enemy.kind] ?? ["#f97316", "#7c2d12"];
 
-        ctx.fillStyle = "rgba(2, 6, 23, 0.42)";
-        ctx.fillRect(x - 13, y + 10, 26, 4);
+        ctx.fillStyle = "rgba(2, 6, 23, 0.32)";
+        ctx.beginPath();
+        ctx.ellipse(x, y + 11, 13, 3.5, 0, 0, Math.PI * 2);
+        ctx.fill();
         withPaperPose(ctx, x, y, enemy.x * 0.0007 + enemy.y * 0.0004, () => {
-          drawCutoutOutline(ctx, -14, -12, 28, 24);
           ctx.fillStyle = base;
           ctx.fillRect(-11, -10, 22, 20);
           ctx.fillStyle = accent;
@@ -5585,9 +5579,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           ctx.fillRect(-3, -2, 1, 1);
           ctx.fillRect(2, -2, 1, 1);
           if (enemy.boss) {
-            ctx.strokeStyle = "#f8fafc";
+            ctx.strokeStyle = "rgba(248, 250, 252, 0.8)";
             ctx.lineWidth = 2;
-            ctx.strokeRect(-15, -14, 30, 30);
+            ctx.beginPath();
+            ctx.arc(0, -2, 16, 0, Math.PI * 2);
+            ctx.stroke();
           }
         });
       };
@@ -5756,20 +5752,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           ctx.fillRect(sx + structure.w / 2 - 14, sy + structure.h - 22, 28, 5);
           ctx.fillStyle = "#94a3b8";
           ctx.fillRect(sx + structure.w / 2 - 16, sy + 6, 32, 4);
-          ctx.strokeStyle = "rgba(2, 6, 23, 0.84)";
-          ctx.lineWidth = 2;
-          ctx.strokeRect(sx + 18, sy + 8, structure.w - 36, structure.h - 14);
           ctx.strokeStyle = "rgba(148, 163, 184, 0.35)";
-          ctx.lineWidth = 1;
-          ctx.strokeRect(sx + 24, sy + 14, structure.w - 48, structure.h - 24);
-        }
-        if (structure.type !== "shrine") {
-          ctx.strokeStyle = "rgba(2, 6, 23, 0.82)";
-          ctx.lineWidth = 2;
-          ctx.strokeRect(sx - 1, sy - 1, structure.w + 2, structure.h + 2);
-          ctx.strokeStyle = "rgba(248, 250, 252, 0.16)";
-          ctx.lineWidth = 1;
-          ctx.strokeRect(sx + 2, sy + 2, Math.max(2, structure.w - 4), Math.max(2, structure.h - 4));
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(sx + 24, sy + 14);
+          ctx.lineTo(sx + structure.w - 24, sy + 14);
+          ctx.stroke();
         }
       };
 
@@ -5947,23 +5935,25 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           drawScenicProp(worldCtx, prop, prop.x - state.camera.x, prop.y - state.camera.y);
         }
 
-        worldCtx.fillStyle = "#243b63";
-        for (const obstacle of staticObstacles) {
-          if (!isInCurrentRealm(obstacle)) continue;
-          if (!visible(obstacle.x, obstacle.y, obstacle.w, obstacle.h)) continue;
-          worldCtx.fillRect(obstacle.x - state.camera.x, obstacle.y - state.camera.y, obstacle.w, obstacle.h);
-          worldCtx.fillStyle = "rgba(148, 163, 184, 0.1)";
-          worldCtx.fillRect(obstacle.x - state.camera.x + 4, obstacle.y - state.camera.y + 4, obstacle.w - 8, obstacle.h - 8);
-          worldCtx.fillStyle = "#243b63";
-        }
-
         for (const barrier of REALM_BARRIERS) {
           if (!isInCurrentRealm(barrier)) continue;
           if (!visible(barrier.x, barrier.y, barrier.w, barrier.h)) continue;
-          worldCtx.fillStyle = "#111827";
-          worldCtx.fillRect(barrier.x - state.camera.x, barrier.y - state.camera.y, barrier.w, barrier.h);
-          worldCtx.fillStyle = "rgba(125, 211, 252, 0.24)";
-          worldCtx.fillRect(barrier.x - state.camera.x + 6, barrier.y - state.camera.y + 6, Math.max(4, barrier.w - 12), Math.max(4, barrier.h - 12));
+          const bx = barrier.x - state.camera.x;
+          const by = barrier.y - state.camera.y;
+          worldCtx.strokeStyle = "rgba(125, 211, 252, 0.28)";
+          worldCtx.lineWidth = 3;
+          worldCtx.beginPath();
+          worldCtx.moveTo(bx, by + barrier.h / 2);
+          worldCtx.lineTo(bx + barrier.w, by + barrier.h / 2);
+          worldCtx.stroke();
+          worldCtx.globalAlpha = 0.4;
+          worldCtx.strokeStyle = "rgba(186, 230, 253, 0.34)";
+          worldCtx.lineWidth = 1.5;
+          worldCtx.beginPath();
+          worldCtx.moveTo(bx, by + barrier.h / 2 + 4);
+          worldCtx.lineTo(bx + barrier.w, by + barrier.h / 2 + 4);
+          worldCtx.stroke();
+          worldCtx.globalAlpha = 1;
         }
 
         for (const portal of PORTALS) {
@@ -6025,8 +6015,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           worldCtx.fillRect(Math.round(sx - 7), Math.round(sy - 7), 14, 14);
           worldCtx.fillStyle = pickup.golden ? "#fde68a" : "#bae6fd";
           worldCtx.fillRect(Math.round(sx - 2), Math.round(sy - 2), 4, 4);
-          worldCtx.strokeStyle = pickup.golden ? "rgba(251, 191, 36, 0.72)" : "rgba(56, 189, 248, 0.72)";
-          worldCtx.strokeRect(Math.round(sx - 8), Math.round(sy - 8), 16, 16);
+          worldCtx.strokeStyle = pickup.golden ? "rgba(251, 191, 36, 0.6)" : "rgba(56, 189, 248, 0.6)";
+          worldCtx.lineWidth = 1.5;
+          worldCtx.beginPath();
+          worldCtx.arc(Math.round(sx), Math.round(sy), 9, 0, Math.PI * 2);
+          worldCtx.stroke();
         }
 
         for (const structure of STRUCTURES) {
