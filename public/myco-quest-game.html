@@ -1228,6 +1228,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const STORAGE_STATE_KEY = "mycoQuestOverworldStateV2";
       const STORAGE_LEADERBOARD_KEY = "mycoQuestClanLeaderboardV1";
       const STORAGE_CLAN_LOCK_KEY = "mycoQuestClanLockByIdentityV1";
+      const STORAGE_NICKNAME_LOCK_KEY = "mycoQuestNicknameLockByIdentityV1";
       const AUTO_FRESH_START_KEY = "mycoQuestAutoFreshStart";
       const DAILY_SPORE_BURN_LIMIT = 1000;
       const WEEKLY_TOKEN_BURN_AMOUNT = 0.25;
@@ -2709,6 +2710,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           minimalHud: false,
           titleCardSkipped: false,
           clanLocked: false,
+          nicknameLocked: false,
+        },
+        nicknameLock: {
+          identityKey: "",
+          nickname: "",
         },
         clanLock: {
           identityKey: "",
@@ -3242,6 +3248,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       };
 
       const applyClanSelectionFromUi = () => {
+        applyNicknameLockState();
         applyClanLockState();
         if (state.ui.clanLocked && state.clanLock.clanId) {
           state.playerClan = state.clanLock.clanId;
@@ -3261,6 +3268,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const entries = Object.values(CLAN_PROFILES);
         dom.clanSelect.innerHTML = entries.map((entry) => `<option value="${entry.id}">${entry.name}</option>`).join("");
         if (!CLAN_PROFILES[state.playerClan]) state.playerClan = "myco";
+        applyNicknameLockState();
         applyClanLockState();
         dom.clanSelect.value = state.playerClan;
         dom.clanSelect.disabled = state.ui.clanLocked;
@@ -3289,6 +3297,65 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (dom.externalId) dom.externalId.value = nickname;
         if (dom.titleNickname) dom.titleNickname.value = nickname;
         if (dom.titleWalletInput && state.web3.wallet) dom.titleWalletInput.value = state.web3.wallet;
+      };
+
+      const loadNicknameLocks = () => {
+        try {
+          const raw = localStorage.getItem(STORAGE_NICKNAME_LOCK_KEY);
+          if (!raw) return {};
+          const parsed = JSON.parse(raw);
+          if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+          return parsed;
+        } catch (_error) {
+          return {};
+        }
+      };
+
+      const saveNicknameLocks = (locks) => {
+        localStorage.setItem(STORAGE_NICKNAME_LOCK_KEY, JSON.stringify(locks));
+      };
+
+      const getNicknameLockIdentityKey = () => {
+        const wallet = getSignedInWallet().toLowerCase();
+        if (isValidSolanaWalletAddress(wallet)) return `wallet:${wallet}`;
+        return "";
+      };
+
+      const applyNicknameLockState = () => {
+        const identityKey = getNicknameLockIdentityKey();
+        const locks = loadNicknameLocks();
+        const lockedNickname = identityKey && typeof locks[identityKey] === "string"
+          ? normalizeNickname(locks[identityKey])
+          : "";
+        state.nicknameLock.identityKey = identityKey;
+        state.nicknameLock.nickname = lockedNickname;
+        state.ui.nicknameLocked = Boolean(lockedNickname);
+        if (lockedNickname) {
+          if (dom.externalId) dom.externalId.value = lockedNickname;
+          if (dom.titleNickname) dom.titleNickname.value = lockedNickname;
+        }
+        if (dom.externalId) dom.externalId.disabled = state.ui.nicknameLocked;
+        if (dom.titleNickname) dom.titleNickname.disabled = state.ui.nicknameLocked;
+        return state.ui.nicknameLocked;
+      };
+
+      const lockNicknameForCurrentIdentity = () => {
+        const identityKey = getNicknameLockIdentityKey();
+        const nickname = normalizeNickname(getSignedInNickname());
+        if (!identityKey || !nickname) return false;
+        const locks = loadNicknameLocks();
+        const existing = typeof locks[identityKey] === "string" ? normalizeNickname(locks[identityKey]) : "";
+        if (existing) {
+          state.nicknameLock.nickname = existing;
+          if (dom.externalId) dom.externalId.value = existing;
+          if (dom.titleNickname) dom.titleNickname.value = existing;
+          applyNicknameLockState();
+          return false;
+        }
+        locks[identityKey] = nickname;
+        saveNicknameLocks(locks);
+        applyNicknameLockState();
+        return true;
       };
 
       const loadClanLocks = () => {
@@ -4163,6 +4230,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         state.web3.wallet = trimmed;
         state.web3.lastSyncedAt = Date.now();
         syncIdentityInputs();
+        applyNicknameLockState();
         applyClanLockState();
         if (state.ui.clanLocked && state.clanLock.clanId) {
           state.playerClan = state.clanLock.clanId;
@@ -4620,6 +4688,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const refreshTitleScreen = () => {
         const hasSave = hasSavedGame();
         if (!dom.continueAdventureBtn) return;
+        applyNicknameLockState();
         applyClanSelectionFromUi();
         syncIdentityInputs();
         const profile = getClanProfile();
@@ -4634,15 +4703,20 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           const clanLockHint = state.ui.clanLocked
             ? `Clan lock active: ${profile.name}. Clan can only be picked once per wallet.`
             : "Choose carefully: clan choice becomes permanent after your first start.";
+          const nicknameLockHint = state.ui.nicknameLocked
+            ? `Nickname lock active: ${state.nicknameLock.nickname}. Nickname can only be entered once per wallet.`
+            : "Nickname can only be entered once and will lock after your first start.";
           dom.titleHint.textContent = identityReady
-            ? `${baseHint} Identity lock ready (nickname + wallet). ${clanLockHint}`
-            : `${baseHint} Sign in requires nickname + Solana wallet connection. ${clanLockHint}`;
+            ? `${baseHint} Identity lock ready (nickname + wallet). ${nicknameLockHint} ${clanLockHint}`
+            : `${baseHint} Sign in requires nickname + Solana wallet connection. ${nicknameLockHint} ${clanLockHint}`;
         }
         if (dom.titleWalletStatus) {
           if (identityReady) {
-            dom.titleWalletStatus.textContent = state.ui.clanLocked
-              ? `Signed in as ${getSignedInNickname()} // ${shortWallet(getSignedInWallet())} // Clan locked to ${profile.name}`
-              : `Signed in as ${getSignedInNickname()} // ${shortWallet(getSignedInWallet())}`;
+            const lockTokens = [];
+            if (state.ui.nicknameLocked) lockTokens.push(`Nickname locked to ${state.nicknameLock.nickname}`);
+            if (state.ui.clanLocked) lockTokens.push(`Clan locked to ${profile.name}`);
+            const lockText = lockTokens.length ? ` // ${lockTokens.join(" // ")}` : "";
+            dom.titleWalletStatus.textContent = `Signed in as ${getSignedInNickname()} // ${shortWallet(getSignedInWallet())}${lockText}`;
           } else {
             dom.titleWalletStatus.textContent = "Connect a Solana wallet and set nickname to unlock Start.";
           }
@@ -4661,6 +4735,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           refreshTitleScreen();
           return;
         }
+        lockNicknameForCurrentIdentity();
         lockClanForCurrentIdentity();
         applyClanSelectionFromUi();
         saveConfig();
@@ -8717,17 +8792,37 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         input.addEventListener("change", saveConfig);
       });
       dom.externalId.addEventListener("input", () => {
+        applyNicknameLockState();
+        if (state.ui.nicknameLocked) {
+          const locked = state.nicknameLock.nickname || getSignedInNickname();
+          dom.externalId.value = locked;
+          if (dom.titleNickname) dom.titleNickname.value = locked;
+          setStatus(`Nickname locked to ${locked}. Nickname can only be set once.`, true);
+          refreshTitleScreen();
+          return;
+        }
         const normalized = normalizeNickname(dom.externalId.value);
         dom.externalId.value = normalized;
         if (dom.titleNickname) dom.titleNickname.value = normalized;
+        applyNicknameLockState();
         applyClanLockState();
         refreshTitleScreen();
         saveConfig();
       });
       dom.titleNickname.addEventListener("input", () => {
+        applyNicknameLockState();
+        if (state.ui.nicknameLocked) {
+          const locked = state.nicknameLock.nickname || getSignedInNickname();
+          dom.titleNickname.value = locked;
+          dom.externalId.value = locked;
+          setStatus(`Nickname locked to ${locked}. Nickname can only be set once.`, true);
+          refreshTitleScreen();
+          return;
+        }
         const normalized = normalizeNickname(dom.titleNickname.value);
         dom.titleNickname.value = normalized;
         dom.externalId.value = normalized;
+        applyNicknameLockState();
         applyClanLockState();
         refreshTitleScreen();
         saveConfig();
@@ -8774,6 +8869,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       refreshWorldMutation(true);
       refreshLiveEvent(true);
       syncIdentityInputs();
+      applyNicknameLockState();
       populateClanSelect();
       const realmEntry = applyRealmPageEntry();
       populateRealmSelector();
