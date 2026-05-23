@@ -387,12 +387,34 @@
         display: grid;
         gap: 4px;
       }
+      .dialogue-qa button {
+        width: 100%;
+        text-align: left;
+        border: 1px solid #365e95;
+        border-radius: 8px;
+        background: rgba(11, 24, 48, 0.82);
+        color: #dbeafe;
+        font-size: 12px;
+        padding: 6px 8px;
+      }
+      .dialogue-qa button:hover {
+        background: rgba(20, 40, 72, 0.88);
+      }
+      .dialogue-qa button.active {
+        border-color: #60a5fa;
+        box-shadow: inset 0 0 0 1px rgba(147, 197, 253, 0.45);
+      }
       .dialogue-qa li {
         font-size: 12px;
         color: #dbeafe;
       }
       .dialogue-qa li small {
         color: #9fb6dd;
+      }
+      #dialogueQaAnswer {
+        margin-top: 6px;
+        color: #bfdbfe;
+        white-space: pre-wrap;
       }
       .dialogue-head {
         display: flex;
@@ -1180,6 +1202,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             <h3>Controls</h3>
             <p class="subtle">
               Move: WASD / Arrow keys<br />
+              Overworld Attack: Space<br />
               Interact: E<br />
               Sprint: Hold Shift<br />
               Flee Battle: F or Flee button<br />
@@ -1247,6 +1270,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       <div id="dialogueQaWrap" class="dialogue-qa" hidden>
         <p class="subtle">Questions &amp; Answers</p>
         <ul id="dialogueQaList"></ul>
+        <p id="dialogueQaAnswer" class="subtle"></p>
       </div>
       <div class="dialogue-actions">
         <button id="choiceMycoBtn" class="primary">Mycoside Choice</button>
@@ -1434,6 +1458,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         dialogueBody: document.getElementById("dialogueBody"),
         dialogueQaWrap: document.getElementById("dialogueQaWrap"),
         dialogueQaList: document.getElementById("dialogueQaList"),
+        dialogueQaAnswer: document.getElementById("dialogueQaAnswer"),
         choiceMycoBtn: document.getElementById("choiceMycoBtn"),
         choiceDarkBtn: document.getElementById("choiceDarkBtn"),
         choiceTradeBtn: document.getElementById("choiceTradeBtn"),
@@ -5809,21 +5834,43 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         dom.choiceTradeBtn.style.display = tradeEnabled ? "inline-block" : "none";
         dom.choiceTradeBtn.textContent = payload.tradeLabel ?? "Trade";
         dom.closeDialogueBtn.textContent = payload.closeLabel ?? "Close";
-        if (dom.dialogueQaWrap && dom.dialogueQaList) {
+        if (dom.dialogueQaWrap && dom.dialogueQaList && dom.dialogueQaAnswer) {
           const qaPairs = Array.isArray(payload.qaPairs)
             ? payload.qaPairs.filter((entry) => entry && typeof entry.question === "string" && typeof entry.answer === "string")
             : [];
           if (qaPairs.length) {
             dom.dialogueQaList.innerHTML = qaPairs
               .map((entry, index) => {
-                const nftPart = entry.nftTag ? ` // NFT: ${escapeHtml(entry.nftTag)}` : "";
-                return `<li><strong>Q${index + 1}: ${escapeHtml(entry.question)}</strong><br /><small>A: ${escapeHtml(entry.answer)}${nftPart}</small></li>`;
+                return `<li><button type="button" data-qa-index="${index}">Q${index + 1}: ${escapeHtml(entry.question)}</button></li>`;
               })
               .join("");
             dom.dialogueQaWrap.hidden = false;
+            dom.dialogueQaAnswer.textContent = "Click a question to hear the NPC answer.";
+            const qaButtons = dom.dialogueQaList.querySelectorAll("[data-qa-index]");
+            qaButtons.forEach((button) => {
+              button.addEventListener("click", () => {
+                const index = Number(button.getAttribute("data-qa-index"));
+                const entry = qaPairs[index];
+                if (!entry) return;
+                if (typeof entry.onAsk === "function") {
+                  try {
+                    entry.onAsk();
+                  } catch (_error) {
+                    // Non-fatal NPC Q&A callback issue should not break dialogue flow.
+                  }
+                }
+                qaButtons.forEach((other) => other.classList.remove("active"));
+                button.classList.add("active");
+                const nftPart = entry.nftTag ? `\nNFT Hook: ${entry.nftTag}` : "";
+                dom.dialogueQaAnswer.textContent = `A: ${entry.answer}${nftPart}`;
+                renderHud();
+                playSfx("talk");
+              });
+            });
           } else {
             dom.dialogueQaWrap.hidden = true;
             dom.dialogueQaList.innerHTML = "";
+            dom.dialogueQaAnswer.textContent = "";
           }
         }
         dom.dialoguePanel.classList.add("active");
@@ -5845,9 +5892,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         dom.dialogueSubtitle.textContent = "Speaker profile";
         dom.dialoguePortrait.textContent = "?";
         dom.closeDialogueBtn.textContent = "Close";
-        if (dom.dialogueQaWrap && dom.dialogueQaList) {
+        if (dom.dialogueQaWrap && dom.dialogueQaList && dom.dialogueQaAnswer) {
           dom.dialogueQaWrap.hidden = true;
           dom.dialogueQaList.innerHTML = "";
+          dom.dialogueQaAnswer.textContent = "";
         }
         dom.dialoguePanel.classList.remove("active");
       };
@@ -6220,7 +6268,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const clueCount = state.progress.clues.size;
         const clan = getClanProfile();
         const profile = getNarrativeProfile();
-        const qaPairs = buildNpcQuestionAnswers(npc, getCurrentRealm().name);
+        const qaContext = getCurrentRealm().name;
+        const qaPairs = buildNpcQuestionAnswers(npc, qaContext).map((entry) => ({
+          ...entry,
+          onAsk: () => askNpcQuestionDialogue(npc, [entry], qaContext),
+        }));
         const persona = getNpcPersonality(npc);
         const backstory = NPC_BACKSTORIES[npc.id];
         let body = npc.intro;
@@ -6276,7 +6328,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           closeLabel: "Leave Conversation",
           onMyco: () => {
             state.lastAdvice = npc.adviceGood;
-            askNpcQuestionDialogue(npc, qaPairs, getCurrentRealm().name);
+            askNpcQuestionDialogue(npc, qaPairs, qaContext);
             if (Math.random() < 0.2) state.inventory.mycoPotion += 1;
             pushStoryEntry(`${npc.name} reinforced a mycoside path insight: ${npc.mycoText}`, "npc");
           },
@@ -6854,7 +6906,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const buildInteriorNpcEncounter = (structure, npc, alreadySpoken) => {
         const roleText = `${npc.subtitle} at ${structure.name}`;
         const clueLabel = npc.clueLabel ?? `${structure.name} Interior Lead`;
-        const qaPairs = buildNpcQuestionAnswers(npc, `${structure.name} interior`);
+        const qaContext = `${structure.name} interior`;
+        const qaPairs = buildNpcQuestionAnswers(npc, qaContext).map((entry) => ({
+          ...entry,
+          onAsk: () => askNpcQuestionDialogue(npc, [entry], qaContext),
+        }));
         const applyInteriorTrade = () => {
           const cost = npc.tradeCost ?? 0;
           if (state.hero.spores < cost) {
@@ -6886,7 +6942,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           tradeLabel: `Trade (${npc.tradeCost ?? 0} spores)`,
           closeLabel: "Leave Conversation",
           onMyco: () => {
-            askNpcQuestionDialogue(npc, qaPairs, `${structure.name} interior`);
+            askNpcQuestionDialogue(npc, qaPairs, qaContext);
             pushStoryEntry(`${npc.name} shared trusted advice inside ${structure.name}.`, "npc");
             state.lastAdvice = npc.mycoText;
           },
@@ -7683,6 +7739,38 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
 
         setStatus("No interaction target nearby.");
+      };
+
+      const getNearestOverworldEnemy = (maxDistance = 108) => {
+        let nearest = null;
+        let bestDistance = maxDistance;
+        for (const enemy of state.enemies) {
+          if (enemy.region !== state.currentRealmId) continue;
+          if (!enemy.active) continue;
+          const distance = dist(state.hero.x, state.hero.y, enemy.x, enemy.y);
+          if (distance <= bestDistance) {
+            nearest = enemy;
+            bestDistance = distance;
+          }
+        }
+        return nearest;
+      };
+
+      const performOverworldAttack = async () => {
+        if (state.intro.active || state.mode === "intro") return;
+        if (state.activeDialogue || state.cutscene.active || state.mode === "cutscene") return;
+        if (state.mode === "battle" || state.pendingBattle) return;
+        if (state.mode === "interior" || state.interior.active) return;
+        if (state.mode === "burn-pit" || state.burnPit.active) return;
+        const target = getNearestOverworldEnemy();
+        if (!target) {
+          setStatus("No enemy in space-attack range.");
+          return;
+        }
+        recordAiSignal("combat", 0.6);
+        setStatus(`Space attack launched at ${getEnemyDisplayName(target.kind)}.`);
+        playSfx("strike");
+        await engageEnemy(target);
       };
 
       const updateDirective = () => {
@@ -10061,6 +10149,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             return;
           }
         }
+        if (key === " ") {
+          void performOverworldAttack();
+          event.preventDefault();
+          return;
+        }
         if (isMoveKey) {
           state.keys.add(key);
           event.preventDefault();
@@ -10249,9 +10342,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       setupMobileControls();
       refreshTitleScreen();
       dom.choiceTradeBtn.style.display = "none";
-      if (dom.dialogueQaWrap && dom.dialogueQaList) {
+      if (dom.dialogueQaWrap && dom.dialogueQaList && dom.dialogueQaAnswer) {
         dom.dialogueQaWrap.hidden = true;
         dom.dialogueQaList.innerHTML = "";
+        dom.dialogueQaAnswer.textContent = "";
       }
       dom.closeDialogueBtn.textContent = "Close";
       applyHudMode();
