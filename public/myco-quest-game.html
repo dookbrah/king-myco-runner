@@ -406,19 +406,45 @@
         display: none;
         align-items: center;
         justify-content: center;
-        background: radial-gradient(circle at 50% 12%, rgba(59, 130, 246, 0.24), rgba(2, 6, 23, 0.96));
+        background: #020617;
         backdrop-filter: blur(4px);
+        overflow: hidden;
+      }
+      .title-screen::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(180deg, rgba(2, 6, 23, 0.2), rgba(2, 6, 23, 0.86)),
+          radial-gradient(circle at 22% 18%, rgba(59, 130, 246, 0.24), transparent 42%),
+          radial-gradient(circle at 82% 14%, rgba(168, 85, 247, 0.22), transparent 46%),
+          url("/myco-quest-start-screen.svg");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        filter: saturate(1.1) contrast(1.05);
+        pointer-events: none;
+      }
+      .title-screen::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, rgba(2, 6, 23, 0.2), rgba(2, 6, 23, 0.72));
+        pointer-events: none;
       }
       .title-screen.active {
         display: flex;
       }
       .title-card {
-        width: min(760px, calc(100% - 26px));
+        position: relative;
+        z-index: 1;
+        width: min(860px, calc(100% - 24px));
         border: 1px solid #4368a2;
         border-radius: 16px;
         padding: 18px;
-        background: rgba(6, 14, 30, 0.95);
+        background: rgba(3, 9, 24, 0.82);
         box-shadow: 0 26px 56px rgba(2, 6, 23, 0.62);
+        backdrop-filter: blur(5px);
       }
       .title-logo {
         margin-bottom: 8px;
@@ -780,7 +806,7 @@
   <body>
     <section id="titleScreen" class="title-screen active">
       <div class="title-card">
-        <p class="tiny">KINGDOM CHRONICLE // PORTAL EDITION</p>
+        <p class="tiny">KINGDOM CHRONICLE // START FROM THE BEGINNING</p>
         <h1 class="title-logo">MYCO QUEST</h1>
         <p class="title-lore" id="titleLore">
 Dark Mycelius fractured the royal crown into living memory shards.
@@ -802,9 +828,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           <p>Select a clan to view its war banner and campaign oath.</p>
         </div>
         <div class="title-actions">
-          <button id="continueAdventureBtn" class="primary">Continue Adventure</button>
-          <button id="newAdventureBtn">New Adventure</button>
-          <button id="skipIntroBtn">Skip Intro Card</button>
+          <button id="continueAdventureBtn" class="primary">Start From Beginning</button>
+          <button id="newAdventureBtn">Reset Save + Start Over</button>
+          <button id="skipIntroBtn" style="display:none">Skip Intro Card</button>
         </div>
         <p id="titleHint" class="subtle" style="margin-top: 8px">Loading your chronicle...</p>
       </div>
@@ -1120,6 +1146,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const STORAGE_CONFIG_KEY = "mycoQuestPlayableConfig";
       const STORAGE_STATE_KEY = "mycoQuestOverworldStateV2";
       const STORAGE_LEADERBOARD_KEY = "mycoQuestClanLeaderboardV1";
+      const AUTO_FRESH_START_KEY = "mycoQuestAutoFreshStart";
       const DAILY_SPORE_BURN_LIMIT = 1000;
       const WEEKLY_TOKEN_BURN_AMOUNT = 0.25;
       const TILE = 48;
@@ -3418,12 +3445,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (!dom.continueAdventureBtn) return;
         applyClanSelectionFromUi();
         const profile = getClanProfile();
-        dom.continueAdventureBtn.disabled = !hasSave;
-        dom.continueAdventureBtn.textContent = hasSave ? "Continue Adventure" : "No Save Found";
+        dom.continueAdventureBtn.disabled = false;
+        dom.continueAdventureBtn.textContent = "Start From Beginning";
         const avatarName = getSelectedAvatarName();
         if (dom.titleHint) {
           dom.titleHint.textContent = hasSave
-            ? `Save detected for ${profile.name} (${avatarName}). Continue your chronicle or begin a fresh arc.`
+            ? `Save detected for ${profile.name} (${avatarName}). Starting now will reset local progress and replay Chapter 1.`
             : `No local save found. Begin a ${profile.name} chronicle as ${avatarName}.`;
         }
         if (dom.titleLore) {
@@ -3453,9 +3480,14 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const beginFreshAdventure = () => {
         applyClanSelectionFromUi();
+        if (!hasSavedGame()) {
+          startAdventure();
+          return;
+        }
         clearGame();
         state.ui.titleCardSkipped = false;
         saveConfig();
+        sessionStorage.setItem(AUTO_FRESH_START_KEY, "1");
         location.reload();
       };
 
@@ -6474,7 +6506,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
         if (state.intro.active) {
           if (key === "enter" || isMoveKey) {
-            startAdventure();
+            beginFreshAdventure();
           }
           event.preventDefault();
           return;
@@ -6540,7 +6572,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       dom.closeDialogueBtn.addEventListener("click", closeDialogue);
       dom.cutsceneNextBtn.addEventListener("click", advanceCutscene);
       dom.cutsceneSkipBtn.addEventListener("click", closeCutscene);
-      dom.continueAdventureBtn.addEventListener("click", startAdventure);
+      dom.continueAdventureBtn.addEventListener("click", beginFreshAdventure);
       dom.newAdventureBtn.addEventListener("click", beginFreshAdventure);
       dom.skipIntroBtn.addEventListener("click", skipTitleCard);
 
@@ -6621,7 +6653,13 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         resizeCanvases();
       });
 
+      const autoFreshStart = sessionStorage.getItem(AUTO_FRESH_START_KEY) === "1";
+      if (autoFreshStart) {
+        sessionStorage.removeItem(AUTO_FRESH_START_KEY);
+      }
       loadConfig();
+      state.ui.titleCardSkipped = false;
+      saveConfig();
       loadGame();
       populateClanSelect();
       applyRealmPageEntry();
@@ -6639,10 +6677,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       drawWorld();
       drawBattleScene();
       requestAnimationFrame(frameLoop);
-      if (state.ui.titleCardSkipped) {
+      dom.titleScreen.classList.add("active");
+      if (autoFreshStart) {
         startAdventure();
-      } else {
-        dom.titleScreen.classList.add("active");
       }
       setInterval(() => {
         requestAiCoaching();
