@@ -514,6 +514,42 @@
         color: #9fb6dd;
         font-size: 11px;
       }
+      .leaderboard-subsection {
+        margin-top: 10px;
+      }
+      .leaderboard-subsection h3 {
+        margin: 0;
+        font-size: 13px;
+        color: #dbeafe;
+        letter-spacing: 0.04em;
+      }
+      .leaderboard-meter {
+        margin-top: 4px;
+      }
+      .leaderboard-meter small {
+        display: block;
+        color: #9fb6dd;
+        font-size: 10px;
+      }
+      .leaderboard-meter-track {
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.9);
+        border: 1px solid rgba(59, 130, 246, 0.34);
+        overflow: hidden;
+        margin-top: 2px;
+      }
+      .leaderboard-meter-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #22d3ee 0%, #818cf8 100%);
+        border-radius: 999px;
+      }
+      .title-signin-grid {
+        margin-top: 10px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 8px;
+      }
       .boss-intro {
         position: fixed;
         top: max(18px, env(safe-area-inset-top));
@@ -827,6 +863,20 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           <h3>CLAN BANNER</h3>
           <p>Select a clan to view its war banner and campaign oath.</p>
         </div>
+        <div class="title-signin-grid">
+          <label>
+            Nickname
+            <input id="titleNickname" placeholder="Enter nickname" maxlength="24" />
+          </label>
+          <label>
+            Solana Wallet
+            <input id="titleWalletInput" placeholder="Paste wallet or use Phantom" />
+          </label>
+        </div>
+        <div class="actions">
+          <button id="titleWalletConnectBtn" class="primary">Connect Solana Wallet</button>
+        </div>
+        <p id="titleWalletStatus" class="subtle" style="margin-top: 6px">Sign in requires nickname + wallet.</p>
         <div class="title-actions">
           <button id="continueAdventureBtn" class="primary">Start From Beginning</button>
           <button id="newAdventureBtn">Reset Save + Start Over</button>
@@ -861,8 +911,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             <input id="source" value="kingmyco.io" />
           </label>
           <label>
-            Player External ID
-            <input id="externalId" value="myco-player-01" />
+            Player Nickname
+            <input id="externalId" value="myco-player-01" maxlength="24" />
           </label>
           <label>
             X-Source-Token (optional)
@@ -976,7 +1026,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             <div id="web3Stats" class="chips" style="margin-top: 8px"></div>
             <div id="web3Relics" class="chips" style="margin-top: 6px"></div>
             <div class="web3-grid">
-              <button id="connectWalletBtn" class="primary">Connect Wallet (Demo)</button>
+              <button id="connectWalletBtn" class="primary">Connect Solana Wallet</button>
               <button id="syncWeb3Btn">Sync Chain Profile</button>
               <button id="mintSigilBtn">Mint Victory Sigil</button>
             </div>
@@ -984,8 +1034,21 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
           <section id="panelLeaderboard" class="panel">
             <h2>Realm Leaderboard</h2>
-            <p id="leaderboardSummary" class="subtle">No rankings yet. Start a clan chronicle to post your score.</p>
-            <div id="leaderboardList" class="leaderboard-list"></div>
+            <div class="leaderboard-subsection">
+              <h3>Player Board (Nickname + Wallet)</h3>
+              <p id="leaderboardSummary" class="subtle">No rankings yet. Connect wallet and start a clan chronicle.</p>
+              <div id="leaderboardList" class="leaderboard-list"></div>
+            </div>
+            <div class="leaderboard-subsection">
+              <h3>Clan Morality + Magic Power</h3>
+              <p id="clanLeaderboardSummary" class="subtle">No clan stats yet.</p>
+              <div id="clanLeaderboardList" class="leaderboard-list"></div>
+            </div>
+            <div class="leaderboard-subsection">
+              <h3>Clan Burn Leaderboard</h3>
+              <p id="burnLeaderboardSummary" class="subtle">No burn records yet.</p>
+              <div id="burnLeaderboardList" class="leaderboard-list"></div>
+            </div>
           </section>
 
           <section id="panelBattle" class="panel">
@@ -1169,6 +1232,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         titleScreen: document.getElementById("titleScreen"),
         titleLore: document.getElementById("titleLore"),
         titleHint: document.getElementById("titleHint"),
+        titleNickname: document.getElementById("titleNickname"),
+        titleWalletInput: document.getElementById("titleWalletInput"),
+        titleWalletConnectBtn: document.getElementById("titleWalletConnectBtn"),
+        titleWalletStatus: document.getElementById("titleWalletStatus"),
         clanSelect: document.getElementById("clanSelect"),
         avatarSelect: document.getElementById("avatarSelect"),
         clanBannerPreview: document.getElementById("clanBannerPreview"),
@@ -1233,6 +1300,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         web3Relics: document.getElementById("web3Relics"),
         leaderboardSummary: document.getElementById("leaderboardSummary"),
         leaderboardList: document.getElementById("leaderboardList"),
+        clanLeaderboardSummary: document.getElementById("clanLeaderboardSummary"),
+        clanLeaderboardList: document.getElementById("clanLeaderboardList"),
+        burnLeaderboardSummary: document.getElementById("burnLeaderboardSummary"),
+        burnLeaderboardList: document.getElementById("burnLeaderboardList"),
         connectWalletBtn: document.getElementById("connectWalletBtn"),
         syncWeb3Btn: document.getElementById("syncWeb3Btn"),
         mintSigilBtn: document.getElementById("mintSigilBtn"),
@@ -2708,6 +2779,31 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         updateClanBannerPreview();
       };
 
+      const normalizeNickname = (input) => {
+        const value = String(input ?? "")
+          .trim()
+          .replace(/\s+/g, " ");
+        if (!value) return "";
+        return value.slice(0, 24);
+      };
+
+      const isValidSolanaWalletAddress = (walletAddress) =>
+        /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(String(walletAddress ?? "").trim());
+
+      const getSignedInNickname = () =>
+        normalizeNickname(dom.externalId?.value || dom.titleNickname?.value || "");
+
+      const getSignedInWallet = () => String(state.web3.wallet ?? "").trim();
+
+      const syncIdentityInputs = () => {
+        const nickname = getSignedInNickname();
+        if (dom.externalId) dom.externalId.value = nickname;
+        if (dom.titleNickname) dom.titleNickname.value = nickname;
+        if (dom.titleWalletInput && state.web3.wallet) dom.titleWalletInput.value = state.web3.wallet;
+      };
+
+      const hasSignedInIdentity = () => Boolean(getSignedInNickname()) && isValidSolanaWalletAddress(getSignedInWallet());
+
       const calculateLeaderboardScore = () => {
         const profileBonus = {
           myco: 12,
@@ -2735,7 +2831,25 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           if (!raw) return [];
           const parsed = JSON.parse(raw);
           if (!Array.isArray(parsed)) return [];
-          return parsed.filter((entry) => entry && typeof entry === "object");
+          return parsed
+            .filter((entry) => entry && typeof entry === "object")
+            .map((entry) => ({
+              playerId: normalizeNickname(entry.playerId ?? entry.nickname ?? ""),
+              nickname: normalizeNickname(entry.nickname ?? entry.playerId ?? ""),
+              wallet: String(entry.wallet ?? "").trim(),
+              clanId: String(entry.clanId ?? "myco"),
+              clanName: String(entry.clanName ?? CLAN_PROFILES[String(entry.clanId ?? "myco")]?.name ?? "Myco Clan"),
+              slogan: String(entry.slogan ?? ""),
+              avatarName: String(entry.avatarName ?? "Unknown Avatar"),
+              score: Math.max(0, Math.round(Number(entry.score ?? 0))),
+              bosses: Math.max(0, Math.round(Number(entry.bosses ?? 0))),
+              clues: Math.max(0, Math.round(Number(entry.clues ?? 0))),
+              morality: clamp(Math.round(Number(entry.morality ?? 0)), -100, 100),
+              magic: Math.max(0, Math.round(Number(entry.magic ?? 0))),
+              burnTotal: Math.max(0, Math.round(Number(entry.burnTotal ?? 0))),
+              updatedAt: Number(entry.updatedAt ?? Date.now()),
+            }))
+            .filter((entry) => entry.nickname && isValidSolanaWalletAddress(entry.wallet));
         } catch (_error) {
           return [];
         }
@@ -2746,14 +2860,18 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       };
 
       const updateLeaderboardEntry = () => {
-        const playerId = dom.externalId.value.trim() || "myco-player-01";
+        if (!hasSignedInIdentity()) return;
+        const playerId = getSignedInNickname();
+        const wallet = getSignedInWallet();
         const entries = loadLeaderboardEntries();
         const score = calculateLeaderboardScore();
         const profile = getClanProfile();
         const avatarName = getSelectedAvatarName();
-        const existingIdx = entries.findIndex((entry) => entry.playerId === playerId && entry.clanId === state.playerClan);
+        const existingIdx = entries.findIndex((entry) => entry.wallet === wallet);
         const draft = {
           playerId,
+          nickname: playerId,
+          wallet,
           clanId: state.playerClan,
           clanName: profile.name,
           slogan: profile.slogan,
@@ -2762,12 +2880,19 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           bosses: state.progress.defeatedBosses.size,
           clues: state.progress.clues.size,
           morality: state.hero.morality,
+          magic: state.hero.magic,
+          burnTotal: state.burn.totalBurned,
           updatedAt: Date.now(),
         };
         if (existingIdx >= 0) {
-          if (score >= (entries[existingIdx].score ?? 0)) {
-            entries[existingIdx] = { ...entries[existingIdx], ...draft };
-          }
+          const prior = entries[existingIdx];
+          entries[existingIdx] = {
+            ...prior,
+            ...draft,
+            score: Math.max(prior.score ?? 0, draft.score),
+            magic: Math.max(prior.magic ?? 0, draft.magic),
+            burnTotal: Math.max(prior.burnTotal ?? 0, draft.burnTotal),
+          };
         } else {
           entries.push(draft);
         }
@@ -2776,23 +2901,84 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         renderLeaderboard();
       };
 
+      const aggregateClanLeaderboard = (entries) => {
+        const grouped = new Map();
+        for (const entry of entries) {
+          const clan = grouped.get(entry.clanId) ?? {
+            clanId: entry.clanId,
+            clanName: entry.clanName,
+            players: 0,
+            scoreTotal: 0,
+            moralityTotal: 0,
+            magicTotal: 0,
+            burnTotal: 0,
+          };
+          clan.players += 1;
+          clan.scoreTotal += entry.score ?? 0;
+          clan.moralityTotal += entry.morality ?? 0;
+          clan.magicTotal += entry.magic ?? 0;
+          clan.burnTotal += entry.burnTotal ?? 0;
+          grouped.set(entry.clanId, clan);
+        }
+        const rows = Array.from(grouped.values()).map((row) => ({
+          ...row,
+          moralityAvg: row.players ? row.moralityTotal / row.players : 0,
+          magicAvg: row.players ? row.magicTotal / row.players : 0,
+          powerScore: Math.round(row.scoreTotal + row.magicTotal * 14 + row.burnTotal * 0.2 + row.players * 35),
+        }));
+        rows.sort((left, right) => right.powerScore - left.powerScore);
+        return rows;
+      };
+
       const renderLeaderboard = () => {
         if (!dom.leaderboardList || !dom.leaderboardSummary) return;
         const entries = loadLeaderboardEntries();
         if (!entries.length) {
-          dom.leaderboardSummary.textContent = "No rankings yet. Start a clan chronicle to post your score.";
-          dom.leaderboardList.innerHTML = `<span class="chip">No leaderboard entries yet</span>`;
+          dom.leaderboardSummary.textContent = "No rankings yet. Connect wallet and start a clan chronicle.";
+          dom.leaderboardList.innerHTML = `<span class="chip">No player leaderboard entries yet</span>`;
+          if (dom.clanLeaderboardSummary) dom.clanLeaderboardSummary.textContent = "No clan stats yet.";
+          if (dom.clanLeaderboardList) dom.clanLeaderboardList.innerHTML = `<span class="chip">No clan metrics yet</span>`;
+          if (dom.burnLeaderboardSummary) dom.burnLeaderboardSummary.textContent = "No clan burn stats yet.";
+          if (dom.burnLeaderboardList) dom.burnLeaderboardList.innerHTML = `<span class="chip">No clan burn records yet</span>`;
           return;
         }
+        entries.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
         const top = entries[0];
-        dom.leaderboardSummary.textContent = `Top score ${top.score} by ${top.playerId} // ${top.clanName}`;
+        dom.leaderboardSummary.textContent = `Top player: ${top.nickname} (${top.clanName}) • Score ${top.score} • Wallet ${shortWallet(top.wallet)}`;
         dom.leaderboardList.innerHTML = entries
           .slice(0, 12)
           .map((entry, idx) => {
             const dateLabel = new Date(entry.updatedAt ?? Date.now()).toLocaleDateString();
-            return `<article class="leaderboard-entry"><strong>#${idx + 1} ${entry.playerId} // ${entry.clanName}</strong><small>${entry.avatarName} | Score ${entry.score} | Bosses ${entry.bosses} | Clues ${entry.clues} | Morality ${entry.morality}</small><small>${entry.slogan} • ${dateLabel}</small></article>`;
+            return `<article class="leaderboard-entry"><strong>#${idx + 1} ${entry.nickname} // ${entry.clanName}</strong><small>${entry.avatarName} | Wallet ${shortWallet(entry.wallet)} | Score ${entry.score}</small><small>Bosses ${entry.bosses} | Clues ${entry.clues} | Morality ${entry.morality} | Magic ${entry.magic} | Burned ${entry.burnTotal}</small><small>${entry.slogan} • ${dateLabel}</small></article>`;
           })
           .join("");
+
+        const clanRows = aggregateClanLeaderboard(entries);
+        if (dom.clanLeaderboardSummary) {
+          const strongestClan = clanRows[0];
+          dom.clanLeaderboardSummary.textContent = `Most powerful clan: ${strongestClan.clanName} • Power ${strongestClan.powerScore}`;
+        }
+        const maxMagicAvg = Math.max(...clanRows.map((entry) => entry.magicAvg), 1);
+        if (dom.clanLeaderboardList) {
+          dom.clanLeaderboardList.innerHTML = clanRows
+            .map((entry, idx) => {
+              const moralityPercent = clamp((entry.moralityAvg + 100) / 2, 0, 100);
+              const moralityColor = entry.moralityAvg >= 0 ? "#22c55e" : "#f97316";
+              const magicPercent = clamp((entry.magicAvg / maxMagicAvg) * 100, 0, 100);
+              return `<article class="leaderboard-entry"><strong>#${idx + 1} ${entry.clanName}</strong><small>Players ${entry.players} | Power ${entry.powerScore} | Avg Morality ${Math.round(entry.moralityAvg)} | Avg Magic ${entry.magicAvg.toFixed(1)}</small><div class="leaderboard-meter"><small>Morality Meter</small><div class="leaderboard-meter-track"><div class="leaderboard-meter-fill" style="width:${moralityPercent}%;background:${moralityColor};"></div></div></div><div class="leaderboard-meter"><small>Magic Meter</small><div class="leaderboard-meter-track"><div class="leaderboard-meter-fill" style="width:${magicPercent}%;"></div></div></div></article>`;
+            })
+            .join("");
+        }
+        const burnRows = [...clanRows].sort((left, right) => right.burnTotal - left.burnTotal);
+        if (dom.burnLeaderboardSummary) {
+          const burnLeader = burnRows[0];
+          dom.burnLeaderboardSummary.textContent = `Top burn clan: ${burnLeader.clanName} • ${burnLeader.burnTotal} total spores burned`;
+        }
+        if (dom.burnLeaderboardList) {
+          dom.burnLeaderboardList.innerHTML = burnRows
+            .map((entry, idx) => `<article class="leaderboard-entry"><strong>#${idx + 1} ${entry.clanName}</strong><small>Total Burned ${entry.burnTotal} spores</small><small>Morality Avg ${Math.round(entry.moralityAvg)} • Magic Avg ${entry.magicAvg.toFixed(1)} • Players ${entry.players}</small></article>`)
+            .join("");
+        }
       };
 
       const THEME_SEQUENCE = [
@@ -3266,13 +3452,45 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const shortWallet = (wallet) => (wallet.length > 14 ? `${wallet.slice(0, 6)}...${wallet.slice(-6)}` : wallet);
 
-      const generateDemoWallet = () => {
-        const alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-        let wallet = "MYCO";
-        for (let i = 0; i < 36; i += 1) {
-          wallet += alphabet[Math.floor(Math.random() * alphabet.length)];
+      const requireSignedInIdentity = (setUiStatus = true) => {
+        const nickname = getSignedInNickname();
+        const wallet = getSignedInWallet();
+        if (!nickname) {
+          if (setUiStatus) {
+            setStatus("Add a nickname before starting your adventure.", true);
+            if (dom.titleWalletStatus) dom.titleWalletStatus.textContent = "Nickname is required.";
+          }
+          return false;
         }
-        return wallet;
+        if (!isValidSolanaWalletAddress(wallet)) {
+          if (setUiStatus) {
+            setStatus("Connect a valid Solana wallet to sign in.", true);
+            if (dom.titleWalletStatus) dom.titleWalletStatus.textContent = "Connect Solana wallet to continue.";
+          }
+          return false;
+        }
+        if (setUiStatus && dom.titleWalletStatus) {
+          dom.titleWalletStatus.textContent = `Signed in as ${nickname} // ${shortWallet(wallet)}`;
+        }
+        return true;
+      };
+
+      const setConnectedWallet = (walletAddress, sourceLabel = "manual") => {
+        const trimmed = String(walletAddress ?? "").trim();
+        if (!isValidSolanaWalletAddress(trimmed)) {
+          setStatus("Invalid Solana wallet format. Please check the address.", true);
+          if (dom.titleWalletStatus) dom.titleWalletStatus.textContent = "Wallet format invalid.";
+          playSfx("error");
+          return false;
+        }
+        state.web3.wallet = trimmed;
+        state.web3.lastSyncedAt = Date.now();
+        syncIdentityInputs();
+        saveConfig();
+        setStatus(`Wallet linked (${sourceLabel}): ${shortWallet(trimmed)}.`);
+        if (dom.titleWalletStatus) dom.titleWalletStatus.textContent = `Wallet connected: ${shortWallet(trimmed)}`;
+        playSfx("coin");
+        return true;
       };
 
       const computeChainTier = (score) => {
@@ -3283,18 +3501,38 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         return "Unranked";
       };
 
-      const connectWallet = () => {
-        if (!state.web3.wallet) {
-          state.web3.wallet = generateDemoWallet();
-          state.web3.lastSyncedAt = Date.now();
+      const connectWallet = async () => {
+        const manualWallet = String(dom.titleWalletInput?.value ?? "").trim();
+        const provider = window.solana;
+        if (provider?.isPhantom) {
+          try {
+            const response = await provider.connect();
+            const walletAddress =
+              response?.publicKey?.toBase58?.() ?? response?.publicKey?.toString?.() ?? "";
+            if (setConnectedWallet(walletAddress, "Phantom")) {
+              return;
+            }
+          } catch (_error) {
+            if (!manualWallet) {
+              setStatus("Wallet connection canceled. Paste wallet manually or retry Phantom.", true);
+              if (dom.titleWalletStatus) dom.titleWalletStatus.textContent = "Wallet connection canceled.";
+              playSfx("error");
+              return;
+            }
+          }
         }
-        setStatus(`Wallet linked: ${shortWallet(state.web3.wallet)}. Chain profile ready.`);
-        playSfx("coin");
+        if (manualWallet) {
+          setConnectedWallet(manualWallet, "manual");
+          return;
+        }
+        setStatus("No wallet detected. Install Phantom or paste a Solana wallet.", true);
+        if (dom.titleWalletStatus) dom.titleWalletStatus.textContent = "No wallet connected.";
+        playSfx("error");
       };
 
       const syncWeb3Profile = () => {
-        if (!state.web3.wallet) {
-          setStatus("Connect wallet first to sync chain profile.", true);
+        if (!requireSignedInIdentity(true)) {
+          setStatus("Connect wallet and nickname first to sync chain profile.", true);
           playSfx("error");
           return;
         }
@@ -3310,8 +3548,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       };
 
       const mintVictorySigil = () => {
-        if (!state.web3.wallet) {
-          setStatus("Wallet missing. Connect before minting.", true);
+        if (!requireSignedInIdentity(true)) {
+          setStatus("Wallet sign-in missing. Connect before minting.", true);
           playSfx("error");
           return;
         }
@@ -3479,12 +3717,16 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       };
 
       const saveConfig = () => {
+        const nickname = normalizeNickname(dom.externalId.value.trim());
+        if (dom.externalId) dom.externalId.value = nickname;
+        if (dom.titleNickname) dom.titleNickname.value = nickname;
         localStorage.setItem(
           STORAGE_CONFIG_KEY,
           JSON.stringify({
             apiBase: dom.apiBase.value.trim(),
             source: dom.source.value.trim(),
-            externalId: dom.externalId.value.trim(),
+            externalId: nickname,
+            walletAddress: state.web3.wallet,
             sourceToken: dom.sourceToken.value,
             selectedClan: state.playerClan,
             selectedAvatar: state.playerAvatar,
@@ -3501,7 +3743,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           const parsed = JSON.parse(raw);
           if (typeof parsed.apiBase === "string") dom.apiBase.value = parsed.apiBase;
           if (typeof parsed.source === "string") dom.source.value = parsed.source;
-          if (typeof parsed.externalId === "string") dom.externalId.value = parsed.externalId;
+          if (typeof parsed.externalId === "string") dom.externalId.value = normalizeNickname(parsed.externalId);
+          if (typeof parsed.walletAddress === "string") state.web3.wallet = parsed.walletAddress.trim();
           if (typeof parsed.sourceToken === "string") dom.sourceToken.value = parsed.sourceToken;
           if (typeof parsed.selectedClan === "string" && CLAN_PROFILES[parsed.selectedClan]) {
             state.playerClan = parsed.selectedClan;
@@ -3663,14 +3906,26 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const hasSave = hasSavedGame();
         if (!dom.continueAdventureBtn) return;
         applyClanSelectionFromUi();
+        syncIdentityInputs();
         const profile = getClanProfile();
-        dom.continueAdventureBtn.disabled = false;
+        const identityReady = hasSignedInIdentity();
+        dom.continueAdventureBtn.disabled = !identityReady;
         dom.continueAdventureBtn.textContent = "Start From Beginning";
         const avatarName = getSelectedAvatarName();
         if (dom.titleHint) {
-          dom.titleHint.textContent = hasSave
+          const baseHint = hasSave
             ? `Save detected for ${profile.name} (${avatarName}). Starting now will reset local progress and replay Chapter 1.`
             : `No local save found. Begin a ${profile.name} chronicle as ${avatarName}.`;
+          dom.titleHint.textContent = identityReady
+            ? `${baseHint} Identity lock ready (nickname + wallet).`
+            : `${baseHint} Sign in requires nickname + Solana wallet connection.`;
+        }
+        if (dom.titleWalletStatus) {
+          if (identityReady) {
+            dom.titleWalletStatus.textContent = `Signed in as ${getSignedInNickname()} // ${shortWallet(getSignedInWallet())}`;
+          } else {
+            dom.titleWalletStatus.textContent = "Connect a Solana wallet and set nickname to unlock Start.";
+          }
         }
         if (dom.titleLore) {
           dom.titleLore.textContent = `${profile.bannerTitle}\n${profile.slogan}\n${profile.storyThread}\n${profile.questThread}`;
@@ -3680,6 +3935,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const startAdventure = () => {
         if (!state.intro.active) return;
         applyClanSelectionFromUi();
+        syncIdentityInputs();
+        if (!requireSignedInIdentity(true)) {
+          dom.titleScreen.classList.add("active");
+          refreshTitleScreen();
+          return;
+        }
         saveConfig();
         const profile = getClanProfile();
         const avatarName = getSelectedAvatarName();
@@ -3723,7 +3984,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const requestBase = () => ({
         source: dom.source.value.trim() || "kingmyco.io",
-        externalId: dom.externalId.value.trim() || "myco-player-01",
+        externalId: normalizeNickname(dom.externalId.value.trim()) || "myco-player-01",
+        walletAddress: getSignedInWallet(),
         clanId: state.playerClan,
         avatarId: state.playerAvatar,
       });
@@ -3890,6 +4152,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const burnSporesAtPit = async (requestedAmount) => {
         const pit = getBurnPitStructure();
         if (!pit) return;
+        if (!requireSignedInIdentity(true)) return;
         refreshDailyBurnQuota();
         const remaining = getBurnRemainingToday();
         if (remaining <= 0) {
@@ -4801,19 +5064,50 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const ENTERABLE_STRUCTURE_TYPES = new Set(["house", "cave", "dungeon", "castle", "tower", "mushroom-shop"]);
       const INTERIOR_FEATURE_POOLS = {
-        house: ["store-cache", "power-sanctum", "hidden-vault"],
-        cave: ["maze-chamber", "power-sanctum", "hidden-vault"],
-        dungeon: ["puzzle-altar", "maze-chamber", "hidden-vault"],
-        castle: ["store-cache", "puzzle-altar", "hidden-vault"],
-        tower: ["power-sanctum", "puzzle-altar", "hidden-vault"],
-        "mushroom-shop": ["store-cache", "hidden-vault", "puzzle-altar"],
+        house: ["trade-bazaar", "quest-sanctum", "lore-riddle", "hidden-vault"],
+        cave: ["maze-chamber", "combat-trial", "lore-riddle", "power-sanctum"],
+        dungeon: ["combat-trial", "puzzle-altar", "maze-chamber", "attack-dojo"],
+        castle: ["quest-sanctum", "attack-dojo", "magic-mentor", "hidden-vault"],
+        tower: ["magic-mentor", "quest-sanctum", "puzzle-altar", "power-sanctum"],
+        "mushroom-shop": ["store-cache", "trade-bazaar", "lore-riddle", "hidden-vault"],
       };
       const INTERIOR_FEATURE_LABELS = {
         "store-cache": "Store Cache",
+        "trade-bazaar": "Trading Space",
+        "quest-sanctum": "Quest Board Sanctum",
         "puzzle-altar": "Rune Puzzle Altar",
+        "lore-riddle": "Lore Riddle Chamber",
+        "combat-trial": "Dungeon Trial Arena",
+        "magic-mentor": "Arcane Mentor Chamber",
+        "attack-dojo": "Attack Dojo",
         "maze-chamber": "Maze Chamber",
         "power-sanctum": "Power Sanctum",
         "hidden-vault": "Hidden Vault",
+      };
+      const INTERIOR_RIDDLES = [
+        {
+          prompt: "I connect every realm but have no feet. What am I?",
+          answer: "The mycelial network",
+          reward: "network-clue",
+        },
+        {
+          prompt: "What opens every gate yet burns no key?",
+          answer: "Learned magic",
+          reward: "gate-riddle",
+        },
+        {
+          prompt: "What grows in darkness but powers the light?",
+          answer: "Spores",
+          reward: "spore-riddle",
+        },
+      ];
+      const INTERIOR_TRIAL_ENEMIES = {
+        house: { kind: "spore-thief", lane: "precision", title: "Rogue Intruder" },
+        cave: { kind: "mire-lurker", lane: "survival", title: "Cavern Stalker" },
+        dungeon: { kind: "shard-lich", lane: "tactical", title: "Crypt Sentinel" },
+        castle: { kind: "rot-jackal", lane: "speed", title: "Ward Breaker" },
+        tower: { kind: "block-wraith", lane: "puzzle", title: "Signal Phantom" },
+        "mushroom-shop": { kind: "thorn-bandit", lane: "speed", title: "Market Ambusher" },
       };
 
       const isEnterableStructure = (structure) => ENTERABLE_STRUCTURE_TYPES.has(structure.type);
@@ -4823,9 +5117,17 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         return pool[hashString(structure.id) % pool.length];
       };
 
+      const getInteriorSigil = (structure) => `SIG-${String(hashString(structure.id) % 997).padStart(3, "0")}`;
+
       const getInteriorFeatureHint = (feature) => {
         if (feature === "store-cache") return "Hidden stall inventory may contain supplies and spores.";
+        if (feature === "trade-bazaar") return "A broker can swap spores for tactical supplies.";
+        if (feature === "quest-sanctum") return "A quest board offers a side objective and lore lead.";
         if (feature === "puzzle-altar") return "Solve the rune order to release bonus relic energy.";
+        if (feature === "lore-riddle") return "Answer the riddle to unlock lore and clue rewards.";
+        if (feature === "combat-trial") return "A trial arena can trigger an interior battle encounter.";
+        if (feature === "magic-mentor") return "An arcane mentor can teach stronger spell control.";
+        if (feature === "attack-dojo") return "A combat dojo can train a new attack stance.";
         if (feature === "maze-chamber") return "Maze lane rewards explorers who map dead ends.";
         if (feature === "power-sanctum") return "A power node can boost magic and recovery.";
         return "A secret vault may hold rare clues or golden spores.";
@@ -4837,10 +5139,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         state.interior.structureId = structure.id;
         state.mode = "interior";
         const feature = getInteriorFeature(structure);
+        const sigil = getInteriorSigil(structure);
         dom.interiorScreen.classList.add("active");
         dom.interiorTitle.textContent = structure.name;
-        dom.interiorSubtitle.textContent = `${structure.type.replace(/-/g, " ").toUpperCase()} INTERIOR // ${getCurrentRealm().name} // ${INTERIOR_FEATURE_LABELS[feature]}`;
-        dom.interiorHint.textContent = `${getInteriorFeatureHint(feature)} Search for relics, clues, and supplies. Press E or Exit to leave.`;
+        dom.interiorSubtitle.textContent = `${structure.type.replace(/-/g, " ").toUpperCase()} INTERIOR // ${getCurrentRealm().name} // ${INTERIOR_FEATURE_LABELS[feature]} // ${sigil}`;
+        dom.interiorHint.textContent = `${getInteriorFeatureHint(feature)} Search to trigger this room event. Press E or Exit to leave.`;
         drawInteriorScene(structure);
       };
 
@@ -4958,6 +5261,18 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           interiorCtx.fillRect(width - 260, 138, 28, 18);
           interiorCtx.fillRect(width - 220, 130, 30, 22);
           interiorCtx.fillRect(width - 176, 136, 26, 18);
+        } else if (feature === "trade-bazaar") {
+          interiorCtx.fillStyle = "rgba(14, 165, 233, 0.22)";
+          interiorCtx.fillRect(width - 328, 108, 238, 108);
+          interiorCtx.fillStyle = "#7dd3fc";
+          interiorCtx.fillRect(width - 314, 126, 48, 22);
+          interiorCtx.fillRect(width - 246, 126, 48, 22);
+          interiorCtx.fillRect(width - 178, 126, 48, 22);
+          interiorCtx.fillStyle = "#0f172a";
+          interiorCtx.fillRect(width - 300, 160, 170, 10);
+          interiorCtx.fillStyle = "#e0f2fe";
+          interiorCtx.fillRect(width - 264, 146, 16, 10);
+          interiorCtx.fillRect(width - 230, 146, 16, 10);
         } else if (feature === "puzzle-altar") {
           interiorCtx.fillStyle = "rgba(196, 181, 253, 0.28)";
           interiorCtx.fillRect(width - 330, 110, 240, 96);
@@ -4967,6 +5282,54 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           }
           interiorCtx.fillStyle = "#ede9fe";
           interiorCtx.fillRect(width - 222, 120, 22, 10);
+        } else if (feature === "lore-riddle") {
+          interiorCtx.fillStyle = "rgba(96, 165, 250, 0.2)";
+          interiorCtx.fillRect(width - 320, 108, 226, 106);
+          interiorCtx.strokeStyle = "#93c5fd";
+          interiorCtx.lineWidth = 2;
+          interiorCtx.strokeRect(width - 302, 122, 188, 74);
+          interiorCtx.fillStyle = "#1d4ed8";
+          interiorCtx.fillRect(width - 286, 138, 154, 42);
+          interiorCtx.fillStyle = "#dbeafe";
+          interiorCtx.fillRect(width - 274, 148, 48, 6);
+          interiorCtx.fillRect(width - 220, 148, 70, 6);
+          interiorCtx.fillRect(width - 274, 160, 90, 6);
+        } else if (feature === "combat-trial") {
+          interiorCtx.fillStyle = "rgba(248, 113, 113, 0.18)";
+          interiorCtx.beginPath();
+          interiorCtx.arc(width - 212, 156, 58, 0, Math.PI * 2);
+          interiorCtx.fill();
+          interiorCtx.strokeStyle = "#f87171";
+          interiorCtx.lineWidth = 3;
+          interiorCtx.beginPath();
+          interiorCtx.arc(width - 212, 156, 44, 0, Math.PI * 2);
+          interiorCtx.stroke();
+          interiorCtx.fillStyle = "#fecaca";
+          interiorCtx.fillRect(width - 218, 144, 12, 24);
+          interiorCtx.fillRect(width - 238, 154, 52, 4);
+        } else if (feature === "magic-mentor") {
+          interiorCtx.fillStyle = "rgba(192, 132, 252, 0.22)";
+          interiorCtx.beginPath();
+          interiorCtx.arc(width - 206, 156, 48, 0, Math.PI * 2);
+          interiorCtx.fill();
+          interiorCtx.strokeStyle = "#c084fc";
+          interiorCtx.lineWidth = 3;
+          interiorCtx.beginPath();
+          interiorCtx.arc(width - 206, 156, 30, 0, Math.PI * 2);
+          interiorCtx.stroke();
+          interiorCtx.fillStyle = "#f5d0fe";
+          interiorCtx.fillRect(width - 214, 146, 16, 20);
+          interiorCtx.fillRect(width - 192, 150, 8, 12);
+        } else if (feature === "attack-dojo") {
+          interiorCtx.fillStyle = "rgba(251, 146, 60, 0.22)";
+          interiorCtx.fillRect(width - 314, 112, 208, 98);
+          interiorCtx.fillStyle = "#fdba74";
+          interiorCtx.fillRect(width - 286, 130, 18, 56);
+          interiorCtx.fillRect(width - 248, 130, 18, 56);
+          interiorCtx.fillRect(width - 210, 130, 18, 56);
+          interiorCtx.fillRect(width - 172, 130, 18, 56);
+          interiorCtx.fillStyle = "#7c2d12";
+          interiorCtx.fillRect(width - 298, 160, 160, 6);
         } else if (feature === "maze-chamber") {
           interiorCtx.fillStyle = "rgba(56, 189, 248, 0.2)";
           interiorCtx.fillRect(width - 336, 110, 244, 102);
@@ -5005,11 +5368,43 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         interiorCtx.font = "13px sans-serif";
         interiorCtx.fillText("Interior Node Active", 26, 54);
         interiorCtx.fillStyle = "#93c5fd";
-        interiorCtx.fillText(`Feature: ${INTERIOR_FEATURE_LABELS[feature]}`, 26, 72);
+        interiorCtx.fillText(`Feature: ${INTERIOR_FEATURE_LABELS[feature]} // ${getInteriorSigil(structure)}`, 26, 72);
 
         const solved = state.progress.solvedStructures.has(structure.id);
         interiorCtx.fillStyle = solved ? "#4ade80" : "#facc15";
         interiorCtx.fillText(solved ? "Search complete: rewards already claimed" : "Search available: relic chest unopened", 26, 92);
+      };
+
+      const triggerInteriorTrialBattle = (structure) => {
+        const trial = INTERIOR_TRIAL_ENEMIES[structure.type] ?? INTERIOR_TRIAL_ENEMIES.dungeon;
+        const trialEnemy = {
+          id: `interior-trial-${structure.id}-${Date.now()}`,
+          kind: trial.kind,
+          x: state.hero.x,
+          y: state.hero.y,
+          lane: trial.lane,
+          boss: false,
+          region: state.currentRealmId,
+        };
+        closeInterior();
+        state.pendingBattle = false;
+        state.encounterEnemyId = trialEnemy.id;
+        state.mode = "battle";
+        state.battleMode = "local";
+        setBattlePopupActive(true);
+        resetBattleFx();
+        state.battle = createLocalBattle(trialEnemy);
+        state.battle.enemy.name = `${trial.title} of ${structure.name}`;
+        const hpBonus = 8 + Math.floor((state.hero.attack + state.hero.magic) * 1.8);
+        state.battle.enemy.maxHp += hpBonus;
+        state.battle.enemy.hp = state.battle.enemy.maxHp;
+        state.battle.rewardSpores += 12 + Math.floor(state.hero.defense * 2);
+        state.battle.rewardXp += 6;
+        appendBattleLog(`${state.battle.enemy.name} steps out from the interior shadows.`);
+        dom.battleSummary.textContent = `Interior trial active in ${structure.name}. Defeat ${state.battle.enemy.name}!`;
+        pushStoryEntry(`A hidden trial ignited within ${structure.name}.`, "quest");
+        setStatus(`Interior trial engaged: ${state.battle.enemy.name}`);
+        playSfx("battle");
       };
 
       const searchInterior = () => {
@@ -5023,32 +5418,34 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const feature = getInteriorFeature(structure);
         state.progress.solvedStructures.add(structure.id);
         const rewards = [];
+        let triggerTrial = false;
+
         if (structure.type === "house") {
           state.hero.hp = state.hero.maxHp;
           state.inventory.mycoPotion += 1;
           grantSpores(12);
           rewards.push("+1 Potion", "+12 Spores", "HP restored");
         } else if (structure.type === "cave") {
-          grantSpores(24);
+          grantSpores(18);
           state.inventory.manaDew += 1;
-          rewards.push("+24 Spores", "+1 Mana Dew");
+          rewards.push("+18 Spores", "+1 Mana Dew");
         } else if (structure.type === "dungeon") {
-          grantSpores(36);
+          grantSpores(24);
           addClue("dungeon-rune", "Ancient Dungeon Rune");
-          rewards.push("+36 Spores", "Ancient Dungeon Rune clue");
+          rewards.push("+24 Spores", "Ancient Dungeon Rune clue");
         } else if (structure.type === "castle") {
           state.hero.goldenSpores += 1;
           addClue("restoration-seed", "Restoration Seed");
           rewards.push("+1 Golden Spore", "Restoration Seed clue");
         } else if (structure.type === "tower") {
-          grantSpores(26);
+          grantSpores(20);
           state.hero.magic += 1;
-          rewards.push("+26 Spores", "+1 Magic");
+          rewards.push("+20 Spores", "+1 Magic");
         } else if (structure.type === "mushroom-shop") {
           state.inventory.mycoPotion += 1;
           state.inventory.manaDew += 1;
-          grantSpores(14);
-          rewards.push("+1 Potion", "+1 Mana Dew", "+14 Spores");
+          grantSpores(12);
+          rewards.push("+1 Potion", "+1 Mana Dew", "+12 Spores");
         }
 
         if (feature === "store-cache") {
@@ -5057,12 +5454,52 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           if (Math.random() < 0.55) state.inventory.mycoPotion += 1;
           if (Math.random() < 0.3) state.inventory.manaDew += 1;
           rewards.push(`Store Cache +${bonusSpores} Spores`);
+        } else if (feature === "trade-bazaar") {
+          const tradeCost = 12 + (hashString(structure.id) % 7);
+          if (state.hero.spores >= tradeCost) {
+            state.hero.spores -= tradeCost;
+            state.inventory.manaDew += 1;
+            if (Math.random() < 0.45) state.inventory.smokeBomb += 1;
+            if (Math.random() < 0.33) state.hero.goldenSpores += 1;
+            rewards.push(`Traded ${tradeCost} Spores`, "+1 Mana Dew", "Broker favor gained");
+          } else {
+            grantSpores(8);
+            rewards.push("Not enough spores to trade", "Broker tip +8 Spores");
+          }
+        } else if (feature === "quest-sanctum") {
+          const questClueId = `quest-${structure.id}`;
+          addClue(questClueId, `${structure.name} Quest Ledger`);
+          grantSpores(18);
+          pushStoryEntry(`Quest board completed at ${structure.name}. New route intel recorded.`, "quest");
+          rewards.push("+18 Spores", "Quest Ledger clue", "New side quest added");
         } else if (feature === "puzzle-altar") {
           const puzzleId = `puzzle-${structure.id}`;
           addClue(puzzleId, `${structure.name} Rune Pattern`);
           state.hero.magic += 1;
           grantSpores(18);
           rewards.push("Puzzle solved +1 Magic", "+18 Spores", "Rune Pattern clue");
+        } else if (feature === "lore-riddle") {
+          const riddle = INTERIOR_RIDDLES[hashString(structure.id) % INTERIOR_RIDDLES.length];
+          const riddleClueId = `${riddle.reward}-${structure.id}`;
+          addClue(riddleClueId, `${structure.name} Riddle Insight`);
+          grantSpores(14);
+          pushStoryEntry(`Riddle solved in ${structure.name}: "${riddle.prompt}" Answer: ${riddle.answer}.`, "lore");
+          rewards.push("+14 Spores", "Riddle Insight clue", `Answer learned: ${riddle.answer}`);
+        } else if (feature === "combat-trial") {
+          rewards.push("Dungeon trial opened", "Hostile encounter detected");
+          triggerTrial = true;
+        } else if (feature === "magic-mentor") {
+          state.hero.magic += 1;
+          state.hero.magicBoostTurns = Math.max(state.hero.magicBoostTurns, 5);
+          const mentorClueId = `mentor-${structure.id}`;
+          addClue(mentorClueId, `${structure.name} Arcane Mentor Seal`);
+          rewards.push("+1 Magic", "Magic boost 5 turns", "Arcane mentor seal");
+        } else if (feature === "attack-dojo") {
+          state.hero.attack += 1;
+          grantSpores(16);
+          const strikeClueId = `strike-${structure.id}`;
+          addClue(strikeClueId, `${structure.name} Strike Form`);
+          rewards.push("+1 Attack", "+16 Spores", "New strike form learned");
         } else if (feature === "maze-chamber") {
           const mazeBonus = 16 + Math.round(randomBetween(2, 10));
           grantSpores(mazeBonus);
@@ -5082,9 +5519,13 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           }
           rewards.push("+22 Spores", "Hidden Vault Route clue");
         }
+
         dom.interiorHint.textContent = `${INTERIOR_FEATURE_LABELS[feature]} cleared: ${rewards.join(", ")}.`;
         playSfx("pickup");
         drawInteriorScene(structure);
+        if (triggerTrial) {
+          triggerInteriorTrialBattle(structure);
+        }
       };
 
       const buildStructureEncounter = (nearbyStructure) => {
@@ -7168,7 +7609,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           dom.realmPageTitle.textContent = `${realm?.name ?? "Unknown Realm"} // Regional Play Page`;
         }
 
-        const connected = Boolean(state.web3.wallet);
+        const connected = isValidSolanaWalletAddress(state.web3.wallet);
+        const signedNickname = getSignedInNickname();
         const syncAge = state.web3.lastSyncedAt
           ? `${Math.max(0, Math.floor((Date.now() - state.web3.lastSyncedAt) / 1000))}s ago`
           : "never";
@@ -7176,9 +7618,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const nextSundayLabel = formatShortDate(getNextSunday());
         const latestBurnEvent = state.burn.events[0] ?? null;
         dom.web3Status.textContent = connected
-          ? `Wallet: ${shortWallet(state.web3.wallet)} // ${state.web3.chainRank}`
+          ? `Nickname: ${signedNickname || "unset"} // Wallet: ${shortWallet(state.web3.wallet)} // ${state.web3.chainRank}`
           : "Wallet: not connected";
         dom.web3Stats.innerHTML = [
+          `<span class="chip">Nickname ${signedNickname || "unset"}</span>`,
           `<span class="chip">Relic Power ${state.web3.relicPower}</span>`,
           `<span class="chip">Bosses Synced ${state.progress.defeatedBosses.size}</span>`,
           `<span class="chip">Last Sync ${syncAge}</span>`,
@@ -7193,7 +7636,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           ? `<span class="chip">Last Burn ${latestBurnEvent.sporesBurned} @ ${latestBurnEvent.pitName} (${latestBurnEvent.remoteStatus})</span>`
           : `<span class="chip">No burn pit records yet</span>`;
         dom.web3Relics.innerHTML = `${relicChips}${burnChip}`;
-        dom.connectWalletBtn.textContent = connected ? "Wallet Connected" : "Connect Wallet (Demo)";
+        dom.connectWalletBtn.textContent = connected ? `Wallet Connected (${shortWallet(state.web3.wallet)})` : "Connect Solana Wallet";
         dom.syncWeb3Btn.disabled = !connected;
         dom.mintSigilBtn.disabled = !connected;
         if (state.burnPit.active) {
@@ -7223,6 +7666,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       };
 
       const syncCampaign = async () => {
+        if (!requireSignedInIdentity(true)) return;
         setStatus("Syncing with RPG campaign API...");
         try {
           const snapshot = await callApi("/api/rpg/map", requestBase());
@@ -7399,7 +7843,16 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       dom.buyBombBtn.addEventListener("click", () => tryBuyItem("smokeBomb"));
       dom.useManaBtn.addEventListener("click", () => useInventoryItem("manaDew"));
       dom.useBombBtn.addEventListener("click", () => useInventoryItem("smokeBomb"));
-      dom.connectWalletBtn.addEventListener("click", connectWallet);
+      dom.connectWalletBtn.addEventListener("click", async () => {
+        await connectWallet();
+        refreshTitleScreen();
+        renderHud();
+      });
+      dom.titleWalletConnectBtn.addEventListener("click", async () => {
+        await connectWallet();
+        refreshTitleScreen();
+        renderHud();
+      });
       dom.syncWeb3Btn.addEventListener("click", syncWeb3Profile);
       dom.mintSigilBtn.addEventListener("click", mintVictorySigil);
       dom.interiorSearchBtn.addEventListener("click", searchInterior);
@@ -7412,8 +7865,37 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       dom.upgradeDefenseBtn.addEventListener("click", () => tryUpgrade("defense"));
       dom.upgradeMagicBtn.addEventListener("click", () => tryUpgrade("magic"));
 
-      [dom.apiBase, dom.source, dom.externalId, dom.sourceToken].forEach((input) => {
+      [dom.apiBase, dom.source, dom.sourceToken].forEach((input) => {
         input.addEventListener("change", saveConfig);
+      });
+      dom.externalId.addEventListener("input", () => {
+        const normalized = normalizeNickname(dom.externalId.value);
+        dom.externalId.value = normalized;
+        if (dom.titleNickname) dom.titleNickname.value = normalized;
+        refreshTitleScreen();
+        saveConfig();
+      });
+      dom.titleNickname.addEventListener("input", () => {
+        const normalized = normalizeNickname(dom.titleNickname.value);
+        dom.titleNickname.value = normalized;
+        dom.externalId.value = normalized;
+        refreshTitleScreen();
+        saveConfig();
+      });
+      dom.titleWalletInput.addEventListener("change", () => {
+        const manualWallet = String(dom.titleWalletInput.value ?? "").trim();
+        if (!manualWallet) return;
+        if (!isValidSolanaWalletAddress(manualWallet)) {
+          if (dom.titleWalletStatus) dom.titleWalletStatus.textContent = "Wallet format invalid. Use a valid Solana address.";
+          setStatus("Wallet format invalid. Use a valid Solana address.", true);
+          return;
+        }
+        state.web3.wallet = manualWallet;
+        state.web3.lastSyncedAt = Date.now();
+        syncIdentityInputs();
+        refreshTitleScreen();
+        renderHud();
+        saveConfig();
       });
       dom.clanSelect.addEventListener("change", () => {
         applyClanSelectionFromUi();
@@ -7439,6 +7921,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       state.ui.titleCardSkipped = false;
       saveConfig();
       loadGame();
+      syncIdentityInputs();
       populateClanSelect();
       const realmEntry = applyRealmPageEntry();
       populateRealmSelector();
