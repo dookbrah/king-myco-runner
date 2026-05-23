@@ -321,15 +321,65 @@
       .quest-done {
         color: #4ade80;
       }
-      .battle-controls {
+      .battle-controls-layout {
         margin-top: 8px;
         display: grid;
-        grid-template-columns: 1fr auto auto auto auto auto;
+        grid-template-columns: minmax(0, 1fr) minmax(210px, 260px);
+        gap: 8px;
+        align-items: start;
+      }
+      .battle-controls {
+        margin-top: 0;
+        display: grid;
+        grid-template-columns: minmax(84px, 1fr) repeat(7, auto);
         gap: 6px;
       }
+      .undertale-speech-box {
+        margin-top: 8px;
+        min-height: 72px;
+        border: 3px solid #f8fafc;
+        border-radius: 2px;
+        background: #05070a;
+        padding: 10px 12px;
+        box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.24);
+      }
+      .undertale-speech-box p {
+        margin: 0;
+        white-space: pre-wrap;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 13px;
+        line-height: 1.34;
+        color: #f8fafc;
+      }
+      .undertale-mood-panel {
+        border: 2px solid #f8fafc;
+        border-radius: 2px;
+        background: #05070a;
+        padding: 8px 9px;
+        min-height: 72px;
+      }
+      .undertale-mood-panel h4 {
+        margin-bottom: 4px;
+        font-size: 12px;
+        color: #f8fafc;
+      }
+      .undertale-mood-panel p {
+        margin: 0 0 6px;
+        white-space: pre-wrap;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 11px;
+        line-height: 1.28;
+        color: #e2e8f0;
+      }
+      .undertale-mood-panel p:last-child {
+        margin-bottom: 0;
+      }
       @media (max-width: 520px) {
+        .battle-controls-layout {
+          grid-template-columns: 1fr;
+        }
         .battle-controls {
-          grid-template-columns: 1fr 1fr;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
         }
       }
       .log {
@@ -718,7 +768,7 @@
         z-index: 85;
         margin: 0;
         display: grid;
-        grid-template-rows: auto auto minmax(220px, 1fr) auto auto;
+        grid-template-rows: auto auto minmax(220px, 1fr) auto auto auto;
         gap: 8px;
         padding: 14px;
         border-width: 2px;
@@ -741,6 +791,12 @@
         min-height: 220px;
       }
       #panelBattle.battle-popup-active .battle-controls {
+        margin-top: 0;
+      }
+      #panelBattle.battle-popup-active .battle-controls-layout {
+        margin-top: 0;
+      }
+      #panelBattle.battle-popup-active .undertale-speech-box {
         margin-top: 0;
       }
       #panelBattle.battle-popup-active .log {
@@ -891,10 +947,13 @@
         .battle-controls {
           grid-template-columns: 1fr 1fr 1fr;
         }
+        .battle-controls-layout {
+          grid-template-columns: 1fr;
+        }
         #panelBattle.battle-popup-active {
           inset: max(6px, env(safe-area-inset-top)) 6px max(6px, env(safe-area-inset-bottom)) 6px;
           padding: 10px;
-          grid-template-rows: auto auto minmax(180px, 1fr) auto auto;
+          grid-template-rows: auto auto minmax(180px, 1fr) auto auto auto;
         }
         #panelBattle.battle-popup-active #battleCanvas {
           height: min(48vh, 380px);
@@ -1186,21 +1245,31 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
               <canvas id="battleCanvas" width="460" height="230"></canvas>
             </div>
             <p id="battleSummary" class="subtle" style="margin-top: 8px">No active battle. Touch an enemy in the overworld to engage.</p>
-            <div class="battle-controls">
-              <select id="elementSelect">
-                <option value="fire">Fire</option>
-                <option value="water">Water</option>
-                <option value="nature">Nature</option>
-                <option value="ice">Ice</option>
-                <option value="void">Void</option>
-              </select>
-              <button id="strikeBtn">Strike</button>
-              <button id="actBtn">Act</button>
-              <button id="mercyBtn">Mercy</button>
-              <button id="guardBtn">Guard</button>
-              <button id="skillBtn" class="primary">Skill</button>
-              <button id="itemBtn">Use Potion</button>
-              <button id="fleeBtn" class="warn">Flee</button>
+            <div id="encounterSpeechBox" class="undertale-speech-box">
+              <p id="encounterSpeechText">* Waiting for the next encounter...</p>
+            </div>
+            <div class="battle-controls-layout">
+              <div class="battle-controls">
+                <select id="elementSelect">
+                  <option value="fire">Fire</option>
+                  <option value="water">Water</option>
+                  <option value="nature">Nature</option>
+                  <option value="ice">Ice</option>
+                  <option value="void">Void</option>
+                </select>
+                <button id="strikeBtn">Strike</button>
+                <button id="actBtn">Act</button>
+                <button id="mercyBtn">Mercy</button>
+                <button id="guardBtn">Guard</button>
+                <button id="skillBtn" class="primary">Skill</button>
+                <button id="itemBtn">Use Potion</button>
+                <button id="fleeBtn" class="warn">Flee</button>
+              </div>
+              <aside id="enemyMoodPanel" class="undertale-mood-panel">
+                <h4>Enemy Mood</h4>
+                <p id="enemyMoodText">No enemy mood data yet.</p>
+                <p id="enemyMercyText" class="subtle">ACT and MERCY status appears during battle.</p>
+              </aside>
             </div>
             <div id="battleLog" class="log">No combat logs yet.</div>
           </section>
@@ -1425,6 +1494,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         clueList: document.getElementById("clueList"),
         inventoryList: document.getElementById("inventoryList"),
         battleSummary: document.getElementById("battleSummary"),
+        encounterSpeechBox: document.getElementById("encounterSpeechBox"),
+        encounterSpeechText: document.getElementById("encounterSpeechText"),
+        enemyMoodPanel: document.getElementById("enemyMoodPanel"),
+        enemyMoodText: document.getElementById("enemyMoodText"),
+        enemyMercyText: document.getElementById("enemyMercyText"),
         battleLog: document.getElementById("battleLog"),
         elementSelect: document.getElementById("elementSelect"),
         strikeBtn: document.getElementById("strikeBtn"),
@@ -2981,6 +3055,13 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           impacts: [],
           lastHeroShotAt: 0,
           invulnerableUntil: 0,
+        },
+        battleUi: {
+          speechSource: "",
+          speechFullText: "",
+          speechVisibleText: "",
+          speechRevealIndex: 0,
+          speechNextAt: 0,
         },
         web3: {
           wallet: "",
@@ -5011,6 +5092,69 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           );
         }
         return battle.undertale;
+      };
+
+      const normalizeBattleSpeechLine = (line) => {
+        const raw = String(line ?? "").trim();
+        if (!raw) return "* ...";
+        return raw.startsWith("*") ? raw : `* ${raw}`;
+      };
+
+      const resetBattleSpeechBox = (placeholder = "* Waiting for the next encounter...") => {
+        state.battleUi.speechSource = "";
+        state.battleUi.speechFullText = normalizeBattleSpeechLine(placeholder);
+        state.battleUi.speechVisibleText = state.battleUi.speechFullText;
+        state.battleUi.speechRevealIndex = state.battleUi.speechFullText.length;
+        state.battleUi.speechNextAt = 0;
+        if (dom.encounterSpeechText) {
+          dom.encounterSpeechText.textContent = state.battleUi.speechVisibleText;
+        }
+      };
+
+      const setBattleSpeechText = (line, options = {}) => {
+        const { instant = false } = options;
+        const nextText = normalizeBattleSpeechLine(line);
+        if (state.battleUi.speechSource === nextText && state.battleUi.speechFullText === nextText) {
+          if (instant && state.battleUi.speechRevealIndex < nextText.length) {
+            state.battleUi.speechRevealIndex = nextText.length;
+            state.battleUi.speechVisibleText = nextText;
+            state.battleUi.speechNextAt = 0;
+          }
+          return;
+        }
+        state.battleUi.speechSource = nextText;
+        state.battleUi.speechFullText = nextText;
+        if (instant) {
+          state.battleUi.speechVisibleText = nextText;
+          state.battleUi.speechRevealIndex = nextText.length;
+          state.battleUi.speechNextAt = 0;
+          return;
+        }
+        state.battleUi.speechVisibleText = "";
+        state.battleUi.speechRevealIndex = 0;
+        state.battleUi.speechNextAt = Date.now();
+      };
+
+      const tickBattleSpeechReveal = (now = Date.now()) => {
+        const full = state.battleUi.speechFullText;
+        if (!full) return;
+        if (state.battleUi.speechRevealIndex >= full.length) {
+          state.battleUi.speechVisibleText = full;
+          return;
+        }
+        if (!state.battleUi.speechNextAt) {
+          state.battleUi.speechNextAt = now;
+        }
+        while (state.battleUi.speechRevealIndex < full.length && now >= state.battleUi.speechNextAt) {
+          state.battleUi.speechRevealIndex += 1;
+          state.battleUi.speechVisibleText = full.slice(0, state.battleUi.speechRevealIndex);
+          const char = full[state.battleUi.speechRevealIndex - 1];
+          let delay = 16;
+          if (char === " ") delay = 8;
+          if (char === "," || char === ";") delay = 48;
+          if (char === "." || char === "!" || char === "?" || char === "\n") delay = 80;
+          state.battleUi.speechNextAt += delay;
+        }
       };
 
       const saveConfig = () => {
@@ -10932,9 +11076,35 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           dom.battleSummary.textContent = `Battle source: ${state.battleMode}. Last Myco move: ${lastAction}. Enemy move: ${enemyMove}. Lane: ${state.battle.encounterLane}. ${mercyTag}. * ${undertale.mood}`;
           if (state.battle.battleLog?.length) {
             dom.battleLog.textContent = state.battle.battleLog.slice(-14).join("\n");
+            const latestSpeech = state.battle.battleLog[state.battle.battleLog.length - 1];
+            setBattleSpeechText(latestSpeech);
+          } else {
+            setBattleSpeechText(undertale.turnPrompt);
+          }
+          tickBattleSpeechReveal();
+          if (dom.encounterSpeechText) {
+            dom.encounterSpeechText.textContent = state.battleUi.speechVisibleText || state.battleUi.speechFullText;
+          }
+          if (dom.enemyMoodPanel && dom.enemyMoodText && dom.enemyMercyText) {
+            const hpText = `${Math.max(0, Math.round(state.battle.enemy.hp))}/${Math.max(1, Math.round(state.battle.enemy.maxHp))}`;
+            dom.enemyMoodText.textContent = formatUndertaleScript([
+              `${state.battle.enemy.name} mood`,
+              undertale.mood,
+              `HP ${hpText}`,
+            ]);
+            dom.enemyMercyText.textContent = undertale.mercyReady
+              ? "* MERCY is available right now."
+              : `* ACT progress ${undertale.actProgress}/${mercyThreshold}.`;
+            dom.enemyMoodPanel.style.opacity = "1";
           }
         } else {
           dom.battleSummary.textContent = "No active battle. Touch an enemy in the overworld to engage.";
+          resetBattleSpeechBox();
+          if (dom.enemyMoodPanel && dom.enemyMoodText && dom.enemyMercyText) {
+            dom.enemyMoodText.textContent = "No enemy mood data yet.";
+            dom.enemyMercyText.textContent = "ACT and MERCY status appears during battle.";
+            dom.enemyMoodPanel.style.opacity = "0.86";
+          }
         }
       };
       renderHud.lastMutationRefresh = 0;
