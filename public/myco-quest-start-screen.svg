@@ -1,0 +1,103 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgCore" x1="800" y1="0" x2="800" y2="900" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#180036"/>
+      <stop offset="0.45" stop-color="#2a0c68"/>
+      <stop offset="1" stop-color="#060b21"/>
+    </linearGradient>
+    <radialGradient id="skyBurst" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(950 190) rotate(90) scale(420 760)">
+      <stop offset="0" stop-color="#bd3dff" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#bd3dff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="planetGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(260 126) rotate(90) scale(110 110)">
+      <stop offset="0" stop-color="#6fffe6"/>
+      <stop offset="1" stop-color="#7c3aed"/>
+    </radialGradient>
+    <linearGradient id="riverGlow" x1="762" y1="510" x2="834" y2="900" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#45f7ff"/>
+      <stop offset="1" stop-color="#4f46e5"/>
+    </linearGradient>
+    <filter id="softBlur" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="8"/>
+    </filter>
+    <filter id="titleGlow" x="-20%" y="-30%" width="140%" height="180%">
+      <feGaussianBlur stdDeviation="5" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <linearGradient id="mycoFill" x1="610" y1="210" x2="1010" y2="290" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#96ff3d"/>
+      <stop offset="1" stop-color="#15d74e"/>
+    </linearGradient>
+    <linearGradient id="questFill" x1="620" y1="300" x2="1005" y2="378" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff55f2"/>
+      <stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#bgCore)"/>
+  <rect width="1600" height="900" fill="url(#skyBurst)"/>
+
+  <circle cx="260" cy="126" r="96" fill="url(#planetGlow)" opacity="0.95"/>
+  <circle cx="1420" cy="126" r="126" fill="#57257f" opacity="0.92"/>
+  <ellipse cx="1420" cy="126" rx="80" ry="42" fill="#8126bc" opacity="0.75"/>
+
+  <path d="M0 480C188 392 360 380 566 432C820 498 910 486 1090 430C1260 378 1400 386 1600 454V900H0V480Z" fill="#14072f" opacity="0.85"/>
+  <path d="M0 612C250 536 458 534 706 596C954 656 1216 656 1600 576V900H0V612Z" fill="#0c1d45" opacity="0.82"/>
+
+  <path d="M830 484C810 545 782 612 760 680C744 731 758 788 744 900H870C860 804 884 736 882 680C880 604 844 546 830 484Z" fill="url(#riverGlow)" opacity="0.9"/>
+  <path d="M818 500C804 548 780 612 772 670C766 714 774 768 772 900" stroke="#8ff7ff" stroke-width="4" opacity="0.65"/>
+
+  <g opacity="0.72">
+    <rect x="1070" y="364" width="30" height="126" fill="#42f5ff"/>
+    <rect x="1120" y="334" width="34" height="160" fill="#a855f7"/>
+    <rect x="1176" y="352" width="28" height="142" fill="#54f4f2"/>
+    <rect x="1224" y="320" width="32" height="176" fill="#7c3aed"/>
+    <rect x="1278" y="344" width="36" height="148" fill="#34d399"/>
+    <rect x="1336" y="328" width="28" height="162" fill="#a855f7"/>
+  </g>
+
+  <g opacity="0.84">
+    <ellipse cx="170" cy="720" rx="32" ry="22" fill="#e879f9"/>
+    <ellipse cx="226" cy="742" rx="26" ry="18" fill="#a855f7"/>
+    <ellipse cx="1404" cy="740" rx="30" ry="22" fill="#22d3ee"/>
+    <ellipse cx="1452" cy="764" rx="20" ry="15" fill="#67e8f9"/>
+    <ellipse cx="1160" cy="716" rx="28" ry="20" fill="#f472b6"/>
+  </g>
+
+  <g filter="url(#softBlur)" opacity="0.55">
+    <circle cx="560" cy="250" r="42" fill="#4f46e5"/>
+    <circle cx="1030" cy="232" r="52" fill="#d946ef"/>
+    <circle cx="890" cy="124" r="34" fill="#22d3ee"/>
+  </g>
+
+  <g transform="translate(76 324)">
+    <path d="M64 172L116 24L164 172H64Z" fill="#101828"/>
+    <rect x="88" y="164" width="52" height="134" rx="16" fill="#2f1349"/>
+    <circle cx="114" cy="122" r="44" fill="#0f172a"/>
+    <ellipse cx="114" cy="86" rx="86" ry="42" fill="#d13f43"/>
+    <ellipse cx="112" cy="86" rx="78" ry="34" fill="#a0181d"/>
+    <circle cx="97" cy="124" r="8" fill="#4ade80"/>
+    <circle cx="130" cy="124" r="8" fill="#4ade80"/>
+    <rect x="186" y="38" width="16" height="210" rx="8" fill="#2a1a48"/>
+    <circle cx="194" cy="36" r="34" fill="#2a1a48"/>
+    <circle cx="194" cy="36" r="24" fill="#22d3ee"/>
+    <path d="M194 10C208 20 214 34 210 56C194 64 180 60 172 48C176 26 182 16 194 10Z" fill="#39ff14" opacity="0.9"/>
+  </g>
+
+  <rect x="520" y="188" width="570" height="270" rx="26" fill="#0b1026" opacity="0.66" stroke="#7c3aed" stroke-width="2"/>
+
+  <text x="556" y="286" font-family="Impact, 'Arial Black', sans-serif" font-size="126" letter-spacing="4" fill="url(#mycoFill)" stroke="#0f172a" stroke-width="8" filter="url(#titleGlow)">MYCO</text>
+  <text x="548" y="390" font-family="Impact, 'Arial Black', sans-serif" font-size="124" letter-spacing="2" fill="url(#questFill)" stroke="#0f172a" stroke-width="8" filter="url(#titleGlow)">QUEST</text>
+
+  <rect x="640" y="412" width="360" height="46" rx="12" fill="#090e20" stroke="#334155"/>
+  <text x="664" y="443" font-family="Verdana, Arial, sans-serif" font-size="28" fill="#a7f3d0">A $MYCO ADVENTURE ON SOLANA</text>
+
+  <g opacity="0.55">
+    <path d="M1124 112L1154 130L1124 148L1094 130L1124 112Z" fill="#67e8f9"/>
+    <path d="M1124 152L1154 170L1124 188L1094 170L1124 152Z" fill="#a855f7"/>
+    <path d="M1124 192L1154 210L1124 228L1094 210L1124 192Z" fill="#22d3ee"/>
+  </g>
+</svg>
