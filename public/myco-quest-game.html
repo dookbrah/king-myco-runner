@@ -4017,10 +4017,15 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         window.history.replaceState({}, "", path);
       };
 
-      const goToRealmPage = (realmId, spawnX, spawnY) => {
+      const goToRealmPage = (realmId, spawnX, spawnY, options = {}) => {
         if (!REALMS.some((realm) => realm.id === realmId)) return;
         const params = new URLSearchParams(window.location.search);
         params.set("region", realmId);
+        if (options.portalTravel) {
+          params.set("portalTravel", "1");
+        } else {
+          params.delete("portalTravel");
+        }
         if (typeof spawnX === "number" && typeof spawnY === "number") {
           params.set("spawnX", String(Math.round(spawnX)));
           params.set("spawnY", String(Math.round(spawnY)));
@@ -4093,15 +4098,23 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           return fallbackPoint;
         }
 
-        const minX = realm.x + state.hero.w / 2 + 8;
-        const maxX = realm.x + realm.w - state.hero.w / 2 - 8;
-        const minY = realm.y + state.hero.h / 2 + 8;
-        const maxY = realm.y + realm.h - state.hero.h / 2 - 8;
-        for (let scanY = minY; scanY <= maxY; scanY += 34) {
-          for (let scanX = minX; scanX <= maxX; scanX += 34) {
+        const minX = Math.round(realm.x + state.hero.w / 2 + 8);
+        const maxX = Math.round(realm.x + realm.w - state.hero.w / 2 - 8);
+        const minY = Math.round(realm.y + state.hero.h / 2 + 8);
+        const maxY = Math.round(realm.y + realm.h - state.hero.h / 2 - 8);
+        for (let scanY = minY; scanY <= maxY; scanY += 18) {
+          for (let scanX = minX; scanX <= maxX; scanX += 18) {
             if (!isHeroSpawnBlockedInRealm(realm, scanX, scanY, 0)) {
               return { x: Math.round(scanX), y: Math.round(scanY) };
             }
+          }
+        }
+
+        for (let attempt = 0; attempt < 320; attempt += 1) {
+          const rx = Math.round(randomBetween(minX, maxX));
+          const ry = Math.round(randomBetween(minY, maxY));
+          if (!isHeroSpawnBlockedInRealm(realm, rx, ry, 0)) {
+            return { x: rx, y: ry };
           }
         }
 
@@ -4135,12 +4148,15 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const spawnX = Number(params.get("spawnX"));
         const spawnY = Number(params.get("spawnY"));
         const hasSpawn = Number.isFinite(spawnX) && Number.isFinite(spawnY);
+        const portalTravel = params.get("portalTravel") === "1";
         ensureHeroInsideCurrentRealm(hasSpawn ? { x: spawnX, y: spawnY } : null);
-        if (hasSpawn) {
+        if (hasSpawn || portalTravel) {
           params.delete("spawnX");
           params.delete("spawnY");
+          params.delete("portalTravel");
           replaceQueryParams(params);
         }
+        return { hasSpawn, portalTravel };
       };
 
       const learnedMagicIds = () =>
@@ -4784,18 +4800,47 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       };
 
       const ENTERABLE_STRUCTURE_TYPES = new Set(["house", "cave", "dungeon", "castle", "tower", "mushroom-shop"]);
+      const INTERIOR_FEATURE_POOLS = {
+        house: ["store-cache", "power-sanctum", "hidden-vault"],
+        cave: ["maze-chamber", "power-sanctum", "hidden-vault"],
+        dungeon: ["puzzle-altar", "maze-chamber", "hidden-vault"],
+        castle: ["store-cache", "puzzle-altar", "hidden-vault"],
+        tower: ["power-sanctum", "puzzle-altar", "hidden-vault"],
+        "mushroom-shop": ["store-cache", "hidden-vault", "puzzle-altar"],
+      };
+      const INTERIOR_FEATURE_LABELS = {
+        "store-cache": "Store Cache",
+        "puzzle-altar": "Rune Puzzle Altar",
+        "maze-chamber": "Maze Chamber",
+        "power-sanctum": "Power Sanctum",
+        "hidden-vault": "Hidden Vault",
+      };
 
       const isEnterableStructure = (structure) => ENTERABLE_STRUCTURE_TYPES.has(structure.type);
+
+      const getInteriorFeature = (structure) => {
+        const pool = INTERIOR_FEATURE_POOLS[structure.type] ?? ["hidden-vault"];
+        return pool[hashString(structure.id) % pool.length];
+      };
+
+      const getInteriorFeatureHint = (feature) => {
+        if (feature === "store-cache") return "Hidden stall inventory may contain supplies and spores.";
+        if (feature === "puzzle-altar") return "Solve the rune order to release bonus relic energy.";
+        if (feature === "maze-chamber") return "Maze lane rewards explorers who map dead ends.";
+        if (feature === "power-sanctum") return "A power node can boost magic and recovery.";
+        return "A secret vault may hold rare clues or golden spores.";
+      };
 
       const openInterior = (structure) => {
         state.keys.clear();
         state.interior.active = true;
         state.interior.structureId = structure.id;
         state.mode = "interior";
+        const feature = getInteriorFeature(structure);
         dom.interiorScreen.classList.add("active");
         dom.interiorTitle.textContent = structure.name;
-        dom.interiorSubtitle.textContent = `${structure.type.replace(/-/g, " ").toUpperCase()} INTERIOR // ${getCurrentRealm().name}`;
-        dom.interiorHint.textContent = "Search for relics, clues, and supplies. Press E or Exit to leave.";
+        dom.interiorSubtitle.textContent = `${structure.type.replace(/-/g, " ").toUpperCase()} INTERIOR // ${getCurrentRealm().name} // ${INTERIOR_FEATURE_LABELS[feature]}`;
+        dom.interiorHint.textContent = `${getInteriorFeatureHint(feature)} Search for relics, clues, and supplies. Press E or Exit to leave.`;
         drawInteriorScene(structure);
       };
 
@@ -4825,6 +4870,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           tower: ["#1f2937", "#475569", "#cbd5e1"],
           "mushroom-shop": ["#7c2d12", "#ef4444", "#fee2e2"],
         };
+        const feature = getInteriorFeature(structure);
         const [base, accent, glow] = palette[structure.type] ?? ["#1f2937", "#4b5563", "#e2e8f0"];
         const roomGradient = interiorCtx.createLinearGradient(0, 0, width, height);
         roomGradient.addColorStop(0, base);
@@ -4904,15 +4950,66 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           interiorCtx.fillRect(208, height - 146, 18, 14);
         }
 
+        if (feature === "store-cache") {
+          interiorCtx.fillStyle = "rgba(251, 191, 36, 0.3)";
+          interiorCtx.fillRect(width - 320, 120, 220, 84);
+          interiorCtx.fillStyle = "#fcd34d";
+          interiorCtx.fillRect(width - 304, 132, 34, 24);
+          interiorCtx.fillRect(width - 260, 138, 28, 18);
+          interiorCtx.fillRect(width - 220, 130, 30, 22);
+          interiorCtx.fillRect(width - 176, 136, 26, 18);
+        } else if (feature === "puzzle-altar") {
+          interiorCtx.fillStyle = "rgba(196, 181, 253, 0.28)";
+          interiorCtx.fillRect(width - 330, 110, 240, 96);
+          interiorCtx.fillStyle = "#c4b5fd";
+          for (let i = 0; i < 6; i += 1) {
+            interiorCtx.fillRect(width - 312 + i * 36, 136 + ((i % 2) ? 10 : 0), 24, 24);
+          }
+          interiorCtx.fillStyle = "#ede9fe";
+          interiorCtx.fillRect(width - 222, 120, 22, 10);
+        } else if (feature === "maze-chamber") {
+          interiorCtx.fillStyle = "rgba(56, 189, 248, 0.2)";
+          interiorCtx.fillRect(width - 336, 110, 244, 102);
+          interiorCtx.fillStyle = "#0f172a";
+          interiorCtx.fillRect(width - 322, 122, 214, 10);
+          interiorCtx.fillRect(width - 322, 148, 110, 8);
+          interiorCtx.fillRect(width - 246, 170, 138, 8);
+          interiorCtx.fillRect(width - 322, 190, 166, 8);
+        } else if (feature === "power-sanctum") {
+          interiorCtx.fillStyle = "rgba(74, 222, 128, 0.2)";
+          interiorCtx.beginPath();
+          interiorCtx.arc(width - 206, 156, 46, 0, Math.PI * 2);
+          interiorCtx.fill();
+          interiorCtx.strokeStyle = "#4ade80";
+          interiorCtx.lineWidth = 3;
+          interiorCtx.beginPath();
+          interiorCtx.arc(width - 206, 156, 28, 0, Math.PI * 2);
+          interiorCtx.stroke();
+          interiorCtx.fillStyle = "#86efac";
+          interiorCtx.fillRect(width - 212, 148, 12, 16);
+        } else if (feature === "hidden-vault") {
+          interiorCtx.fillStyle = "rgba(148, 163, 184, 0.2)";
+          interiorCtx.fillRect(width - 310, 112, 200, 94);
+          interiorCtx.fillStyle = "#0f172a";
+          interiorCtx.fillRect(width - 222, 140, 26, 40);
+          interiorCtx.fillStyle = "#fbbf24";
+          interiorCtx.fillRect(width - 210, 158, 6, 6);
+          interiorCtx.strokeStyle = "#94a3b8";
+          interiorCtx.lineWidth = 2;
+          interiorCtx.strokeRect(width - 298, 124, 176, 70);
+        }
+
         interiorCtx.fillStyle = "#f8fafc";
         interiorCtx.font = "700 16px sans-serif";
         interiorCtx.fillText(structure.name, 26, 34);
         interiorCtx.font = "13px sans-serif";
         interiorCtx.fillText("Interior Node Active", 26, 54);
+        interiorCtx.fillStyle = "#93c5fd";
+        interiorCtx.fillText(`Feature: ${INTERIOR_FEATURE_LABELS[feature]}`, 26, 72);
 
         const solved = state.progress.solvedStructures.has(structure.id);
         interiorCtx.fillStyle = solved ? "#4ade80" : "#facc15";
-        interiorCtx.fillText(solved ? "Search complete: rewards already claimed" : "Search available: relic chest unopened", 26, 78);
+        interiorCtx.fillText(solved ? "Search complete: rewards already claimed" : "Search available: relic chest unopened", 26, 92);
       };
 
       const searchInterior = () => {
@@ -4923,34 +5020,69 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           playSfx("error");
           return;
         }
+        const feature = getInteriorFeature(structure);
         state.progress.solvedStructures.add(structure.id);
+        const rewards = [];
         if (structure.type === "house") {
           state.hero.hp = state.hero.maxHp;
           state.inventory.mycoPotion += 1;
           grantSpores(12);
-          dom.interiorHint.textContent = "Village stash recovered: +1 Potion, +12 Spores, HP restored.";
+          rewards.push("+1 Potion", "+12 Spores", "HP restored");
         } else if (structure.type === "cave") {
           grantSpores(24);
           state.inventory.manaDew += 1;
-          dom.interiorHint.textContent = "Cave cache secured: +24 Spores, +1 Mana Dew.";
+          rewards.push("+24 Spores", "+1 Mana Dew");
         } else if (structure.type === "dungeon") {
           grantSpores(36);
           addClue("dungeon-rune", "Ancient Dungeon Rune");
-          dom.interiorHint.textContent = "Dungeon sigil recovered: +36 Spores and Ancient Dungeon Rune clue.";
+          rewards.push("+36 Spores", "Ancient Dungeon Rune clue");
         } else if (structure.type === "castle") {
           state.hero.goldenSpores += 1;
           addClue("restoration-seed", "Restoration Seed");
-          dom.interiorHint.textContent = "Castle vault opened: +1 Golden Spore and Restoration Seed clue.";
+          rewards.push("+1 Golden Spore", "Restoration Seed clue");
         } else if (structure.type === "tower") {
           grantSpores(26);
           state.hero.magic += 1;
-          dom.interiorHint.textContent = "Tower relay calibrated: +26 Spores and +1 Magic.";
+          rewards.push("+26 Spores", "+1 Magic");
         } else if (structure.type === "mushroom-shop") {
           state.inventory.mycoPotion += 1;
           state.inventory.manaDew += 1;
           grantSpores(14);
-          dom.interiorHint.textContent = "Shop cache brokered: +1 Potion, +1 Mana Dew, +14 Spores.";
+          rewards.push("+1 Potion", "+1 Mana Dew", "+14 Spores");
         }
+
+        if (feature === "store-cache") {
+          const bonusSpores = 10 + Math.round(randomBetween(3, 11));
+          grantSpores(bonusSpores);
+          if (Math.random() < 0.55) state.inventory.mycoPotion += 1;
+          if (Math.random() < 0.3) state.inventory.manaDew += 1;
+          rewards.push(`Store Cache +${bonusSpores} Spores`);
+        } else if (feature === "puzzle-altar") {
+          const puzzleId = `puzzle-${structure.id}`;
+          addClue(puzzleId, `${structure.name} Rune Pattern`);
+          state.hero.magic += 1;
+          grantSpores(18);
+          rewards.push("Puzzle solved +1 Magic", "+18 Spores", "Rune Pattern clue");
+        } else if (feature === "maze-chamber") {
+          const mazeBonus = 16 + Math.round(randomBetween(2, 10));
+          grantSpores(mazeBonus);
+          state.inventory.smokeBomb += 1;
+          rewards.push(`Maze clear +${mazeBonus} Spores`, "+1 Smoke Bomb");
+        } else if (feature === "power-sanctum") {
+          state.hero.magicBoostTurns = Math.max(state.hero.magicBoostTurns, 4);
+          state.hero.hp = Math.min(state.hero.maxHp, state.hero.hp + 22);
+          rewards.push("Power node charged", "Magic Boost 4 turns", "+22 HP");
+        } else if (feature === "hidden-vault") {
+          grantSpores(22);
+          const vaultClueId = `vault-${structure.id}`;
+          addClue(vaultClueId, `${structure.name} Hidden Vault Route`);
+          if (Math.random() < 0.38) {
+            state.hero.goldenSpores += 1;
+            rewards.push("+1 Golden Spore");
+          }
+          rewards.push("+22 Spores", "Hidden Vault Route clue");
+        }
+        dom.interiorHint.textContent = `${INTERIOR_FEATURE_LABELS[feature]} cleared: ${rewards.join(", ")}.`;
         playSfx("pickup");
         drawInteriorScene(structure);
       };
@@ -5095,7 +5227,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           playSfx("portal");
           saveGame();
           window.setTimeout(() => {
-            goToRealmPage(destinationRealmId, safeDestination.x, safeDestination.y);
+            goToRealmPage(destinationRealmId, safeDestination.x, safeDestination.y, { portalTravel: true });
           }, 180);
           return true;
         }
@@ -7240,7 +7372,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           return;
         }
         saveGame();
-        goToRealmPage(target);
+        goToRealmPage(target, undefined, undefined, { portalTravel: true });
       });
       dom.minimalHudBtn.addEventListener("click", () => {
         toggleMinimalHud();
@@ -7308,7 +7440,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       saveConfig();
       loadGame();
       populateClanSelect();
-      applyRealmPageEntry();
+      const realmEntry = applyRealmPageEntry();
       populateRealmSelector();
       setupCornerMenus();
       setupMobileControls();
@@ -7323,8 +7455,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       drawWorld();
       drawBattleScene();
       requestAnimationFrame(frameLoop);
-      dom.titleScreen.classList.add("active");
-      if (autoFreshStart) {
+      const autoRegionTransfer = Boolean(realmEntry?.portalTravel);
+      if (!autoRegionTransfer) {
+        dom.titleScreen.classList.add("active");
+      }
+      if (autoFreshStart || autoRegionTransfer) {
         startAdventure();
       }
       setInterval(() => {
