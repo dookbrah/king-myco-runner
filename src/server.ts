@@ -41,6 +41,9 @@ const sendHtml = (
 ): void => {
   response.statusCode = statusCode;
   response.setHeader("content-type", "text/html; charset=utf-8");
+  response.setHeader("cache-control", "no-store, no-cache, must-revalidate, max-age=0");
+  response.setHeader("pragma", "no-cache");
+  response.setHeader("expires", "0");
   response.end(html);
 };
 
@@ -270,18 +273,36 @@ const start = async (): Promise<void> => {
       }
 
       if (
-        method === "GET" &&
+        (method === "GET" || method === "HEAD") &&
         (routePath === "/dev/myco-quest" || routePath === "/api/dev/myco-quest")
       ) {
         const html = await readFile("public/myco-quest-dev.html", "utf8");
+        if (method === "HEAD") {
+          response.statusCode = 200;
+          response.setHeader("content-type", "text/html; charset=utf-8");
+          response.setHeader("cache-control", "no-store, no-cache, must-revalidate, max-age=0");
+          response.setHeader("pragma", "no-cache");
+          response.setHeader("expires", "0");
+          response.end();
+          return;
+        }
         return sendHtml(response, 200, html);
       }
 
       if (
-        method === "GET" &&
+        (method === "GET" || method === "HEAD") &&
         (routePath === "/game/myco-quest" || routePath === "/api/game/myco-quest")
       ) {
         const html = await readFile("public/myco-quest-game.html", "utf8");
+        if (method === "HEAD") {
+          response.statusCode = 200;
+          response.setHeader("content-type", "text/html; charset=utf-8");
+          response.setHeader("cache-control", "no-store, no-cache, must-revalidate, max-age=0");
+          response.setHeader("pragma", "no-cache");
+          response.setHeader("expires", "0");
+          response.end();
+          return;
+        }
         return sendHtml(response, 200, html);
       }
 
