@@ -3812,21 +3812,100 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         window.location.search = params.toString();
       };
 
+      const isHeroSpawnBlockedInRealm = (realm, x, y, portalBuffer = 54) => {
+        const heroRect = getHeroRect(x, y);
+        if (
+          heroRect.x < realm.x ||
+          heroRect.y < realm.y ||
+          heroRect.x + heroRect.w > realm.x + realm.w ||
+          heroRect.y + heroRect.h > realm.y + realm.h
+        ) {
+          return true;
+        }
+        for (const structure of STRUCTURES) {
+          if (!structure.solid) continue;
+          if (getEntityRealmId(structure) !== realm.id) continue;
+          if (intersectsRect(heroRect, structure)) return true;
+        }
+        for (const wall of staticObstacles) {
+          if (getEntityRealmId(wall) !== realm.id) continue;
+          if (intersectsRect(heroRect, wall)) return true;
+        }
+        for (const barrier of REALM_BARRIERS) {
+          if (getEntityRealmId(barrier) !== realm.id) continue;
+          if (intersectsRect(heroRect, barrier)) return true;
+        }
+        if (portalBuffer > 0) {
+          for (const portal of PORTALS) {
+            if (portalSourceRealmId(portal) !== realm.id) continue;
+            if (dist(x, y, portal.x + portal.w / 2, portal.y + portal.h / 2) < portalBuffer) return true;
+          }
+        }
+        return false;
+      };
+
+      const resolveSafeHeroSpawn = (realm, preferredPoint, portalBuffer = 54) => {
+        const clampPoint = (x, y) => ({
+          x: Math.round(clamp(x, realm.x + state.hero.w / 2, realm.x + realm.w - state.hero.w / 2)),
+          y: Math.round(clamp(y, realm.y + state.hero.h / 2, realm.y + realm.h - state.hero.h / 2)),
+        });
+        const centered = clampPoint(preferredPoint.x, preferredPoint.y);
+        if (!isHeroSpawnBlockedInRealm(realm, centered.x, centered.y, portalBuffer)) {
+          return centered;
+        }
+
+        const radiusStep = 24;
+        const angleStep = Math.PI / 8;
+        for (let radius = radiusStep; radius <= 420; radius += radiusStep) {
+          for (let angle = 0; angle < Math.PI * 2; angle += angleStep) {
+            const candidate = clampPoint(centered.x + Math.cos(angle) * radius, centered.y + Math.sin(angle) * radius);
+            if (!isHeroSpawnBlockedInRealm(realm, candidate.x, candidate.y, portalBuffer)) {
+              return candidate;
+            }
+          }
+        }
+
+        const fallback = REALM_DEFAULT_SPAWNS[realm.id] ?? {
+          x: realm.x + realm.w / 2,
+          y: realm.y + realm.h / 2,
+        };
+        const fallbackPoint = clampPoint(fallback.x, fallback.y);
+        if (!isHeroSpawnBlockedInRealm(realm, fallbackPoint.x, fallbackPoint.y, 0)) {
+          return fallbackPoint;
+        }
+
+        const minX = realm.x + state.hero.w / 2 + 8;
+        const maxX = realm.x + realm.w - state.hero.w / 2 - 8;
+        const minY = realm.y + state.hero.h / 2 + 8;
+        const maxY = realm.y + realm.h - state.hero.h / 2 - 8;
+        for (let scanY = minY; scanY <= maxY; scanY += 34) {
+          for (let scanX = minX; scanX <= maxX; scanX += 34) {
+            if (!isHeroSpawnBlockedInRealm(realm, scanX, scanY, 0)) {
+              return { x: Math.round(scanX), y: Math.round(scanY) };
+            }
+          }
+        }
+
+        return centered;
+      };
+
       const ensureHeroInsideCurrentRealm = (preferSpawn = null) => {
         const realm = getCurrentRealm();
         const defaultSpawn = REALM_DEFAULT_SPAWNS[realm.id] ?? {
           x: realm.x + realm.w / 2,
           y: realm.y + realm.h / 2,
         };
-        const desired = preferSpawn ?? defaultSpawn;
         const inside =
           state.hero.x >= realm.x &&
           state.hero.x <= realm.x + realm.w &&
           state.hero.y >= realm.y &&
           state.hero.y <= realm.y + realm.h;
-        if (!inside || preferSpawn) {
-          state.hero.x = desired.x;
-          state.hero.y = desired.y;
+        const trapped = isHeroSpawnBlockedInRealm(realm, state.hero.x, state.hero.y, 0);
+        if (!inside || trapped || preferSpawn) {
+          const desired = preferSpawn ?? defaultSpawn;
+          const safeSpawn = resolveSafeHeroSpawn(realm, desired, 58);
+          state.hero.x = safeSpawn.x;
+          state.hero.y = safeSpawn.y;
         }
         state.hero.x = clamp(state.hero.x, realm.x + state.hero.w / 2, realm.x + realm.w - state.hero.w / 2);
         state.hero.y = clamp(state.hero.y, realm.y + state.hero.h / 2, realm.y + realm.h - state.hero.h / 2);
@@ -4764,21 +4843,22 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           playSfx("error");
           return false;
         }
-        state.hero.x = portal.destinationX;
-        state.hero.y = portal.destinationY;
+        const destinationRealmId = portalDestinationRealmId(portal) ?? state.currentRealmId;
+        const destinationRealm = REALMS.find((realm) => realm.id === destinationRealmId) ?? getCurrentRealm();
+        const safeDestination = resolveSafeHeroSpawn(destinationRealm, { x: portal.destinationX, y: portal.destinationY }, 58);
+        state.hero.x = safeDestination.x;
+        state.hero.y = safeDestination.y;
         state.contactLockUntil = Date.now() + 900;
         state.contactLatch = { type: "portal", id: portal.id };
         state.visualFx.portalPulseUntil = Date.now() + 700;
         state.visualFx.portalPulseX = portal.x + portal.w / 2;
         state.visualFx.portalPulseY = portal.y + portal.h / 2;
-        const destinationRealmId = portalDestinationRealmId(portal);
         if (destinationRealmId && destinationRealmId !== state.currentRealmId) {
-          const destinationRealm = REALMS.find((realm) => realm.id === destinationRealmId);
           setStatus(`Portal stabilized. Entering ${destinationRealm?.name ?? destinationRealmId} page...`);
           playSfx("portal");
           saveGame();
           window.setTimeout(() => {
-            goToRealmPage(destinationRealmId, portal.destinationX, portal.destinationY);
+            goToRealmPage(destinationRealmId, safeDestination.x, safeDestination.y);
           }, 180);
           return true;
         }
