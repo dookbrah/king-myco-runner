@@ -2113,6 +2113,79 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         "obsidian-ranger": "Keth guards the last basalt oathstones that once marked the kingdom's final fallback line.",
       };
 
+      const NPC_BOSS_REMINDER_TRACK = {
+        "fen-scout": { bossId: "rougarou", directive: "hunt Rougarou in the Fen and break his moon-scent ambush loop" },
+        "fen-archivist": { bossId: "rougarou", directive: "finish Rougarou's hunt to stabilize the marsh glyph lanes" },
+        "drake-hermit": { bossId: "tri-drake", directive: "face the Tri-Drake and shatter the triple ember ward" },
+        "tri-sentinel": { bossId: "tri-drake", directive: "take the peak towers, then defeat the Tri-Drake sky tyrant" },
+        "reef-oracle": { bossId: "evil-crab", directive: "defeat Evil Crab to unlock the abyss tide chain" },
+        "tide-smuggler": { bossId: "evil-crab", directive: "break Evil Crab's shell fortress and reopen dock routes" },
+        "chain-smith": { bossId: "dark-mycelius", directive: "anchor your sigils and challenge Dark Mycelius at the chain core" },
+        "chain-librarian": { bossId: "dark-mycelius", directive: "decode the ledgers, then end Dark Mycelius's corrupted reign" },
+      };
+
+      const NPC_MAGIC_REMINDER_TRACK = {
+        "drake-hermit": { required: 2, skillName: "Ember Veil" },
+        "tri-sentinel": { required: 2, skillName: "Ember Veil" },
+        "chain-smith": { required: 4, skillName: "Chainbind" },
+        "chain-librarian": { required: 4, skillName: "Chainbind" },
+      };
+
+      const NPC_DIALOGUE_BANK = {
+        openers: [
+          "The mycelial winds shift around your banner again.",
+          "Your footsteps changed this route since we last spoke.",
+          "The kingdom's rumor-web updated the moment you arrived.",
+          "I can feel your chronicle rewriting nearby fates.",
+          "The spores around us react to your newest decisions.",
+        ],
+        tacticalReads: [
+          "Balance your next fights: guard once before committing to burst damage.",
+          "If battle pressure spikes, rotate skills before enemies can adapt.",
+          "Open with positioning, then spend spores only when a gate or boss is near.",
+          "Use clues as route keys; forcing blind paths costs too many resources.",
+          "When enemies swarm, pace your turns instead of chasing every hit.",
+        ],
+        moraleReads: [
+          "Your morality trail is becoming a public legend.",
+          "Villagers are already debating whether you are feared or trusted.",
+          "Your tone in negotiations now echoes farther than your staff flame.",
+          "Every mercy or threat is feeding the kingdom's memory lattice.",
+          "Your aura keeps tilting this realm's trust economy.",
+        ],
+        closers: [
+          "Come back after your next objective and the route map will change again.",
+          "Return after one major decision; I will read the consequences with you.",
+          "Push the story forward and I'll surface a new tactical angle.",
+          "Bring me your next milestone and I'll decode the next thread.",
+          "Advance one chapter and we'll rewrite this advice stream.",
+        ],
+      };
+
+      const INTERIOR_DIALOGUE_BANK = {
+        openers: [
+          "Interior sensors picked up your arrival in this chamber.",
+          "The room's sigils recalibrated the instant you stepped in.",
+          "This hideout feels different every time your banner enters.",
+          "The local residents updated your file while you crossed the threshold.",
+          "Your route imprint just altered this interior's rhythm.",
+        ],
+        details: [
+          "Clearing side nodes here can change what spawns in nearby halls.",
+          "Interior clues stack with overworld routes; don't leave empty-handed.",
+          "Trade smart here and you'll save resources for the next boss gate.",
+          "This room reacts to your morality trend and battle record.",
+          "Every interior has hidden value if you inspect before rushing out.",
+        ],
+        closers: [
+          "Exit when ready, but leave with at least one advantage.",
+          "Resolve one objective before leaving and this room will remember it.",
+          "Finish your loop here and I'll have a new read next visit.",
+          "Take what you learned here back to the overworld lanes.",
+          "When you return, this interior's advice stream will evolve again.",
+        ],
+      };
+
       const NPC_PORTRAITS = {
         "elder-myca": { glyph: "👑", subtitle: "Royal Archivist // Oath Keeper" },
         "myco-captain": { glyph: "🛡️", subtitle: "Crownwatch Captain // Route Commander" },
@@ -3018,6 +3091,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           npcRobberies: 0,
           battleFlees: 0,
           askedNpcQuestions: new Set(),
+          npcConversationCounts: {},
         },
         hero: {
           x: 280,
@@ -3330,6 +3404,103 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const getNpcPersonality = (npc) => {
         const template = NPC_PERSONALITY_TEMPLATES[hashString(npc.id) % NPC_PERSONALITY_TEMPLATES.length];
         return template;
+      };
+
+      const ensureNpcConversationCounts = () => {
+        if (!state.progress.npcConversationCounts || typeof state.progress.npcConversationCounts !== "object") {
+          state.progress.npcConversationCounts = {};
+        }
+        return state.progress.npcConversationCounts;
+      };
+
+      const bumpNpcConversationCount = (npcId) => {
+        const store = ensureNpcConversationCounts();
+        const previous = Number.isFinite(store[npcId]) ? Math.max(0, Math.round(store[npcId])) : 0;
+        const next = previous + 1;
+        store[npcId] = next;
+        return next;
+      };
+
+      const pickDialogueLine = (pool, seed) => {
+        if (!Array.isArray(pool) || !pool.length) return "";
+        return pool[hashString(seed) % pool.length];
+      };
+
+      const getNpcReminderText = (npc, contextLabel = "this realm") => {
+        if (!npc || typeof npc.id !== "string") return "";
+        if (npc.id.startsWith("interior-npc-")) return "";
+        if (npc.clueId && !state.progress.clues.has(npc.clueId)) {
+          return `Reminder: recover ${npc.clueLabel ?? "your next clue"} in ${contextLabel}. Ask focused questions or trade until the trail unlocks.`;
+        }
+        const magicGoal = NPC_MAGIC_REMINDER_TRACK[npc.id];
+        if (magicGoal && state.hero.magic < magicGoal.required) {
+          return `Reminder: train your magic to level ${magicGoal.required} so ${magicGoal.skillName} can stabilize the next portal route.`;
+        }
+        const bossGoal = NPC_BOSS_REMINDER_TRACK[npc.id];
+        if (bossGoal && !state.progress.defeatedBosses.has(bossGoal.bossId)) {
+          return `Reminder: ${bossGoal.directive}.`;
+        }
+        return "";
+      };
+
+      const getInteriorNpcReminderText = (structure) => {
+        if (!structure || state.progress.solvedStructures.has(structure.id)) return "";
+        const interiorFeature = state.interior.layout?.feature ?? getInteriorFeature(structure);
+        const featureLabel = INTERIOR_FEATURE_LABELS[interiorFeature] ?? "interior objective";
+        return `Reminder: clear ${featureLabel} in ${structure.name} before you exit so this location fully unlocks.`;
+      };
+
+      const buildUniqueNpcDialogueBody = ({
+        npc,
+        encounterCount,
+        qaContext,
+        alignment,
+        profile,
+        clan,
+        persona,
+        backstory,
+        alreadySpoken,
+      }) => {
+        const opener = pickDialogueLine(
+          NPC_DIALOGUE_BANK.openers,
+          `${npc.id}:${encounterCount}:open:${alignment}:${state.story.entries.length}:${alreadySpoken ? "return" : "first"}`,
+        );
+        const tactic = pickDialogueLine(
+          NPC_DIALOGUE_BANK.tacticalReads,
+          `${npc.id}:${encounterCount}:tactic:${state.progress.enemyWins}:${state.progress.bossWins}`,
+        );
+        const morale = pickDialogueLine(
+          NPC_DIALOGUE_BANK.moraleReads,
+          `${npc.id}:${encounterCount}:morale:${state.hero.morality}:${state.progress.npcRobberies}`,
+        );
+        const closer = pickDialogueLine(
+          NPC_DIALOGUE_BANK.closers,
+          `${npc.id}:${encounterCount}:close:${state.progress.clues.size}:${state.progress.defeatedBosses.size}`,
+        );
+        const backstoryLine = backstory ? `\n\nBackstory Echo: ${backstory}` : "";
+        return `${npc.name} // Chronicle Pulse ${encounterCount}\n${opener}\n\nRealm Feed (${qaContext}): Clues ${state.progress.clues.size}, Bosses ${state.progress.defeatedBosses.size}, Morality ${state.hero.morality}.\n\nTactical Read: ${tactic}\n\nMorality Read: ${morale}\n\nPersonality Drift: ${persona.archetype} -- ${persona.mannerism}${backstoryLine}\n\nAdaptive Lens: ${npc.name} now reads you as ${profile.profileName}.\n\nClan Thread (${clan.name}): ${clan.npcThread}\n\nNext Signal: ${closer}`;
+      };
+
+      const buildUniqueInteriorNpcDialogueBody = ({
+        npc,
+        structure,
+        roleText,
+        encounterCount,
+        alreadySpoken,
+      }) => {
+        const opener = pickDialogueLine(
+          INTERIOR_DIALOGUE_BANK.openers,
+          `${npc.id}:${encounterCount}:interior-open:${structure.id}:${state.story.entries.length}:${alreadySpoken ? "return" : "first"}`,
+        );
+        const detail = pickDialogueLine(
+          INTERIOR_DIALOGUE_BANK.details,
+          `${npc.id}:${encounterCount}:interior-detail:${state.progress.solvedStructures.size}:${state.progress.clues.size}`,
+        );
+        const closer = pickDialogueLine(
+          INTERIOR_DIALOGUE_BANK.closers,
+          `${npc.id}:${encounterCount}:interior-close:${state.progress.enemyWins}:${state.progress.battleFlees}`,
+        );
+        return `${npc.name} // Interior Pulse ${encounterCount}\n${opener}\n\nRole: ${roleText}\n\nInterior Read: ${detail}\n\nPlayer Thread: Spores ${state.hero.spores}, Golden ${state.hero.goldenSpores}, Morality ${state.hero.morality}.\n\nNext Signal: ${closer}`;
       };
 
       const getNarrativeProfile = () => {
@@ -4739,6 +4910,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           npcRobberies: state.progress.npcRobberies ?? 0,
           battleFlees: state.progress.battleFlees ?? 0,
           askedNpcQuestions: Array.from(state.progress.askedNpcQuestions ?? []),
+          npcConversationCounts: state.progress.npcConversationCounts ?? {},
           inventory: state.inventory,
           web3: state.web3,
           aiModel: state.aiModel,
@@ -4829,6 +5001,13 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             }
             for (const entry of parsed.askedNpcQuestions ?? []) {
               if (typeof entry === "string") state.progress.askedNpcQuestions.add(entry);
+            }
+            if (parsed.npcConversationCounts && typeof parsed.npcConversationCounts === "object") {
+              state.progress.npcConversationCounts = {};
+              for (const [npcId, value] of Object.entries(parsed.npcConversationCounts)) {
+                if (typeof npcId !== "string" || !Number.isFinite(value)) continue;
+                state.progress.npcConversationCounts[npcId] = Math.max(0, Math.round(value));
+              }
             }
             if (parsed.inventory && typeof parsed.inventory === "object") {
               state.inventory = {
@@ -6264,31 +6443,30 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const buildNpcEncounter = (npc, alreadySpoken) => {
         const alignment = state.hero.morality >= 20 ? "myco" : state.hero.morality <= -20 ? "dark" : "balanced";
-        const bossCount = state.progress.defeatedBosses.size;
-        const clueCount = state.progress.clues.size;
         const clan = getClanProfile();
         const profile = getNarrativeProfile();
         const qaContext = getCurrentRealm().name;
+        const encounterCount = bumpNpcConversationCount(npc.id);
         const qaPairs = buildNpcQuestionAnswers(npc, qaContext).map((entry) => ({
           ...entry,
           onAsk: () => askNpcQuestionDialogue(npc, [entry], qaContext),
         }));
         const persona = getNpcPersonality(npc);
         const backstory = NPC_BACKSTORIES[npc.id];
-        let body = npc.intro;
-        if (alreadySpoken) {
-          body = `${npc.name}: I can already feel your ${alignment} aura changing the routes ahead.`;
-        } else if (bossCount >= 2) {
-          body = `${npc.intro} You already crushed ${bossCount} lieutenants; now tactics matter more than raw force.`;
-        } else if (clueCount >= 3) {
-          body = `${npc.intro} Clue density is high — puzzle routes now open if you read the signs.`;
-        }
-        body = `${body}\n\nPersonality: ${persona.archetype} — ${persona.mannerism}`;
-        if (backstory) {
-          body = `${body}\n\nBackstory: ${backstory}`;
-        }
-        body = `${body}\n\nReading You: ${npc.name} sees you as a ${profile.profileName} and adjusts counsel to match.`;
-        body = `${body}\n\nClan Thread (${clan.name}): ${clan.npcThread}`;
+        const reminderText = getNpcReminderText(npc, qaContext);
+        const body = reminderText
+          ? `${npc.name} // Objective Reminder\n${reminderText}\n\nPriority Task: ${npc.clueLabel ?? "Advance your current objective"}.\n\n${npc.name} will keep this reminder active until the objective is resolved.`
+          : buildUniqueNpcDialogueBody({
+            npc,
+            encounterCount,
+            qaContext,
+            alignment,
+            profile,
+            clan,
+            persona,
+            backstory,
+            alreadySpoken,
+          });
 
         const applyTrade = (trustful) => {
           const cost = npc.tradeCost ?? 0;
@@ -6907,10 +7085,21 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const roleText = `${npc.subtitle} at ${structure.name}`;
         const clueLabel = npc.clueLabel ?? `${structure.name} Interior Lead`;
         const qaContext = `${structure.name} interior`;
+        const encounterCount = bumpNpcConversationCount(npc.id);
         const qaPairs = buildNpcQuestionAnswers(npc, qaContext).map((entry) => ({
           ...entry,
           onAsk: () => askNpcQuestionDialogue(npc, [entry], qaContext),
         }));
+        const reminderText = getInteriorNpcReminderText(structure);
+        const body = reminderText
+          ? `${npc.name} // Objective Reminder\n${reminderText}\n\nRole: ${roleText}\n\nComplete the objective, then return for a fresh tactical read.`
+          : buildUniqueInteriorNpcDialogueBody({
+            npc,
+            structure,
+            roleText,
+            encounterCount,
+            alreadySpoken,
+          });
         const applyInteriorTrade = () => {
           const cost = npc.tradeCost ?? 0;
           if (state.hero.spores < cost) {
@@ -6933,9 +7122,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         return {
           title: npc.name,
           portrait: { glyph: npc.glyph ?? "🧭", subtitle: roleText },
-          body: alreadySpoken
-            ? `${npc.name}: Good to see you back in ${structure.name}. Need another exchange?`
-            : `${npc.intro}\n\nRole: ${roleText}\n\nThis resident tracks your interior discoveries and reacts to your path decisions.`,
+          body,
           qaPairs,
           mycoLabel: "Ask Questions (+NFT lore)",
           darkLabel: "Rob NPC (-morality)",
