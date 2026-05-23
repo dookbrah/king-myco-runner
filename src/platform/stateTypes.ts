@@ -32,6 +32,27 @@ export interface AdaptiveRiskState {
   ipScores: Record<string, RiskScoreRecord>;
 }
 
+export interface BurnPitEventRecord {
+  id: string;
+  timestamp: string;
+  dayKey: string;
+  sporesBurned: number;
+  pitId?: string;
+  pitName?: string;
+  realmId?: string;
+  clanId?: string;
+  avatarId?: string;
+  sundayWindow?: string;
+  sundayTokenBurnAmount?: number;
+}
+
+export interface BurnPitLedger {
+  totalBurned: number;
+  dailyBurned: Record<string, number>;
+  lastBurnAt?: string;
+  events: BurnPitEventRecord[];
+}
+
 export interface PersistentState {
   profiles: Record<string, PlayerProfile>;
   campaigns: Record<string, PlayerCampaignState>;
@@ -50,6 +71,7 @@ export interface PersistentState {
   claimLedgers: Record<string, SporeClaimLedger>;
   claimVelocity: ClaimVelocityState;
   adaptiveRisk: AdaptiveRiskState;
+  burnPitLedgers: Record<string, BurnPitLedger>;
 }
 
 export const createDefaultWallet = (): PlayerWallet => ({
@@ -102,4 +124,5 @@ export const normalizePersistentState = (
     playerScores: raw?.adaptiveRisk?.playerScores ?? {},
     ipScores: raw?.adaptiveRisk?.ipScores ?? {},
   },
+  burnPitLedgers: raw?.burnPitLedgers ?? {},
 });

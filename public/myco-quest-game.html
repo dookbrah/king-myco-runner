@@ -231,6 +231,38 @@
       .interior-screen.active {
         display: flex;
       }
+      .burn-pit-screen {
+        position: fixed;
+        inset: 0;
+        z-index: 78;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(3, 8, 20, 0.9);
+        padding: 12px;
+      }
+      .burn-pit-screen.active {
+        display: flex;
+      }
+      .burn-pit-card {
+        width: min(760px, 100%);
+        border: 1px solid #4f6f9f;
+        border-radius: 12px;
+        background: linear-gradient(180deg, rgba(8, 16, 34, 0.98), rgba(5, 11, 24, 0.99));
+        padding: 12px;
+        box-shadow: 0 22px 44px rgba(2, 6, 23, 0.58);
+      }
+      .burn-pit-grid {
+        margin-top: 10px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      @media (max-width: 620px) {
+        .burn-pit-grid {
+          grid-template-columns: 1fr;
+        }
+      }
       .interior-card {
         width: min(1020px, 100%);
         border: 1px solid #3b5a93;
@@ -407,6 +439,55 @@
         flex-wrap: wrap;
         gap: 8px;
       }
+      .clan-select-grid {
+        margin-top: 12px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 8px;
+      }
+      .clan-banner-preview {
+        margin-top: 10px;
+        border: 2px solid #4c6ba8;
+        border-radius: 10px;
+        padding: 10px;
+        background: rgba(7, 14, 30, 0.88);
+      }
+      .clan-banner-preview h3 {
+        margin: 0 0 4px;
+        font-size: 14px;
+        letter-spacing: 0.05em;
+      }
+      .clan-banner-preview p {
+        margin: 0;
+        font-size: 12px;
+        color: #a7bfe4;
+      }
+      .leaderboard-list {
+        margin-top: 8px;
+        max-height: 220px;
+        overflow: auto;
+        border: 1px solid #2f4f85;
+        border-radius: 8px;
+        background: rgba(7, 15, 32, 0.86);
+        padding: 8px;
+        display: grid;
+        gap: 6px;
+      }
+      .leaderboard-entry {
+        border: 1px solid #2f4f85;
+        border-radius: 8px;
+        background: rgba(12, 23, 46, 0.76);
+        padding: 6px;
+      }
+      .leaderboard-entry strong {
+        display: block;
+        font-size: 12px;
+      }
+      .leaderboard-entry small {
+        display: block;
+        color: #9fb6dd;
+        font-size: 11px;
+      }
       .boss-intro {
         position: fixed;
         top: max(18px, env(safe-area-inset-top));
@@ -474,6 +555,55 @@
       }
       .hidden {
         display: none !important;
+      }
+      body.battle-popup-active::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: 84;
+        background: rgba(2, 6, 23, 0.86);
+        backdrop-filter: blur(3px);
+      }
+      #panelBattle.battle-popup-active {
+        position: fixed;
+        inset: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)) 8px;
+        z-index: 85;
+        margin: 0;
+        display: grid;
+        grid-template-rows: auto auto minmax(220px, 1fr) auto auto;
+        gap: 8px;
+        padding: 14px;
+        border-width: 2px;
+        border-color: #4b71ad;
+        border-radius: 14px;
+        background: linear-gradient(180deg, rgba(8, 16, 34, 0.97), rgba(5, 10, 24, 0.98));
+        box-shadow: 0 28px 60px rgba(2, 6, 23, 0.68);
+        overflow: hidden;
+      }
+      #panelBattle.battle-popup-active h2 {
+        font-size: clamp(20px, 2.8vw, 28px);
+      }
+      #panelBattle.battle-popup-active .canvas-shell {
+        margin-top: 0 !important;
+        min-height: 220px;
+        height: 100%;
+      }
+      #panelBattle.battle-popup-active #battleCanvas {
+        height: min(56vh, 560px);
+        min-height: 220px;
+      }
+      #panelBattle.battle-popup-active .battle-controls {
+        margin-top: 0;
+      }
+      #panelBattle.battle-popup-active .log {
+        margin-top: 0;
+        max-height: min(28vh, 260px);
+      }
+      body.battle-popup-active .corner-menu,
+      body.battle-popup-active .mobile-controls,
+      body.battle-popup-active .hud-toggle-floating {
+        opacity: 0;
+        pointer-events: none;
       }
       .hud-toggle-floating {
         position: fixed;
@@ -603,6 +733,15 @@
         .battle-controls {
           grid-template-columns: 1fr 1fr 1fr;
         }
+        #panelBattle.battle-popup-active {
+          inset: max(6px, env(safe-area-inset-top)) 6px max(6px, env(safe-area-inset-bottom)) 6px;
+          padding: 10px;
+          grid-template-rows: auto auto minmax(180px, 1fr) auto auto;
+        }
+        #panelBattle.battle-popup-active #battleCanvas {
+          height: min(48vh, 380px);
+          min-height: 180px;
+        }
         .mobile-pad {
           grid-template-columns: repeat(3, 44px);
           grid-template-rows: repeat(3, 38px);
@@ -648,6 +787,20 @@ Dark Mycelius fractured the royal crown into living memory shards.
 Every realm now floats behind unstable portal locks.
 Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a time.
         </p>
+        <div class="clan-select-grid">
+          <label>
+            Choose Clan
+            <select id="clanSelect"></select>
+          </label>
+          <label>
+            Choose Avatar
+            <select id="avatarSelect"></select>
+          </label>
+        </div>
+        <div id="clanBannerPreview" class="clan-banner-preview">
+          <h3>CLAN BANNER</h3>
+          <p>Select a clan to view its war banner and campaign oath.</p>
+        </div>
         <div class="title-actions">
           <button id="continueAdventureBtn" class="primary">Continue Adventure</button>
           <button id="newAdventureBtn">New Adventure</button>
@@ -767,6 +920,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             <p id="questProgressText" class="journal-progress">Campaign progress loading...</p>
             <div id="questJournal" class="journal-grid"></div>
             <p id="storyBackdrop" class="subtle" style="margin-top: 8px">Lore thread loading...</p>
+            <p id="storyPersona" class="subtle" style="margin-top: 8px">Chronicle persona calibrating...</p>
+            <p class="subtle" style="margin-top: 8px">Living Chronicle</p>
+            <div id="livingChronicle" class="log">The world is quiet... for now.</div>
             <p class="subtle" style="margin-top: 8px">Learned magic</p>
             <div id="magicList" class="chips"></div>
             <p class="subtle" style="margin-top: 8px">Collected clues</p>
@@ -798,6 +954,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
               <button id="syncWeb3Btn">Sync Chain Profile</button>
               <button id="mintSigilBtn">Mint Victory Sigil</button>
             </div>
+          </section>
+
+          <section id="panelLeaderboard" class="panel">
+            <h2>Realm Leaderboard</h2>
+            <p id="leaderboardSummary" class="subtle">No rankings yet. Start a clan chronicle to post your score.</p>
+            <div id="leaderboardList" class="leaderboard-list"></div>
           </section>
 
           <section id="panelBattle" class="panel">
@@ -856,7 +1018,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
     <section class="corner-menu right">
       <details open>
-        <summary>Character + Inventory + Web3 + Battle + Audio</summary>
+        <summary>Character + Inventory + Web3 + Leaderboard + Battle + Audio</summary>
         <div id="rightMenuContent"></div>
       </details>
     </section>
@@ -929,12 +1091,40 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       </article>
     </section>
 
+    <section id="burnPitScreen" class="burn-pit-screen">
+      <article class="burn-pit-card">
+        <h3 id="burnPitTitle">Burn Pit</h3>
+        <p id="burnPitSubtitle" class="subtle">Offer spores to the Sunday token burn ritual.</p>
+        <div class="burn-pit-grid">
+          <label>
+            Spores to Burn
+            <input id="burnPitAmountInput" type="number" min="1" max="1000" step="1" value="100" />
+          </label>
+          <label>
+            Daily Limit
+            <input id="burnPitDailyLimit" value="1000 spores" readonly />
+          </label>
+        </div>
+        <p id="burnPitHint" class="subtle" style="margin-top: 10px">
+          Burn up to 1000 spores per day. Burns are recorded for KING MYCO Sunday 0.25 token burn alignment.
+        </p>
+        <div class="actions">
+          <button id="burnPitBurnBtn" class="primary">Burn Spores</button>
+          <button id="burnPitMaxBtn">Burn Max Today</button>
+          <button id="burnPitCloseBtn">Close Burn Pit</button>
+        </div>
+      </article>
+    </section>
+
     <script>
       const STORAGE_CONFIG_KEY = "mycoQuestPlayableConfig";
       const STORAGE_STATE_KEY = "mycoQuestOverworldStateV2";
+      const STORAGE_LEADERBOARD_KEY = "mycoQuestClanLeaderboardV1";
+      const DAILY_SPORE_BURN_LIMIT = 1000;
+      const WEEKLY_TOKEN_BURN_AMOUNT = 0.25;
       const TILE = 48;
-      const WORLD_WIDTH = 4600;
-      const WORLD_HEIGHT = 3200;
+      const WORLD_WIDTH = 6200;
+      const WORLD_HEIGHT = 4200;
       const BASE_MAX_HP = 126;
       const WORLD_CAMERA_ZOOM = 1.7;
 
@@ -952,6 +1142,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         titleScreen: document.getElementById("titleScreen"),
         titleLore: document.getElementById("titleLore"),
         titleHint: document.getElementById("titleHint"),
+        clanSelect: document.getElementById("clanSelect"),
+        avatarSelect: document.getElementById("avatarSelect"),
+        clanBannerPreview: document.getElementById("clanBannerPreview"),
         continueAdventureBtn: document.getElementById("continueAdventureBtn"),
         newAdventureBtn: document.getElementById("newAdventureBtn"),
         skipIntroBtn: document.getElementById("skipIntroBtn"),
@@ -988,6 +1181,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         questProgressText: document.getElementById("questProgressText"),
         questJournal: document.getElementById("questJournal"),
         storyBackdrop: document.getElementById("storyBackdrop"),
+        storyPersona: document.getElementById("storyPersona"),
+        livingChronicle: document.getElementById("livingChronicle"),
         magicList: document.getElementById("magicList"),
         clueList: document.getElementById("clueList"),
         inventoryList: document.getElementById("inventoryList"),
@@ -1009,6 +1204,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         web3Status: document.getElementById("web3Status"),
         web3Stats: document.getElementById("web3Stats"),
         web3Relics: document.getElementById("web3Relics"),
+        leaderboardSummary: document.getElementById("leaderboardSummary"),
+        leaderboardList: document.getElementById("leaderboardList"),
         connectWalletBtn: document.getElementById("connectWalletBtn"),
         syncWeb3Btn: document.getElementById("syncWeb3Btn"),
         mintSigilBtn: document.getElementById("mintSigilBtn"),
@@ -1033,6 +1230,15 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         interiorHint: document.getElementById("interiorHint"),
         interiorSearchBtn: document.getElementById("interiorSearchBtn"),
         interiorExitBtn: document.getElementById("interiorExitBtn"),
+        burnPitScreen: document.getElementById("burnPitScreen"),
+        burnPitTitle: document.getElementById("burnPitTitle"),
+        burnPitSubtitle: document.getElementById("burnPitSubtitle"),
+        burnPitAmountInput: document.getElementById("burnPitAmountInput"),
+        burnPitDailyLimit: document.getElementById("burnPitDailyLimit"),
+        burnPitHint: document.getElementById("burnPitHint"),
+        burnPitBurnBtn: document.getElementById("burnPitBurnBtn"),
+        burnPitMaxBtn: document.getElementById("burnPitMaxBtn"),
+        burnPitCloseBtn: document.getElementById("burnPitCloseBtn"),
         audioEnableBtn: document.getElementById("audioEnableBtn"),
         musicToggleBtn: document.getElementById("musicToggleBtn"),
         sfxToggleBtn: document.getElementById("sfxToggleBtn"),
@@ -1044,6 +1250,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         panelStory: document.getElementById("panelStory"),
         panelInventory: document.getElementById("panelInventory"),
         panelWeb3: document.getElementById("panelWeb3"),
+        panelLeaderboard: document.getElementById("panelLeaderboard"),
         panelBattle: document.getElementById("panelBattle"),
         panelControls: document.getElementById("panelControls"),
         panelAudio: document.getElementById("panelAudio"),
@@ -1070,77 +1277,77 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           name: "Royal Grove",
           x: 0,
           y: 0,
-          w: 1400,
-          h: 1300,
+          w: 1800,
+          h: 1700,
           colorA: "#2f6b3f",
           colorB: "#234f32",
-          label: "The home realm where King Myco's memory was first shattered.",
+          label: "The expanded crownwood heartland where King Myco's memory was first shattered.",
         },
         {
           id: "rougarou-fen",
           name: "Rougarou Fen",
-          x: 1400,
+          x: 1800,
           y: 0,
-          w: 1200,
-          h: 1100,
+          w: 1500,
+          h: 1600,
           colorA: "#56753f",
           colorB: "#415a30",
-          label: "Moon-swamp hunting ground of Rougarou's packs.",
+          label: "Moon-swamp hunting grounds packed with cursed dens, towers, and fog markets.",
         },
         {
           id: "tri-drake-peaks",
           name: "Tri-Drake Peaks",
-          x: 2600,
+          x: 3300,
           y: 0,
-          w: 1200,
-          h: 1300,
+          w: 1700,
+          h: 1800,
           colorA: "#545468",
           colorB: "#414155",
-          label: "Ash ridges where three dragon heads guard ember sigils.",
+          label: "A wider ash range of fortress towers and sky roads ruled by drake cults.",
         },
         {
           id: "crimson-tide",
           name: "Crimson Tide Shelf",
-          x: 1400,
-          y: 1100,
-          w: 1400,
-          h: 1500,
+          x: 1800,
+          y: 1600,
+          w: 1700,
+          h: 1800,
           colorA: "#14586d",
           colorB: "#11485b",
-          label: "Flooded reef vaults ruled by the Evil Crab court.",
+          label: "Flooded reef districts, vault ports, and hidden mushroom stalls under tidal courts.",
         },
         {
           id: "solana-chainlands",
           name: "Solana Chainlands",
-          x: 2800,
-          y: 1300,
-          w: 1800,
-          h: 1700,
+          x: 3500,
+          y: 1800,
+          w: 2700,
+          h: 2400,
           colorA: "#2f2a63",
           colorB: "#251f45",
-          label: "Corrupted blockchain frontier where Dark Mycelius forges rot protocols.",
+          label: "A larger corrupted blockchain frontier layered with citadels, relay towers, and chain crypts.",
         },
         {
           id: "verdant-commons",
           name: "Verdant Commons",
           x: 0,
-          y: 1300,
-          w: 1400,
-          h: 1200,
+          y: 1700,
+          w: 1800,
+          h: 1600,
           colorA: "#2f7f58",
           colorB: "#236043",
-          label: "Trade roads, relic inns, and rumor-rich village caravans.",
+          label: "Grand trade sprawl of mushroom shops, homes, and mercenary roads.",
         },
         {
           id: "obsidian-wilds",
           name: "Obsidian Wilds",
           x: 0,
-          y: 2500,
-          w: 2200,
-          h: 700,
+          y: 3300,
+          w: 3500,
+          h: 900,
           colorA: "#3f434f",
           colorB: "#2d313a",
-          label: "Blackstone trenches where forgotten guardians still test intruders.",
+          label: "A broad blackstone frontier of broken towers and buried royal trials.",
         },
       ];
 
@@ -1148,13 +1355,13 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         REALMS.find((realm) => x >= realm.x && x <= realm.x + realm.w && y >= realm.y && y <= realm.y + realm.h)?.id ?? null;
 
       const REALM_DEFAULT_SPAWNS = {
-        "myco-kingdom": { x: 280, y: 500 },
-        "rougarou-fen": { x: 1660, y: 560 },
-        "tri-drake-peaks": { x: 2860, y: 520 },
-        "crimson-tide": { x: 1680, y: 1700 },
-        "solana-chainlands": { x: 3040, y: 1880 },
-        "verdant-commons": { x: 720, y: 1760 },
-        "obsidian-wilds": { x: 860, y: 2840 },
+        "myco-kingdom": { x: 340, y: 620 },
+        "rougarou-fen": { x: 2140, y: 620 },
+        "tri-drake-peaks": { x: 3640, y: 620 },
+        "crimson-tide": { x: 2140, y: 2140 },
+        "solana-chainlands": { x: 3840, y: 2380 },
+        "verdant-commons": { x: 760, y: 2200 },
+        "obsidian-wilds": { x: 980, y: 3740 },
       };
 
       const parseInitialRealmId = () => {
@@ -1166,12 +1373,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         {
           id: "portal-fen",
           name: "Fen Moon Portal",
-          x: 1328,
-          y: 560,
-          w: 52,
-          h: 52,
-          destinationX: 1660,
-          destinationY: 560,
+          x: 1740,
+          y: 620,
+          w: 56,
+          h: 56,
+          destinationX: 2080,
+          destinationY: 620,
           requiredMagic: ["mycelic-sight"],
           hint: "Learn Mycelic Sight from Elder Myca to stabilize this moon portal.",
           arrivalText: "Portal opened: Rougarou Fen",
@@ -1179,12 +1386,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         {
           id: "portal-fen-return",
           name: "Royal Return Portal",
-          x: 1452,
-          y: 560,
-          w: 52,
-          h: 52,
-          destinationX: 1180,
-          destinationY: 560,
+          x: 1868,
+          y: 620,
+          w: 56,
+          h: 56,
+          destinationX: 1520,
+          destinationY: 620,
           requiredMagic: [],
           hint: "Return stream to the Royal Grove.",
           arrivalText: "Portal opened: Royal Grove",
@@ -1192,12 +1399,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         {
           id: "portal-drake",
           name: "Ember Ascension Portal",
-          x: 2520,
-          y: 520,
-          w: 52,
-          h: 52,
-          destinationX: 2860,
-          destinationY: 520,
+          x: 3240,
+          y: 640,
+          w: 56,
+          h: 56,
+          destinationX: 3560,
+          destinationY: 640,
           requiredMagic: ["fenstride"],
           hint: "Learn Fenstride to keep balance while crossing ember winds.",
           arrivalText: "Portal opened: Tri-Drake Peaks",
@@ -1205,12 +1412,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         {
           id: "portal-drake-return",
           name: "Fen Recall Portal",
-          x: 2648,
-          y: 520,
-          w: 52,
-          h: 52,
-          destinationX: 2320,
-          destinationY: 520,
+          x: 3368,
+          y: 640,
+          w: 56,
+          h: 56,
+          destinationX: 3040,
+          destinationY: 640,
           requiredMagic: [],
           hint: "Backtrail stream to the Fen.",
           arrivalText: "Portal opened: Rougarou Fen",
@@ -1218,12 +1425,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         {
           id: "portal-crimson",
           name: "Tidefall Portal",
-          x: 1328,
-          y: 1700,
-          w: 52,
-          h: 52,
-          destinationX: 1680,
-          destinationY: 1700,
+          x: 1740,
+          y: 2140,
+          w: 56,
+          h: 56,
+          destinationX: 2080,
+          destinationY: 2140,
           requiredMagic: ["ember-veil"],
           hint: "Learn Ember Veil in the peaks to survive reef pressure.",
           arrivalText: "Portal opened: Crimson Tide Shelf",
@@ -1231,12 +1438,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         {
           id: "portal-crimson-return",
           name: "Commons Recall Portal",
-          x: 1452,
-          y: 1700,
-          w: 52,
-          h: 52,
-          destinationX: 1180,
-          destinationY: 1700,
+          x: 1868,
+          y: 2140,
+          w: 56,
+          h: 56,
+          destinationX: 1520,
+          destinationY: 2140,
           requiredMagic: [],
           hint: "Return stream to Verdant Commons.",
           arrivalText: "Portal opened: Verdant Commons",
@@ -1244,12 +1451,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         {
           id: "portal-solana",
           name: "Chainlands Breach Portal",
-          x: 2720,
-          y: 1880,
-          w: 52,
-          h: 52,
-          destinationX: 3040,
-          destinationY: 1880,
+          x: 3440,
+          y: 2460,
+          w: 56,
+          h: 56,
+          destinationX: 3780,
+          destinationY: 2460,
           requiredMagic: ["tidecall"],
           hint: "Learn Tidecall after claiming the Abyss Pearl to breach chain distortion.",
           arrivalText: "Portal opened: Solana Chainlands",
@@ -1257,12 +1464,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         {
           id: "portal-solana-return",
           name: "Reef Recall Portal",
-          x: 2848,
-          y: 1880,
-          w: 52,
-          h: 52,
-          destinationX: 2520,
-          destinationY: 1880,
+          x: 3568,
+          y: 2460,
+          w: 56,
+          h: 56,
+          destinationX: 3220,
+          destinationY: 2460,
           requiredMagic: [],
           hint: "Return stream to Crimson Tide Shelf.",
           arrivalText: "Portal opened: Crimson Tide Shelf",
@@ -1270,49 +1477,122 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         {
           id: "portal-chain-core",
           name: "Apex Chain Portal",
-          x: 3440,
-          y: 1820,
-          w: 58,
-          h: 58,
-          destinationX: 3780,
-          destinationY: 2260,
+          x: 4680,
+          y: 2580,
+          w: 62,
+          h: 62,
+          destinationX: 5440,
+          destinationY: 3220,
           requiredMagic: ["chainbind"],
           hint: "Learn Chainbind from Chain Smith Vox before entering Dark Mycelius's core.",
           arrivalText: "Portal opened: Chain Core",
         },
+        {
+          id: "portal-obsidian",
+          name: "Obsidian Gate",
+          x: 1120,
+          y: 3260,
+          w: 56,
+          h: 56,
+          destinationX: 1460,
+          destinationY: 3560,
+          requiredMagic: ["fenstride"],
+          hint: "Master Fenstride to stabilize the obsidian trench route.",
+          arrivalText: "Portal opened: Obsidian Wilds",
+        },
+        {
+          id: "portal-obsidian-return",
+          name: "Commons Rift Return",
+          x: 1248,
+          y: 3560,
+          w: 56,
+          h: 56,
+          destinationX: 960,
+          destinationY: 3140,
+          requiredMagic: [],
+          hint: "Return stream to Verdant Commons.",
+          arrivalText: "Portal opened: Verdant Commons",
+        },
       ];
 
       const REALM_BARRIERS = [
-        { x: 1388, y: 0, w: 24, h: 2600 },
-        { x: 2588, y: 0, w: 24, h: 1300 },
-        { x: 2788, y: 1300, w: 24, h: 1700 },
+        { x: 1788, y: 0, w: 24, h: 4200 },
+        { x: 3288, y: 0, w: 24, h: 1800 },
+        { x: 3488, y: 1800, w: 24, h: 2400 },
       ];
 
       const STRUCTURES = [
-        { id: "house-1", type: "house", x: 190, y: 180, w: 148, h: 110, name: "Sporecap Cottage", solid: true },
-        { id: "house-2", type: "house", x: 440, y: 270, w: 138, h: 100, name: "Healer Hut", solid: true },
-        { id: "house-3", type: "house", x: 760, y: 170, w: 152, h: 114, name: "Elder Archive", solid: true },
-        { id: "castle-1", type: "castle", x: 960, y: 320, w: 240, h: 168, name: "Crownwatch Keep", solid: true },
-        { id: "house-4", type: "house", x: 360, y: 1540, w: 150, h: 108, name: "Commons Trade Hall", solid: true },
-        { id: "house-5", type: "house", x: 950, y: 1760, w: 160, h: 112, name: "Caravan Inn", solid: true },
-        { id: "castle-2", type: "castle", x: 3360, y: 2040, w: 250, h: 176, name: "Chain Bastion Citadel", solid: true },
-        { id: "cave-1", type: "cave", x: 1470, y: 340, w: 134, h: 98, name: "Fen Echo Cave", solid: true },
-        { id: "cave-2", type: "cave", x: 320, y: 2670, w: 150, h: 108, name: "Obsidian Rift Cave", solid: true },
-        { id: "dungeon-1", type: "dungeon", x: 2870, y: 300, w: 176, h: 132, name: "Drake Bastion", solid: true },
-        { id: "dungeon-2", type: "dungeon", x: 1660, y: 1810, w: 176, h: 130, name: "Crimson Reef Vault", solid: true },
-        { id: "dungeon-3", type: "dungeon", x: 3240, y: 1840, w: 210, h: 142, name: "Chain Crypt", solid: true },
-        { id: "dungeon-4", type: "dungeon", x: 1190, y: 2670, w: 188, h: 130, name: "Obsidian Trial Den", solid: true },
-        { id: "shrine-1", type: "shrine", x: 920, y: 700, w: 90, h: 90, name: "Myco Shrine", solid: false },
-        { id: "shrine-2", type: "shrine", x: 1960, y: 1450, w: 90, h: 90, name: "Tidal Rune Shrine", solid: false },
-        { id: "shrine-3", type: "shrine", x: 630, y: 2320, w: 90, h: 90, name: "Commons Memory Shrine", solid: false },
+        { id: "house-1", type: "house", x: 240, y: 220, w: 158, h: 112, name: "Sporecap Cottage", solid: true },
+        { id: "house-2", type: "house", x: 620, y: 360, w: 152, h: 108, name: "Healer Hut", solid: true },
+        { id: "house-3", type: "house", x: 980, y: 230, w: 162, h: 116, name: "Elder Archive", solid: true },
+        { id: "castle-1", type: "castle", x: 1240, y: 360, w: 270, h: 188, name: "Crownwatch Keep", solid: true },
+        { id: "shop-myco-1", type: "mushroom-shop", x: 560, y: 980, w: 170, h: 118, name: "Royal Spore Bazaar", solid: true },
+        { id: "tower-myco-1", type: "tower", x: 1520, y: 840, w: 150, h: 210, name: "Myco Signal Tower", solid: true },
+        { id: "cave-myco-1", type: "cave", x: 1460, y: 1220, w: 150, h: 110, name: "Rootveil Cavern", solid: true },
+        { id: "dungeon-myco-1", type: "dungeon", x: 900, y: 1260, w: 190, h: 138, name: "Crownfall Vault", solid: true },
+
+        { id: "house-fen-1", type: "house", x: 2040, y: 240, w: 150, h: 110, name: "Fen Refuge Lodge", solid: true },
+        { id: "shop-fen-1", type: "mushroom-shop", x: 2320, y: 940, w: 170, h: 118, name: "Mirecap Exchange", solid: true },
+        { id: "tower-fen-1", type: "tower", x: 3020, y: 540, w: 150, h: 210, name: "Moon Marsh Watchtower", solid: true },
+        { id: "cave-1", type: "cave", x: 1960, y: 420, w: 150, h: 108, name: "Fen Echo Cave", solid: true },
+        { id: "cave-fen-2", type: "cave", x: 2820, y: 1080, w: 160, h: 114, name: "Wolfmark Sink Cave", solid: true },
+        { id: "dungeon-fen-1", type: "dungeon", x: 2480, y: 300, w: 186, h: 134, name: "Rougarou Kennel Depths", solid: true },
+
+        { id: "dungeon-1", type: "dungeon", x: 3740, y: 300, w: 188, h: 140, name: "Drake Bastion", solid: true },
+        { id: "tower-tri-1", type: "tower", x: 4580, y: 620, w: 150, h: 216, name: "Ashlight Spire", solid: true },
+        { id: "castle-tri-1", type: "castle", x: 4200, y: 260, w: 260, h: 184, name: "Cinder Crown Fort", solid: true },
+        { id: "cave-tri-1", type: "cave", x: 3440, y: 980, w: 154, h: 112, name: "Ember Rift Cave", solid: true },
+        { id: "shop-tri-1", type: "mushroom-shop", x: 3560, y: 1240, w: 170, h: 118, name: "Ashcap Smithy Shop", solid: true },
+        { id: "house-tri-1", type: "house", x: 3860, y: 1320, w: 154, h: 110, name: "Peak Hermit Quarters", solid: true },
+
+        { id: "house-crimson-1", type: "house", x: 2080, y: 1980, w: 154, h: 110, name: "Tide Dock Home", solid: true },
+        { id: "cave-crimson-1", type: "cave", x: 1880, y: 2900, w: 160, h: 114, name: "Brinecut Grotto", solid: true },
+        { id: "dungeon-2", type: "dungeon", x: 2260, y: 2480, w: 190, h: 138, name: "Crimson Reef Vault", solid: true },
+        { id: "tower-crimson-1", type: "tower", x: 3200, y: 2140, w: 150, h: 216, name: "Abyss Beacon Tower", solid: true },
+        { id: "shop-crimson-1", type: "mushroom-shop", x: 2860, y: 3020, w: 172, h: 120, name: "Pearlcap Dock Market", solid: true },
+        { id: "castle-crimson-1", type: "castle", x: 3000, y: 1700, w: 250, h: 176, name: "Coral Regent Keep", solid: true },
+
+        { id: "house-5", type: "house", x: 980, y: 2160, w: 160, h: 112, name: "Caravan Inn", solid: true },
+        { id: "house-6", type: "house", x: 420, y: 2440, w: 156, h: 110, name: "Commons Trade Hall", solid: true },
+        { id: "shop-commons-1", type: "mushroom-shop", x: 640, y: 2740, w: 172, h: 120, name: "Grand Myco Market", solid: true },
+        { id: "tower-commons-1", type: "tower", x: 1460, y: 2560, w: 150, h: 214, name: "Roadward Relay Tower", solid: true },
+        { id: "cave-verdant-1", type: "cave", x: 1280, y: 3060, w: 154, h: 110, name: "Commons Root Cave", solid: true },
+
+        { id: "house-chain-1", type: "house", x: 4320, y: 2060, w: 158, h: 110, name: "Nodewright Shelter", solid: true },
+        { id: "shop-chain-1", type: "mushroom-shop", x: 4000, y: 2200, w: 176, h: 122, name: "Ledgercap Vault Shop", solid: true },
+        { id: "dungeon-3", type: "dungeon", x: 4640, y: 2780, w: 220, h: 148, name: "Chain Crypt", solid: true },
+        { id: "castle-2", type: "castle", x: 5100, y: 2480, w: 280, h: 190, name: "Chain Bastion Citadel", solid: true },
+        { id: "tower-chain-1", type: "tower", x: 5800, y: 2160, w: 160, h: 220, name: "Validator Spire", solid: true },
+        { id: "tower-chain-2", type: "tower", x: 5600, y: 3320, w: 160, h: 220, name: "Hash Sentinel Tower", solid: true },
+        { id: "cave-chain-1", type: "cave", x: 3700, y: 3340, w: 164, h: 116, name: "Packet Drift Cave", solid: true },
+
+        { id: "cave-2", type: "cave", x: 360, y: 3560, w: 164, h: 116, name: "Obsidian Rift Cave", solid: true },
+        { id: "dungeon-4", type: "dungeon", x: 1640, y: 3560, w: 196, h: 138, name: "Obsidian Trial Den", solid: true },
+        { id: "tower-obsidian-1", type: "tower", x: 2480, y: 3440, w: 158, h: 220, name: "Basalt Beacon", solid: true },
+        { id: "castle-obsidian-1", type: "castle", x: 2860, y: 3500, w: 260, h: 180, name: "Black Crown Redoubt", solid: true },
+        { id: "shop-obsidian-1", type: "mushroom-shop", x: 2140, y: 3870, w: 174, h: 120, name: "Riftcap Curio Shop", solid: true },
+        { id: "house-obsidian-1", type: "house", x: 980, y: 3720, w: 156, h: 110, name: "Warden's Ember Home", solid: true },
+
+        { id: "burnpit-myco", type: "burn-pit", x: 780, y: 640, w: 108, h: 96, name: "Royal Spore Burn Pit", solid: false },
+        { id: "burnpit-fen", type: "burn-pit", x: 2380, y: 740, w: 108, h: 96, name: "Fen Moon Burn Pit", solid: false },
+        { id: "burnpit-tri", type: "burn-pit", x: 4180, y: 900, w: 108, h: 96, name: "Ember Nest Burn Pit", solid: false },
+        { id: "burnpit-crimson", type: "burn-pit", x: 2480, y: 2760, w: 108, h: 96, name: "Tide Vault Burn Pit", solid: false },
+        { id: "burnpit-chain", type: "burn-pit", x: 4960, y: 2700, w: 108, h: 96, name: "Chain Reactor Burn Pit", solid: false },
+        { id: "burnpit-commons", type: "burn-pit", x: 980, y: 2600, w: 108, h: 96, name: "Commons Guild Burn Pit", solid: false },
+        { id: "burnpit-obsidian", type: "burn-pit", x: 1740, y: 3820, w: 108, h: 96, name: "Obsidian Oath Burn Pit", solid: false },
+
+        { id: "shrine-1", type: "shrine", x: 1080, y: 760, w: 90, h: 90, name: "Myco Shrine", solid: false },
+        { id: "shrine-2", type: "shrine", x: 2460, y: 2240, w: 90, h: 90, name: "Tidal Rune Shrine", solid: false },
+        { id: "shrine-3", type: "shrine", x: 700, y: 2880, w: 90, h: 90, name: "Commons Memory Shrine", solid: false },
+        { id: "shrine-4", type: "shrine", x: 3040, y: 3900, w: 90, h: 90, name: "Obsidian Oath Shrine", solid: false },
       ];
 
       const NPCS = [
         {
           id: "elder-myca",
           name: "Elder Myca",
-          x: 800,
-          y: 360,
+          x: 920,
+          y: 420,
           clueId: "royal-oath",
           clueLabel: "Royal Oath Fragment",
           tradeItem: "mycoPotion",
@@ -1325,10 +1605,42 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           intro: "Your crown dims, but your spirit can relight the kingdom. Seek clues to restore your sorcery.",
         },
         {
+          id: "myco-captain",
+          name: "Captain Brindle",
+          x: 1480,
+          y: 940,
+          clueId: "crown-route-map",
+          clueLabel: "Crown Route Map",
+          tradeItem: "smokeBomb",
+          tradeCost: 20,
+          tradeQty: 1,
+          adviceGood: "Secure towers and inns first; those routes cut enemy ambush odds.",
+          adviceBad: "Ignore towers. Sprinting blind is always faster. (Usually fatal.)",
+          mycoText: "You held the line for civilians. Take the route map and rally beacons.",
+          darkText: "You chased glory over safety. Keep the map, but the roads fear your name.",
+          intro: "Royal patrols still answer crown signals. Rebuild tower routes and the kingdom can breathe again.",
+        },
+        {
+          id: "myco-shopkeep",
+          name: "Shopkeep Luma",
+          x: 640,
+          y: 1040,
+          clueId: "myco-market-seal",
+          clueLabel: "Myco Market Seal",
+          tradeItem: "mycoPotion",
+          tradeCost: 14,
+          tradeQty: 2,
+          adviceGood: "Mushroom shops share intel when paid fairly. Keep your morality above neutral.",
+          adviceBad: "Threaten every merchant and prices drop forever. (False.)",
+          mycoText: "Your fair trade restored trust. The market seal now opens hidden supply rooms.",
+          darkText: "You forced a bargain. The seal still works, but caravans moved their best stock.",
+          intro: "The bazaar tracks every hero. Your reputation decides which relic shelves unlock.",
+        },
+        {
           id: "fen-scout",
           name: "Fen Scout Rill",
-          x: 1600,
-          y: 440,
+          x: 2200,
+          y: 520,
           clueId: "lunar-wolf-mark",
           clueLabel: "Lunar Wolf Mark",
           tradeItem: "smokeBomb",
@@ -1341,10 +1653,26 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           intro: "Rougarou hunts by moon scent. Read his trails and you'll survive the Fen.",
         },
         {
+          id: "fen-archivist",
+          name: "Bog Archivist Thren",
+          x: 2780,
+          y: 1140,
+          clueId: "bog-glyph",
+          clueLabel: "Bog Glyph Tablet",
+          tradeItem: "manaDew",
+          tradeCost: 24,
+          tradeQty: 1,
+          adviceGood: "Fen towers mark safe mud depth lines. Follow them to avoid swarm packs.",
+          adviceBad: "All swamp routes are the same, choose at random. (Wrong.)",
+          mycoText: "You listened to the old scripts. This glyph unlocks deeper marsh lore.",
+          darkText: "You scorched the archives. The glyph survived, but the fen remembers.",
+          intro: "Pre-crown druids etched warning glyphs in stone reeds. Read them and routes unfold.",
+        },
+        {
           id: "drake-hermit",
           name: "Hermit Cindr",
-          x: 3060,
-          y: 560,
+          x: 3920,
+          y: 640,
           clueId: "drake-ember",
           clueLabel: "Drake Ember Sigil",
           tradeItem: "manaDew",
@@ -1357,10 +1685,26 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           intro: "Three heads, three lies. Only a balanced flame can shatter the dragon ward.",
         },
         {
+          id: "tri-sentinel",
+          name: "Sentinel Arak",
+          x: 4580,
+          y: 1320,
+          clueId: "peak-sky-map",
+          clueLabel: "Peak Sky Map",
+          tradeItem: "smokeBomb",
+          tradeCost: 28,
+          tradeQty: 1,
+          adviceGood: "Secure each mountain tower and glide routes unlock between peak fortresses.",
+          adviceBad: "Ignore high routes. Valley roads are always safer. (Not in ash storms.)",
+          mycoText: "You held the ridgeline with honor. Take this sky map and rally the sentries.",
+          darkText: "You pushed through with force. The map is yours, but watchtowers distrust you.",
+          intro: "The peaks are a layered battlefield. Tower relays decide who controls the sky roads.",
+        },
+        {
           id: "reef-oracle",
           name: "Oracle Neri",
-          x: 1880,
-          y: 1480,
+          x: 2480,
+          y: 2140,
           clueId: "abyss-pearl",
           clueLabel: "Abyss Pearl Cipher",
           tradeItem: "mycoPotion",
@@ -1373,10 +1717,26 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           intro: "The evil crab hides between currents. Read this cipher to open the Solana tide lock.",
         },
         {
+          id: "tide-smuggler",
+          name: "Smuggler Vexa",
+          x: 3160,
+          y: 3040,
+          clueId: "reef-smuggler-code",
+          clueLabel: "Smuggler Tide Code",
+          tradeItem: "goldenSpore",
+          tradeCost: 46,
+          tradeQty: 1,
+          adviceGood: "Dock markets hide shortcuts to castle vaults. Track lantern colors at night.",
+          adviceBad: "Any tide path works if you sprint. (Many routes drown.)",
+          mycoText: "You paid crews fairly. The tide code now reveals hidden dock lanes.",
+          darkText: "You seized the code by threat. It works, but smugglers mark your trail.",
+          intro: "Reef smugglers mapped routes even the court couldn't patrol. Their code opens forgotten lanes.",
+        },
+        {
           id: "chain-smith",
           name: "Chain Smith Vox",
-          x: 3380,
-          y: 2140,
+          x: 4680,
+          y: 2740,
           clueId: "solana-anchor",
           clueLabel: "Solana Anchor Key",
           tradeItem: "smokeBomb",
@@ -1389,10 +1749,26 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           intro: "Dark Mycelius bends corrupted blocks. Anchor your will before you face him.",
         },
         {
+          id: "chain-librarian",
+          name: "Ledger Warden Iri",
+          x: 5860,
+          y: 2260,
+          clueId: "ledger-fragment",
+          clueLabel: "Ledger Fragment",
+          tradeItem: "manaDew",
+          tradeCost: 28,
+          tradeQty: 2,
+          adviceGood: "Chain towers synchronize enemy patrol loops. Hack them and pressure drops.",
+          adviceBad: "All chain nodes are cosmetic. Ignore them. (Fatal error.)",
+          mycoText: "You preserved the archive code. This fragment decrypts hidden chain encounters.",
+          darkText: "You purged entries for speed. The fragment still runs, but with unstable routes.",
+          intro: "Every chain battle is logged in warden ledgers. Fragments can predict attack cadence.",
+        },
+        {
           id: "commons-merchant",
           name: "Merchant Poro",
-          x: 520,
-          y: 1710,
+          x: 760,
+          y: 2320,
           clueId: "trade-charter",
           clueLabel: "Trade Charter",
           tradeItem: "goldenSpore",
@@ -1404,24 +1780,72 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           darkText: "You bargained with threats. The charter is real, but your reputation sinks.",
           intro: "Commons caravans know every road. Trade honestly and you'll unlock the long routes.",
         },
+        {
+          id: "commons-scribe",
+          name: "Ballad Scribe Unel",
+          x: 1360,
+          y: 2800,
+          clueId: "commons-ballad",
+          clueLabel: "Commons Ballad Verse",
+          tradeItem: "mycoPotion",
+          tradeCost: 18,
+          tradeQty: 2,
+          adviceGood: "Stories from inns expose hidden house interiors and vault doors.",
+          adviceBad: "Lore is fluff. Skip dialogue. (You'll miss half the map.)",
+          mycoText: "You kept the old songs alive. This ballad reveals forgotten tavern routes.",
+          darkText: "You silenced the chorus, but stole the verse. The commons won't forget.",
+          intro: "The commons sing route maps into traveling ballads. Every verse is a landmark key.",
+        },
+        {
+          id: "obsidian-ranger",
+          name: "Ranger Keth",
+          x: 2680,
+          y: 3820,
+          clueId: "obsidian-oath",
+          clueLabel: "Obsidian Oath",
+          tradeItem: "smokeBomb",
+          tradeCost: 30,
+          tradeQty: 1,
+          adviceGood: "Obsidian towers suppress void swarms. Activate them before deep cave raids.",
+          adviceBad: "Obsidian wilds are empty. Travel without prep. (Disaster.)",
+          mycoText: "You restored the ward lines. The Obsidian Oath now binds your frontier allies.",
+          darkText: "You took the oath by force. It binds, but the frontier guards you at spearpoint.",
+          intro: "The wilds were the kingdom's final defense. Their oath still decides who may pass.",
+        },
       ];
 
       const NPC_BACKSTORIES = {
         "elder-myca": "Elder Myca served as Keeper of the Crown Archives and was the last to witness King Myco before the crownfall.",
+        "myco-captain": "Captain Brindle commanded the crownwatch outriders and built the first relay-tower defense web.",
+        "myco-shopkeep": "Luma's family founded the royal mushroom exchange, where trade seals doubled as intelligence codes.",
         "fen-scout": "Rill once guided moon pilgrims through the marsh. Rougarou's rot took their squad and left only coded trail songs.",
+        "fen-archivist": "Thren records swamp history on stone reeds, preserving warnings that even kings forgot.",
         "drake-hermit": "Hermit Cindr was the Tri-Drake's handler before the mountain temples were burned by corrupted ember rituals.",
+        "tri-sentinel": "Arak led peak watchtowers that once controlled sky roads between all drake fortresses.",
         "reef-oracle": "Oracle Neri belongs to the Pearl Choir, a tide order sworn to hide anti-corruption runes beneath reef vaults.",
+        "tide-smuggler": "Vexa mapped tidal black routes used to move medicine during wartime blockades.",
         "chain-smith": "Vox forged sovereign wards for the old kingdom. Dark Mycelius stole that forge logic to weaponize blockchain rot.",
+        "chain-librarian": "Iri curated chain ledgers that predicted realm breaches before they happened.",
         "commons-merchant": "Poro's caravan survived every regime by trading stories as carefully as spores, mapping safe lanes across factions.",
+        "commons-scribe": "Unel rewrote battlefield routes into tavern songs so refugees could navigate safely.",
+        "obsidian-ranger": "Keth guards the last basalt oathstones that once marked the kingdom's final fallback line.",
       };
 
       const NPC_PORTRAITS = {
         "elder-myca": { glyph: "👑", subtitle: "Royal Archivist // Oath Keeper" },
+        "myco-captain": { glyph: "🛡️", subtitle: "Crownwatch Captain // Route Commander" },
+        "myco-shopkeep": { glyph: "🍄", subtitle: "Royal Mushroom Merchant" },
         "fen-scout": { glyph: "🐺", subtitle: "Fen Vanguard // Moon Trail Ranger" },
+        "fen-archivist": { glyph: "📜", subtitle: "Bog Archivist // Glyph Keeper" },
         "drake-hermit": { glyph: "🐉", subtitle: "Ash Hermit // Ember Rune Keeper" },
+        "tri-sentinel": { glyph: "🗼", subtitle: "Peak Sentinel // Sky Road Marshal" },
         "reef-oracle": { glyph: "🌊", subtitle: "Pearl Choir Oracle // Tide Cipher Keeper" },
+        "tide-smuggler": { glyph: "⚓", subtitle: "Reef Smuggler // Dock Route Broker" },
         "chain-smith": { glyph: "⛓️", subtitle: "Chain Smith // Forge Survivor" },
+        "chain-librarian": { glyph: "📘", subtitle: "Ledger Warden // Chain Archivist" },
         "commons-merchant": { glyph: "🛒", subtitle: "Commons Caravan Broker" },
+        "commons-scribe": { glyph: "🎼", subtitle: "Ballad Scribe // Route Chronicler" },
+        "obsidian-ranger": { glyph: "🪨", subtitle: "Wilds Ranger // Oath Guardian" },
       };
 
       const BOSS_INTRO_META = {
@@ -1432,24 +1856,47 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       };
 
       const BASE_ENEMIES = [
-        { id: "slime-1", kind: "rot-spore", x: 620, y: 820, lane: "speed", boss: false, region: "myco-kingdom" },
-        { id: "slime-2", kind: "mold-raider", x: 1060, y: 930, lane: "precision", boss: false, region: "myco-kingdom" },
-        { id: "fen-1", kind: "fen-stalker", x: 1700, y: 670, lane: "survival", boss: false, region: "rougarou-fen" },
-        { id: "fen-2", kind: "rot-jackal", x: 2280, y: 760, lane: "speed", boss: false, region: "rougarou-fen" },
-        { id: "boss-rougarou", kind: "rougarou", x: 2040, y: 320, lane: "survival", boss: true, region: "rougarou-fen" },
-        { id: "drake-1", kind: "ember-drone", x: 2860, y: 760, lane: "precision", boss: false, region: "tri-drake-peaks" },
-        { id: "drake-2", kind: "ash-ripper", x: 3500, y: 860, lane: "tactical", boss: false, region: "tri-drake-peaks" },
-        { id: "boss-drake", kind: "tri-drake", x: 3260, y: 360, lane: "tactical", boss: true, region: "tri-drake-peaks" },
-        { id: "reef-1", kind: "shell-rot", x: 1540, y: 1860, lane: "puzzle", boss: false, region: "crimson-tide" },
-        { id: "reef-2", kind: "spine-fin", x: 2580, y: 1940, lane: "survival", boss: false, region: "crimson-tide" },
-        { id: "boss-crab", kind: "evil-crab", x: 2140, y: 1360, lane: "tactical", boss: true, region: "crimson-tide" },
-        { id: "chain-1", kind: "block-wraith", x: 3080, y: 1580, lane: "precision", boss: false, region: "solana-chainlands" },
-        { id: "chain-2", kind: "ledger-specter", x: 4100, y: 1960, lane: "puzzle", boss: false, region: "solana-chainlands" },
-        { id: "boss-dark", kind: "dark-mycelius", x: 3780, y: 2320, lane: "tactical", boss: true, region: "solana-chainlands" },
-        { id: "commons-1", kind: "thorn-bandit", x: 840, y: 2060, lane: "speed", boss: false, region: "verdant-commons" },
-        { id: "commons-2", kind: "spore-thief", x: 1180, y: 1580, lane: "precision", boss: false, region: "verdant-commons" },
-        { id: "obsidian-1", kind: "basalt-hound", x: 620, y: 2860, lane: "survival", boss: false, region: "obsidian-wilds" },
-        { id: "obsidian-2", kind: "void-miner", x: 1780, y: 2960, lane: "tactical", boss: false, region: "obsidian-wilds" },
+        { id: "slime-1", kind: "rot-spore", x: 620, y: 920, lane: "speed", boss: false, region: "myco-kingdom" },
+        { id: "slime-2", kind: "mold-raider", x: 1240, y: 1180, lane: "precision", boss: false, region: "myco-kingdom" },
+        { id: "myco-3", kind: "thorn-scout", x: 1540, y: 860, lane: "tactical", boss: false, region: "myco-kingdom" },
+        { id: "myco-4", kind: "fungal-boar", x: 980, y: 1460, lane: "survival", boss: false, region: "myco-kingdom" },
+        { id: "myco-5", kind: "spore-imp", x: 420, y: 1320, lane: "puzzle", boss: false, region: "myco-kingdom" },
+
+        { id: "fen-1", kind: "fen-stalker", x: 2140, y: 760, lane: "survival", boss: false, region: "rougarou-fen" },
+        { id: "fen-2", kind: "rot-jackal", x: 2860, y: 860, lane: "speed", boss: false, region: "rougarou-fen" },
+        { id: "fen-3", kind: "mire-lurker", x: 2420, y: 1260, lane: "tactical", boss: false, region: "rougarou-fen" },
+        { id: "fen-4", kind: "fang-mildew", x: 3100, y: 1020, lane: "precision", boss: false, region: "rougarou-fen" },
+        { id: "boss-rougarou", kind: "rougarou", x: 2620, y: 420, lane: "survival", boss: true, region: "rougarou-fen" },
+
+        { id: "drake-1", kind: "ember-drone", x: 3660, y: 860, lane: "precision", boss: false, region: "tri-drake-peaks" },
+        { id: "drake-2", kind: "ash-ripper", x: 4420, y: 980, lane: "tactical", boss: false, region: "tri-drake-peaks" },
+        { id: "drake-3", kind: "cinder-harpy", x: 4860, y: 740, lane: "speed", boss: false, region: "tri-drake-peaks" },
+        { id: "drake-4", kind: "basalt-drakelet", x: 4120, y: 1460, lane: "survival", boss: false, region: "tri-drake-peaks" },
+        { id: "boss-drake", kind: "tri-drake", x: 4340, y: 420, lane: "tactical", boss: true, region: "tri-drake-peaks" },
+
+        { id: "reef-1", kind: "shell-rot", x: 2140, y: 2540, lane: "puzzle", boss: false, region: "crimson-tide" },
+        { id: "reef-2", kind: "spine-fin", x: 3160, y: 2360, lane: "survival", boss: false, region: "crimson-tide" },
+        { id: "reef-3", kind: "tide-reaver", x: 2860, y: 3120, lane: "speed", boss: false, region: "crimson-tide" },
+        { id: "reef-4", kind: "coral-wretch", x: 1980, y: 1880, lane: "precision", boss: false, region: "crimson-tide" },
+        { id: "boss-crab", kind: "evil-crab", x: 2620, y: 1840, lane: "tactical", boss: true, region: "crimson-tide" },
+
+        { id: "chain-1", kind: "block-wraith", x: 3860, y: 2240, lane: "precision", boss: false, region: "solana-chainlands" },
+        { id: "chain-2", kind: "ledger-specter", x: 5320, y: 2520, lane: "puzzle", boss: false, region: "solana-chainlands" },
+        { id: "chain-3", kind: "hash-raider", x: 5860, y: 3380, lane: "tactical", boss: false, region: "solana-chainlands" },
+        { id: "chain-4", kind: "shard-lich", x: 4480, y: 3640, lane: "survival", boss: false, region: "solana-chainlands" },
+        { id: "chain-5", kind: "nonce-hunter", x: 3740, y: 3120, lane: "speed", boss: false, region: "solana-chainlands" },
+        { id: "boss-dark", kind: "dark-mycelius", x: 5480, y: 3340, lane: "tactical", boss: true, region: "solana-chainlands" },
+
+        { id: "commons-1", kind: "thorn-bandit", x: 860, y: 2480, lane: "speed", boss: false, region: "verdant-commons" },
+        { id: "commons-2", kind: "spore-thief", x: 1320, y: 2220, lane: "precision", boss: false, region: "verdant-commons" },
+        { id: "commons-3", kind: "briar-sneak", x: 1460, y: 3020, lane: "tactical", boss: false, region: "verdant-commons" },
+        { id: "commons-4", kind: "bloom-raider", x: 420, y: 2860, lane: "survival", boss: false, region: "verdant-commons" },
+
+        { id: "obsidian-1", kind: "basalt-hound", x: 760, y: 3720, lane: "survival", boss: false, region: "obsidian-wilds" },
+        { id: "obsidian-2", kind: "void-miner", x: 1860, y: 3860, lane: "tactical", boss: false, region: "obsidian-wilds" },
+        { id: "obsidian-3", kind: "rift-shade", x: 2620, y: 3640, lane: "puzzle", boss: false, region: "obsidian-wilds" },
+        { id: "obsidian-4", kind: "slag-stalker", x: 3180, y: 3920, lane: "speed", boss: false, region: "obsidian-wilds" },
+        { id: "obsidian-5", kind: "dark-larva", x: 1320, y: 4060, lane: "precision", boss: false, region: "obsidian-wilds" },
       ];
 
       const PICKUPS = [
@@ -1467,7 +1914,113 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         { id: "gold-2", x: 3240, y: 460, value: 1, golden: true },
         { id: "gold-3", x: 3340, y: 2280, value: 1, golden: true },
         { id: "gold-4", x: 1160, y: 2740, value: 1, golden: true },
+        { id: "spore-11", x: 2380, y: 1400, value: 24, golden: false },
+        { id: "spore-12", x: 4720, y: 1120, value: 26, golden: false },
+        { id: "spore-13", x: 5260, y: 2600, value: 28, golden: false },
+        { id: "spore-14", x: 5880, y: 3740, value: 32, golden: false },
+        { id: "spore-15", x: 2420, y: 3680, value: 30, golden: false },
+        { id: "spore-16", x: 1340, y: 4010, value: 34, golden: false },
+        { id: "gold-5", x: 4860, y: 3320, value: 1, golden: true },
+        { id: "gold-6", x: 3020, y: 3900, value: 1, golden: true },
       ];
+
+      const SHRINE_DAILY_QUESTS = [
+        "Relight three moss braziers by tracing the oldest crown path in this realm.",
+        "Map two safe caravan routes and report the least corrupted crossing.",
+        "Carry a memory ember to the shrine without forcing any hostile ward.",
+        "Restore one broken relay rune and synchronize it with local spore currents.",
+        "Collect dawn dew from the basin and return before shadowfall.",
+      ];
+
+      const SHRINE_DAILY_RIDDLES = [
+        { prompt: "I grow in darkness but heal in light. What am I?", answer: "A mycelic root." },
+        { prompt: "What opens every portal but has no key?", answer: "Learned magic." },
+        { prompt: "What is strongest when shared and weakest when hoarded?", answer: "Trust." },
+        { prompt: "What can defeat rot without drawing a blade?", answer: "Balance." },
+        { prompt: "What walks no road yet connects every region?", answer: "The spore network." },
+      ];
+
+      const SHRINE_DAILY_PUZZLES = [
+        "Align three rune stones in the order: Tide, Ember, Chain.",
+        "Match the glyph pattern mirrored by the western monolith.",
+        "Rotate the sigils until only one crown rune glows.",
+        "Activate the four corner wards before touching the center glyph.",
+        "Trace the spiral path from outer ring to inner altar in one pass.",
+      ];
+
+      const NPC_PERSONALITY_TEMPLATES = [
+        {
+          archetype: "Stoic Sentinel",
+          mannerism: "Speaks in short tactical fragments and trusts proven resolve.",
+          motive: "Keeps civilians alive by controlling chokepoints and relay routes.",
+        },
+        {
+          archetype: "Mystic Historian",
+          mannerism: "Frames every answer as a memory ritual from the old kingdom.",
+          motive: "Preserves fractured lore so each generation avoids repeating the fall.",
+        },
+        {
+          archetype: "Rogue Broker",
+          mannerism: "Smiles through danger and values leverage over promises.",
+          motive: "Builds influence by controlling rare goods and whispered intel.",
+        },
+        {
+          archetype: "Forge Pragmatist",
+          mannerism: "Treats feelings like variables and speaks in calibration terms.",
+          motive: "Wants stable systems, predictable defense lines, and zero waste.",
+        },
+        {
+          archetype: "Feral Oracle",
+          mannerism: "Reads omens in stormlight and tests strangers with riddles first.",
+          motive: "Protects sacred wild corridors where spores still grow pure.",
+        },
+      ];
+
+      const ENDLESS_STORY_BEATS = {
+        diplomat: [
+          "Two rival villages requested your verdict; your words now shape their shared border law.",
+          "A caravan dispute ended without bloodshed, and both leaders carved your vow into a waypoint stone.",
+          "An orphaned scout you helped now trains as a peace envoy between realm towers.",
+        ],
+        warlord: [
+          "Rumors of your battlefield tempo spread, causing enemy captains to alter patrol doctrine.",
+          "A hostile warband challenged your authority and retreated after witnessing your command aura.",
+          "A black-banner garrison now studies your tactics, turning every clash into a mythic duel.",
+        ],
+        seeker: [
+          "A hidden inscription surfaced after your route choice, revealing an older map beneath the map.",
+          "You followed a forgotten spoor trail and uncovered a chamber no chronicle had named.",
+          "A child archivist now copies your travel marks to chart newly discovered safe passages.",
+        ],
+        mystic: [
+          "Shrine wards echoed your signature and projected a memory of the First Crown Conclave.",
+          "Moonlit spores circled your staff, forming a new sigil pattern in the night air.",
+          "A dormant altar awakened and recognized your name as a continuing prophecy thread.",
+        ],
+        trader: [
+          "Your latest exchange reshaped market prices, opening routes to rare potion stockpiles.",
+          "Guild clerks now track your deals as a new benchmark for fair wartime trade.",
+          "A broker circle offered you silent partnership after your balanced negotiation terms.",
+        ],
+        balanced: [
+          "The realm reacts to your measured path, opening both mercy and force outcomes in tandem.",
+          "Your mixed decisions produced an unstable but powerful narrative branch unique to your chronicle.",
+          "Witnesses disagree on your legend: saint, strategist, or sovereign shade.",
+        ],
+      };
+
+      const ROAMING_SPORE_SETTINGS = {
+        blueTargetPerRealm: 7,
+        goldenTargetPerRealm: 2,
+        spawnMargin: 54,
+        pickupSpacing: 34,
+        heroSafeRadius: 130,
+        blueRespawnMinMs: 2200,
+        blueRespawnMaxMs: 5200,
+        goldenRespawnMinMs: 9600,
+        goldenRespawnMaxMs: 17000,
+        spawnAttemptsPerTick: 28,
+      };
 
       const SCENIC_PROPS = [
         { id: "grove-1", kind: "tree", x: 220, y: 420, realm: "myco-kingdom" },
@@ -1511,6 +2064,59 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         { id: "obsidian-4", kind: "rock", x: 620, y: 2960, realm: "obsidian-wilds" },
         { id: "obsidian-5", kind: "bush", x: 1420, y: 2780, realm: "obsidian-wilds" },
         { id: "obsidian-6", kind: "mushroom", x: 1880, y: 2860, realm: "obsidian-wilds" },
+        { id: "grove-9", kind: "tree", x: 1560, y: 1420, realm: "myco-kingdom" },
+        { id: "grove-10", kind: "mushroom", x: 420, y: 1460, realm: "myco-kingdom" },
+        { id: "grove-11", kind: "rock", x: 1680, y: 620, realm: "myco-kingdom" },
+        { id: "fen-7", kind: "reed", x: 3140, y: 1320, realm: "rougarou-fen" },
+        { id: "fen-8", kind: "totem", x: 2860, y: 520, realm: "rougarou-fen" },
+        { id: "fen-9", kind: "mushroom", x: 2020, y: 1320, realm: "rougarou-fen" },
+        { id: "drake-6", kind: "crystal", x: 4580, y: 1220, realm: "tri-drake-peaks" },
+        { id: "drake-7", kind: "rock", x: 4780, y: 1520, realm: "tri-drake-peaks" },
+        { id: "drake-8", kind: "totem", x: 3520, y: 1480, realm: "tri-drake-peaks" },
+        { id: "tide-6", kind: "reef", x: 3220, y: 2860, realm: "crimson-tide" },
+        { id: "tide-7", kind: "crystal", x: 2860, y: 1920, realm: "crimson-tide" },
+        { id: "tide-8", kind: "mushroom", x: 1980, y: 3180, realm: "crimson-tide" },
+        { id: "chain-6", kind: "obelisk", x: 5740, y: 2180, realm: "solana-chainlands" },
+        { id: "chain-7", kind: "crystal", x: 5480, y: 3540, realm: "solana-chainlands" },
+        { id: "chain-8", kind: "rock", x: 3860, y: 3380, realm: "solana-chainlands" },
+        { id: "commons-7", kind: "tree", x: 1540, y: 3140, realm: "verdant-commons" },
+        { id: "commons-8", kind: "mushroom", x: 680, y: 3020, realm: "verdant-commons" },
+        { id: "commons-9", kind: "totem", x: 1180, y: 3200, realm: "verdant-commons" },
+        { id: "obsidian-7", kind: "obelisk", x: 3020, y: 3660, realm: "obsidian-wilds" },
+        { id: "obsidian-8", kind: "crystal", x: 2480, y: 3960, realm: "obsidian-wilds" },
+        { id: "obsidian-9", kind: "rock", x: 1120, y: 4040, realm: "obsidian-wilds" },
+      ];
+
+      const PAPER_PARALLAX_DECOR = [
+        { id: "bg-grove-canopy", realm: "myco-kingdom", layer: "back", kind: "canopy", x: 180, y: 90, w: 420, h: 130 },
+        { id: "bg-grove-cloud", realm: "myco-kingdom", layer: "back", kind: "cloud", x: 980, y: 120, w: 320, h: 96 },
+        { id: "fg-grove-vines", realm: "myco-kingdom", layer: "front", kind: "vine", x: 1540, y: 180, w: 120, h: 340 },
+        { id: "fg-grove-banner", realm: "myco-kingdom", layer: "front", kind: "banner", x: 260, y: 430, w: 180, h: 120 },
+
+        { id: "bg-fen-mist", realm: "rougarou-fen", layer: "back", kind: "mist", x: 2080, y: 150, w: 640, h: 160 },
+        { id: "bg-fen-cloud", realm: "rougarou-fen", layer: "back", kind: "cloud", x: 2840, y: 180, w: 300, h: 90 },
+        { id: "fg-fen-vines", realm: "rougarou-fen", layer: "front", kind: "vine", x: 3180, y: 240, w: 120, h: 360 },
+
+        { id: "bg-tri-smoke", realm: "tri-drake-peaks", layer: "back", kind: "mist", x: 3560, y: 120, w: 520, h: 120 },
+        { id: "bg-tri-cloud", realm: "tri-drake-peaks", layer: "back", kind: "cloud", x: 4480, y: 110, w: 360, h: 100 },
+        { id: "fg-tri-banner", realm: "tri-drake-peaks", layer: "front", kind: "banner", x: 4720, y: 300, w: 190, h: 130 },
+
+        { id: "bg-tide-mist", realm: "crimson-tide", layer: "back", kind: "mist", x: 2080, y: 1760, w: 700, h: 170 },
+        { id: "bg-tide-cloud", realm: "crimson-tide", layer: "back", kind: "cloud", x: 3000, y: 1820, w: 340, h: 100 },
+        { id: "fg-tide-vines", realm: "crimson-tide", layer: "front", kind: "vine", x: 1860, y: 1880, w: 120, h: 340 },
+
+        { id: "bg-chain-links", realm: "solana-chainlands", layer: "back", kind: "chain", x: 3820, y: 1940, w: 920, h: 180 },
+        { id: "bg-chain-cloud", realm: "solana-chainlands", layer: "back", kind: "cloud", x: 5560, y: 1900, w: 360, h: 100 },
+        { id: "fg-chain-banner", realm: "solana-chainlands", layer: "front", kind: "banner", x: 5660, y: 2200, w: 210, h: 140 },
+        { id: "fg-chain-links", realm: "solana-chainlands", layer: "front", kind: "chain", x: 5140, y: 2360, w: 520, h: 170 },
+
+        { id: "bg-commons-canopy", realm: "verdant-commons", layer: "back", kind: "canopy", x: 180, y: 1860, w: 500, h: 140 },
+        { id: "bg-commons-cloud", realm: "verdant-commons", layer: "back", kind: "cloud", x: 980, y: 1860, w: 300, h: 90 },
+        { id: "fg-commons-banner", realm: "verdant-commons", layer: "front", kind: "banner", x: 1540, y: 2060, w: 190, h: 130 },
+
+        { id: "bg-obsidian-mist", realm: "obsidian-wilds", layer: "back", kind: "mist", x: 220, y: 3360, w: 720, h: 170 },
+        { id: "bg-obsidian-cloud", realm: "obsidian-wilds", layer: "back", kind: "cloud", x: 2360, y: 3340, w: 320, h: 100 },
+        { id: "fg-obsidian-chain", realm: "obsidian-wilds", layer: "front", kind: "chain", x: 2720, y: 3480, w: 430, h: 150 },
       ];
 
       const CUTSCENES = {
@@ -1519,7 +2125,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           pages: [
             "On the Night of Silent Spores, Dark Mycelius shattered King Myco's crown and scattered six memory-arts across the land.",
             "Each henchman now rules a realm anchor: Rougarou in the Fen, the Tri-Drake in the Peaks, Evil Crab in the Tides, and Dark Mycelius in Chainlands.",
-            "The Nexus remains one world, but realm walls are sealed. Only learned magic can stabilize the portals between them.",
+            "The Nexus now spans larger realm pages packed with towers, markets, castles, caves, and deep interior routes.",
           ],
         },
         fenUnlocked: {
@@ -1529,6 +2135,20 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             "Mycoside players open safer support loops; Darkside players unlock riskier routes with heavier drops.",
           ],
         },
+        commonsRise: {
+          title: "Caravan Uprising",
+          pages: [
+            "Merchants across Verdant Commons rally behind your banner as mushroom shops reopen.",
+            "Trade caravans now reveal tower relays, hidden house interiors, and black-market dock routes.",
+          ],
+        },
+        towerSignals: {
+          title: "Signals Across The Peaks",
+          pages: [
+            "Reactivated towers begin exchanging pulse-fire across the drake ridges.",
+            "Sky roads awaken, exposing deeper dungeons and rapid routes between castles.",
+          ],
+        },
         solanaReady: {
           title: "The Chain Breach",
           pages: [
@@ -1536,11 +2156,39 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             "One final portal can pierce into Solana Chainlands, where Dark Mycelius rewrites kingdom memory as corrupted code.",
           ],
         },
+        obsidianAwakening: {
+          title: "Oathstones Rekindled",
+          pages: [
+            "The Obsidian Wilds answer your signal, and dormant oathstones ignite beneath basalt towers.",
+            "New frontier interiors and war routes open for heroes who can hold both mercy and force in balance.",
+          ],
+        },
         epilogue: {
           title: "Kingdom Rewritten",
           pages: [
             "The final battle is done, but your moral signature now defines the kingdom timeline.",
-            "Your campaign remains unique: NPC loyalty, portal guidance, and encounter pressure continue adapting to your path.",
+            "Your campaign remains unique: NPC loyalty, portal guidance, encounter pressure, and interior routes continue adapting to your path.",
+          ],
+        },
+        voicesUnbound: {
+          title: "Voices of the Regions",
+          pages: [
+            "As more residents trust your banner, rumor webs begin to align into a living oral history.",
+            "Each NPC now carries a personal stake in your choices, and their personalities begin steering your future routes.",
+          ],
+        },
+        chronicleEngine: {
+          title: "The Living Chronicle",
+          pages: [
+            "The world starts remembering what kind of monarch you are becoming.",
+            "From this point, directives, encounter pressure, and reward pulses adapt to your evolving playstyle profile.",
+          ],
+        },
+        endlessFrontier: {
+          title: "Endless Frontier Accord",
+          pages: [
+            "Even after great victories, the kingdom keeps writing new stories around your legacy.",
+            "Your choices now seed rotating lore beats, emergent quests, and personalized narrative echoes across all realms.",
           ],
         },
       };
@@ -1581,10 +2229,22 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           isUnlocked: () => true,
         },
         {
+          id: "market-seal",
+          title: "The Bazaar Pact",
+          text: "Mushroom guilds once financed crown defenses. Their market seals now gate crucial supply routes and hidden interiors.",
+          isUnlocked: (state) => state.progress.clues.has("myco-market-seal"),
+        },
+        {
           id: "rougarou-oath",
           title: "Rougarou's Debt",
           text: "Rougarou served as royal ranger before rot whispers rewrote his instincts. The Lunar Mark remembers his former vow.",
           isUnlocked: (state) => state.progress.clues.has("lunar-wolf-mark"),
+        },
+        {
+          id: "tower-net",
+          title: "Signal Tower Covenant",
+          text: "Relay towers linked every region long before portals existed. Their reactivation restores kingdom command lines.",
+          isUnlocked: (state) => state.progress.clues.has("peak-sky-map"),
         },
         {
           id: "drake-fracture",
@@ -1599,12 +2259,138 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           isUnlocked: (state) => state.progress.clues.has("abyss-pearl"),
         },
         {
+          id: "smuggler-lanes",
+          title: "Dockside Shadow Routes",
+          text: "Smuggler tide codes mapped hidden lanes between castles, caves, and black markets during wartime.",
+          isUnlocked: (state) => state.progress.clues.has("reef-smuggler-code"),
+        },
+        {
           id: "chain-traitor",
           title: "The Archivist's Betrayal",
           text: "Chain Smith Vox forged the first seal to stop Dark Mycelius, then vanished into the Chainlands forge halls.",
           isUnlocked: (state) => state.progress.clues.has("solana-anchor"),
         },
+        {
+          id: "obsidian-oath",
+          title: "The Last Frontier Oath",
+          text: "Obsidian rangers swore to defend the final fallback line. Their oathstones still answer worthy monarchs.",
+          isUnlocked: (state) => state.progress.clues.has("obsidian-oath"),
+        },
+        {
+          id: "living-chronicle",
+          title: "The Chronicle Learns",
+          text: "Ancient scripts describe a crown that studies the bearer. Every choice feeds a memory engine that reshapes fate-lines in real time.",
+          isUnlocked: (state) => state.story.entries.length >= 5,
+        },
+        {
+          id: "persona-covenant",
+          title: "The Persona Covenant",
+          text: "Village elders taught that no two monarchs restore the same kingdom. Personality, not power alone, decides which future survives.",
+          isUnlocked: (state) => state.progress.interactedNpcs.size >= 8,
+        },
       ];
+
+      const CLAN_PROFILES = {
+        myco: {
+          id: "myco",
+          name: "Myco Clan",
+          bannerTitle: "MYCO CLAN",
+          slogan: "Spread the Spores",
+          colors: { primary: "#84cc16", accent: "#a855f7", aura: "#22d3ee", cap: "#ef4444", robe: "#6d28d9", eye: "#22c55e" },
+          storyThread: "You carry the old royal oath to regrow the realm network.",
+          npcThread: "Villagers treat your spores as restoration sigils.",
+          questThread: "Stabilize fungal shrines and reclaim royal trust.",
+          cutsceneThread: "Royal spores answer your crown line.",
+        },
+        "dark-mycelius": {
+          id: "dark-mycelius",
+          name: "Mycelius Clan",
+          bannerTitle: "MYCELIUS CLAN",
+          slogan: "Rise from the Depths",
+          colors: { primary: "#84cc16", accent: "#a855f7", aura: "#84cc16", cap: "#6d28d9", robe: "#1f2937", eye: "#84cc16" },
+          storyThread: "You chase forbidden depth-lore and chain rot scriptures.",
+          npcThread: "Nexus watchers fear your occult mushroom rites.",
+          questThread: "Master depth sigils and bend corrupted gates.",
+          cutsceneThread: "The abyss spores whisper your clan name.",
+        },
+        rougarou: {
+          id: "rougarou",
+          name: "Rougarou Clan",
+          bannerTitle: "ROUGAROU CLAN",
+          slogan: "Hunt the Night",
+          colors: { primary: "#a855f7", accent: "#7e22ce", aura: "#c084fc", cap: "#312e81", robe: "#4c1d95", eye: "#a855f7" },
+          storyThread: "Moonlit packs mark your path with predator rites.",
+          npcThread: "Fen scouts read your oath as hunter law.",
+          questThread: "Control night routes, pack towers, and moon shrines.",
+          cutsceneThread: "Moonfire obeys your clan hunt-call.",
+        },
+        "dragon-brood": {
+          id: "dragon-brood",
+          name: "Brood Dragon Clan",
+          bannerTitle: "BROOD DRAGON CLAN",
+          slogan: "Nurture the Nest",
+          colors: { primary: "#84cc16", accent: "#f97316", aura: "#f97316", cap: "#475569", robe: "#7c2d12", eye: "#84cc16" },
+          storyThread: "You guard drake eggs and ember nests across peak citadels.",
+          npcThread: "Mountain wardens trust your brood vows.",
+          questThread: "Secure nest towers and rekindle drake forges.",
+          cutsceneThread: "Ember winds answer broodfire command.",
+        },
+        tegbot: {
+          id: "tegbot",
+          name: "Tegbot Clan",
+          bannerTitle: "TEGBOT",
+          slogan: "Built Different",
+          colors: { primary: "#22d3ee", accent: "#a855f7", aura: "#22d3ee", cap: "#0f172a", robe: "#334155", eye: "#22d3ee" },
+          storyThread: "You decode chain relics with machine-grade precision.",
+          npcThread: "Engineers and smiths treat you as a living relay core.",
+          questThread: "Synchronize towers, optimize routes, and break rot code.",
+          cutsceneThread: "Circuit runes pulse to your command signature.",
+        },
+        "shiba-inu": {
+          id: "shiba-inu",
+          name: "Shiba Inu Clan",
+          bannerTitle: "SHIBA INFINITY",
+          slogan: "To the Infinity and Beyond",
+          colors: { primary: "#84cc16", accent: "#a855f7", aura: "#a3e635", cap: "#f97316", robe: "#7c3aed", eye: "#f8fafc" },
+          storyThread: "You rally fast-strike caravans with infinity coin vows.",
+          npcThread: "Commons traders back your daring luck runs.",
+          questThread: "Capture coin trails, market routes, and infinity relics.",
+          cutsceneThread: "Fortune sparks on every portal you cross.",
+        },
+      };
+
+      const CLAN_AVATARS = {
+        myco: [
+          { id: "crownward", name: "Crownward Sorcerer" },
+          { id: "sporeblade", name: "Sporeblade Marshal" },
+          { id: "embersage", name: "Embersage Regent" },
+        ],
+        "dark-mycelius": [
+          { id: "depthseer", name: "Depthseer Hexer" },
+          { id: "graveflame", name: "Graveflame Adept" },
+          { id: "voidcrown", name: "Voidcrown Lich" },
+        ],
+        rougarou: [
+          { id: "moonfang", name: "Moonfang Stalker" },
+          { id: "packwarden", name: "Packwarden Alpha" },
+          { id: "nightclaw", name: "Nightclaw Raider" },
+        ],
+        "dragon-brood": [
+          { id: "nestguard", name: "Nestguard Knight" },
+          { id: "embertalon", name: "Embertalon Wyrmkin" },
+          { id: "broodseer", name: "Broodseer Tactician" },
+        ],
+        tegbot: [
+          { id: "relay-prime", name: "Relay Prime" },
+          { id: "code-smith", name: "Code Smith" },
+          { id: "synth-sage", name: "Synth Sage" },
+        ],
+        "shiba-inu": [
+          { id: "infinity-runner", name: "Infinity Runner" },
+          { id: "coin-blazer", name: "Coin Blazer" },
+          { id: "astro-shiba", name: "Astro Shiba" },
+        ],
+      };
 
       const state = {
         mode: "intro",
@@ -1616,10 +2402,27 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         aiDirective: "The kingdom listens to your choices.",
         aiDirectiveAt: 0,
         aiRemoteDirectiveAt: 0,
+        aiModel: {
+          compassion: 0,
+          ferocity: 0,
+          curiosity: 0,
+          diplomacy: 0,
+          commerce: 0,
+          rituals: 0,
+          combat: 0,
+          exploration: 0,
+        },
+        story: {
+          chapter: 1,
+          entries: [],
+          lastBeatAt: 0,
+        },
         activeDialogue: null,
         contactLockUntil: 0,
         contactLatch: null,
         lastAdvice: "Earn trust in each region to receive reliable guidance.",
+        playerClan: "myco",
+        playerAvatar: "crownward",
         ui: {
           minimalHud: false,
           titleCardSkipped: false,
@@ -1657,6 +2460,26 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         encounterEnemyId: null,
         battleMode: "none",
         battle: null,
+        battleFx: {
+          impacts: [],
+          popups: [],
+        },
+        burnPit: {
+          active: false,
+          structureId: null,
+        },
+        burn: {
+          dayKey: "",
+          burnedToday: 0,
+          totalBurned: 0,
+          events: [],
+        },
+        roamingSpores: {
+          seq: 0,
+          active: [],
+          nextBlueByRealm: {},
+          nextGoldenByRealm: {},
+        },
         campaignSnapshot: null,
         enemies: [],
         audio: {
@@ -1683,6 +2506,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           solvedStructures: new Set(),
           collectedPickups: new Set(),
           cutscenesSeen: new Set(),
+          shrineDailyKey: "",
+          shrineSolvedToday: new Set(),
         },
         hero: {
           x: 280,
@@ -1705,6 +2530,232 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
       const randomBetween = (min, max) => min + Math.random() * (max - min);
+
+      const hashString = (value) => {
+        let hash = 0;
+        for (let index = 0; index < value.length; index += 1) {
+          hash = (hash << 5) - hash + value.charCodeAt(index);
+          hash |= 0;
+        }
+        return Math.abs(hash);
+      };
+
+      const recordAiSignal = (field, amount = 1) => {
+        if (!Object.prototype.hasOwnProperty.call(state.aiModel, field)) return;
+        state.aiModel[field] = Math.max(0, (state.aiModel[field] ?? 0) + amount);
+      };
+
+      const getNpcPersonality = (npc) => {
+        const template = NPC_PERSONALITY_TEMPLATES[hashString(npc.id) % NPC_PERSONALITY_TEMPLATES.length];
+        return template;
+      };
+
+      const getNarrativeProfile = () => {
+        const diplomacyScore = state.aiModel.compassion + state.aiModel.diplomacy + state.progress.interactedNpcs.size * 0.4;
+        const warlordScore = state.aiModel.ferocity + state.aiModel.combat + Math.max(0, -state.hero.morality) * 0.09;
+        const seekerScore = state.aiModel.curiosity + state.aiModel.exploration + state.progress.clues.size * 0.65;
+        const mysticScore = state.aiModel.rituals + state.hero.magic * 1.1 + state.progress.solvedStructures.size * 0.25;
+        const traderScore = state.aiModel.commerce + state.aiModel.diplomacy * 0.5 + Math.max(0, Math.round(state.hero.spores / 120));
+        const scoreMap = {
+          diplomat: diplomacyScore,
+          warlord: warlordScore,
+          seeker: seekerScore,
+          mystic: mysticScore,
+          trader: traderScore,
+          balanced: 1,
+        };
+        const dominant = Object.entries(scoreMap).sort((left, right) => right[1] - left[1])[0]?.[0] ?? "balanced";
+        const profileName = {
+          diplomat: "Peaceweaver",
+          warlord: "Battle Sovereign",
+          seeker: "Pathfinder Archivist",
+          mystic: "Ritual Warden",
+          trader: "Caravan Architect",
+          balanced: "Nexus Wanderer",
+        }[dominant] ?? "Nexus Wanderer";
+        return {
+          dominant,
+          profileName,
+          enemyPaceMultiplier: clamp(1 + (warlordScore - diplomacyScore) * 0.012, 0.82, 1.34),
+          blueSporeMultiplier: clamp(1 + seekerScore * 0.018, 0.95, 1.7),
+          goldenSporeMultiplier: clamp(1 + mysticScore * 0.014, 0.92, 1.48),
+          text: `${profileName} (${dominant})`,
+        };
+      };
+
+      const pushStoryEntry = (text, type = "chronicle") => {
+        if (!text || typeof text !== "string") return;
+        const trimmed = text.trim();
+        if (!trimmed) return;
+        const previous = state.story.entries[0];
+        if (previous?.text === trimmed) return;
+        const profile = getNarrativeProfile();
+        state.story.entries.unshift({
+          id: `story-${Date.now()}-${hashString(trimmed) % 1000}`,
+          text: trimmed,
+          type,
+          profile: profile.text,
+          realmId: state.currentRealmId,
+          at: Date.now(),
+        });
+        state.story.entries = state.story.entries.slice(0, 45);
+      };
+
+      const updateLivingStory = () => {
+        if (state.cutscene.active || state.activeDialogue || state.mode === "battle" || state.mode === "interior" || state.mode === "burn-pit") {
+          return;
+        }
+        const now = Date.now();
+        if (now - state.story.lastBeatAt < 36000) return;
+        const profile = getNarrativeProfile();
+        const realm = getCurrentRealm();
+        const stream = ENDLESS_STORY_BEATS[profile.dominant] ?? ENDLESS_STORY_BEATS.balanced;
+        const chapterSeed = `${getLocalDayKey()}:${state.story.chapter}:${realm.id}:${profile.dominant}:${state.story.entries.length}`;
+        const beat = stream[hashString(chapterSeed) % stream.length];
+        pushStoryEntry(`Chapter ${state.story.chapter}: ${realm.name} — ${beat}`, "ai");
+        state.aiDirective = `Living Chronicle (${profile.profileName}): ${beat}`;
+        state.story.lastBeatAt = now;
+        state.story.chapter += 1;
+      };
+
+      const getClanProfile = (clanId = state.playerClan) => CLAN_PROFILES[clanId] ?? CLAN_PROFILES.myco;
+
+      const getClanAvatarOptions = (clanId = state.playerClan) => CLAN_AVATARS[clanId] ?? CLAN_AVATARS.myco;
+
+      const getSelectedAvatarName = () => {
+        const options = getClanAvatarOptions();
+        return options.find((entry) => entry.id === state.playerAvatar)?.name ?? options[0]?.name ?? "Wandering Avatar";
+      };
+
+      const updateClanBannerPreview = () => {
+        if (!dom.clanBannerPreview) return;
+        const profile = getClanProfile();
+        dom.clanBannerPreview.style.borderColor = profile.colors.accent;
+        dom.clanBannerPreview.style.boxShadow = `inset 0 0 0 1px ${profile.colors.primary}55`;
+        dom.clanBannerPreview.innerHTML = `
+          <h3 style="color:${profile.colors.primary}">${profile.bannerTitle}</h3>
+          <p><strong style="color:${profile.colors.accent}">${profile.slogan}</strong></p>
+          <p>${profile.storyThread}</p>
+        `;
+      };
+
+      const populateAvatarSelect = () => {
+        if (!dom.avatarSelect) return;
+        const options = getClanAvatarOptions();
+        if (!options.some((entry) => entry.id === state.playerAvatar)) {
+          state.playerAvatar = options[0]?.id ?? "crownward";
+        }
+        dom.avatarSelect.innerHTML = options.map((entry) => `<option value="${entry.id}">${entry.name}</option>`).join("");
+        dom.avatarSelect.value = state.playerAvatar;
+      };
+
+      const applyClanSelectionFromUi = () => {
+        if (dom.clanSelect?.value && CLAN_PROFILES[dom.clanSelect.value]) {
+          state.playerClan = dom.clanSelect.value;
+        }
+        populateAvatarSelect();
+        if (dom.avatarSelect?.value) {
+          state.playerAvatar = dom.avatarSelect.value;
+        }
+        updateClanBannerPreview();
+      };
+
+      const populateClanSelect = () => {
+        if (!dom.clanSelect) return;
+        const entries = Object.values(CLAN_PROFILES);
+        dom.clanSelect.innerHTML = entries.map((entry) => `<option value="${entry.id}">${entry.name}</option>`).join("");
+        if (!CLAN_PROFILES[state.playerClan]) state.playerClan = "myco";
+        dom.clanSelect.value = state.playerClan;
+        populateAvatarSelect();
+        updateClanBannerPreview();
+      };
+
+      const calculateLeaderboardScore = () => {
+        const profileBonus = {
+          myco: 12,
+          "dark-mycelius": 14,
+          rougarou: 10,
+          "dragon-brood": 13,
+          tegbot: 11,
+          "shiba-inu": 9,
+        }[state.playerClan] ?? 0;
+        return (
+          state.progress.defeatedBosses.size * 140 +
+          state.progress.clues.size * 46 +
+          state.progress.solvedStructures.size * 18 +
+          state.progress.interactedNpcs.size * 12 +
+          state.hero.goldenSpores * 95 +
+          Math.max(0, Math.round(state.hero.spores / 9)) +
+          Math.max(-40, state.hero.morality) +
+          profileBonus
+        );
+      };
+
+      const loadLeaderboardEntries = () => {
+        try {
+          const raw = localStorage.getItem(STORAGE_LEADERBOARD_KEY);
+          if (!raw) return [];
+          const parsed = JSON.parse(raw);
+          if (!Array.isArray(parsed)) return [];
+          return parsed.filter((entry) => entry && typeof entry === "object");
+        } catch (_error) {
+          return [];
+        }
+      };
+
+      const saveLeaderboardEntries = (entries) => {
+        localStorage.setItem(STORAGE_LEADERBOARD_KEY, JSON.stringify(entries.slice(0, 20)));
+      };
+
+      const updateLeaderboardEntry = () => {
+        const playerId = dom.externalId.value.trim() || "myco-player-01";
+        const entries = loadLeaderboardEntries();
+        const score = calculateLeaderboardScore();
+        const profile = getClanProfile();
+        const avatarName = getSelectedAvatarName();
+        const existingIdx = entries.findIndex((entry) => entry.playerId === playerId && entry.clanId === state.playerClan);
+        const draft = {
+          playerId,
+          clanId: state.playerClan,
+          clanName: profile.name,
+          slogan: profile.slogan,
+          avatarName,
+          score,
+          bosses: state.progress.defeatedBosses.size,
+          clues: state.progress.clues.size,
+          morality: state.hero.morality,
+          updatedAt: Date.now(),
+        };
+        if (existingIdx >= 0) {
+          if (score >= (entries[existingIdx].score ?? 0)) {
+            entries[existingIdx] = { ...entries[existingIdx], ...draft };
+          }
+        } else {
+          entries.push(draft);
+        }
+        entries.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+        saveLeaderboardEntries(entries);
+        renderLeaderboard();
+      };
+
+      const renderLeaderboard = () => {
+        if (!dom.leaderboardList || !dom.leaderboardSummary) return;
+        const entries = loadLeaderboardEntries();
+        if (!entries.length) {
+          dom.leaderboardSummary.textContent = "No rankings yet. Start a clan chronicle to post your score.";
+          dom.leaderboardList.innerHTML = `<span class="chip">No leaderboard entries yet</span>`;
+          return;
+        }
+        const top = entries[0];
+        dom.leaderboardSummary.textContent = `Top score ${top.score} by ${top.playerId} // ${top.clanName}`;
+        dom.leaderboardList.innerHTML = entries
+          .slice(0, 12)
+          .map((entry, idx) => {
+            const dateLabel = new Date(entry.updatedAt ?? Date.now()).toLocaleDateString();
+            return `<article class="leaderboard-entry"><strong>#${idx + 1} ${entry.playerId} // ${entry.clanName}</strong><small>${entry.avatarName} | Score ${entry.score} | Bosses ${entry.bosses} | Clues ${entry.clues} | Morality ${entry.morality}</small><small>${entry.slogan} • ${dateLabel}</small></article>`;
+          })
+          .join("");
+      };
 
       const THEME_SEQUENCE = [
         261.63, 329.63, 392.0, 523.25,
@@ -1747,11 +2798,39 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (dom.panelStatus) right.appendChild(dom.panelStatus);
         if (dom.panelInventory) right.appendChild(dom.panelInventory);
         if (dom.panelWeb3) right.appendChild(dom.panelWeb3);
+        if (dom.panelLeaderboard) right.appendChild(dom.panelLeaderboard);
         if (dom.panelBattle) right.appendChild(dom.panelBattle);
         if (dom.panelAudio) right.appendChild(dom.panelAudio);
         if (dom.hudAside) {
           dom.hudAside.classList.add("hidden");
         }
+      };
+
+      const setBattlePopupActive = (active) => {
+        if (!dom.panelBattle) return;
+        const popupClass = "battle-popup-active";
+        const hasClass = dom.panelBattle.classList.contains(popupClass);
+        const expectedParent = active ? document.body : dom.rightMenuContent;
+        if (hasClass === active && dom.panelBattle.parentElement === expectedParent) return;
+
+        if (active) {
+          if (dom.panelBattle.parentElement !== document.body) {
+            document.body.appendChild(dom.panelBattle);
+          }
+          dom.panelBattle.classList.add(popupClass);
+          document.body.classList.add("battle-popup-active");
+        } else {
+          dom.panelBattle.classList.remove(popupClass);
+          document.body.classList.remove("battle-popup-active");
+          if (dom.rightMenuContent) {
+            if (dom.panelAudio && dom.panelAudio.parentElement === dom.rightMenuContent) {
+              dom.rightMenuContent.insertBefore(dom.panelBattle, dom.panelAudio);
+            } else {
+              dom.rightMenuContent.appendChild(dom.panelBattle);
+            }
+          }
+        }
+        resizeCanvases();
       };
 
       const applyHudMode = () => {
@@ -2101,6 +3180,58 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         dom.battleLog.textContent = lines.slice(-14).join("\n");
       };
 
+      const BATTLE_FX_MAX_EVENTS = 18;
+
+      const resetBattleFx = () => {
+        state.battleFx.impacts = [];
+        state.battleFx.popups = [];
+      };
+
+      const pruneBattleFx = (now = Date.now()) => {
+        state.battleFx.impacts = state.battleFx.impacts.filter((fx) => now - fx.startedAt <= fx.duration);
+        state.battleFx.popups = state.battleFx.popups.filter((fx) => now - fx.startedAt <= fx.duration);
+      };
+
+      const triggerBattleHitFx = (target, damage, critical = false) => {
+        const amount = Math.max(0, Math.round(damage || 0));
+        if (!amount) return;
+        const now = Date.now();
+        const magnitude = clamp(amount / 32, 0.35, 1.3);
+        const rgb = target === "enemy" ? "248,113,113" : "125,211,252";
+        const popupColor = target === "enemy" ? "#fecaca" : "#bae6fd";
+        state.battleFx.impacts.push({
+          target,
+          startedAt: now,
+          duration: 280 + Math.round(150 * magnitude),
+          rgb,
+          magnitude,
+        });
+        state.battleFx.popups.push({
+          target,
+          text: `-${amount}`,
+          startedAt: now,
+          duration: critical ? 960 : 820,
+          color: popupColor,
+          critical,
+        });
+        state.battleFx.impacts = state.battleFx.impacts.slice(-BATTLE_FX_MAX_EVENTS);
+        state.battleFx.popups = state.battleFx.popups.slice(-BATTLE_FX_MAX_EVENTS);
+      };
+
+      const triggerBattleHealFx = (target, amount) => {
+        const heal = Math.max(0, Math.round(amount || 0));
+        if (!heal) return;
+        state.battleFx.popups.push({
+          target,
+          text: `+${heal}`,
+          startedAt: Date.now(),
+          duration: 840,
+          color: "#86efac",
+          critical: false,
+        });
+        state.battleFx.popups = state.battleFx.popups.slice(-BATTLE_FX_MAX_EVENTS);
+      };
+
       const saveConfig = () => {
         localStorage.setItem(
           STORAGE_CONFIG_KEY,
@@ -2109,6 +3240,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             source: dom.source.value.trim(),
             externalId: dom.externalId.value.trim(),
             sourceToken: dom.sourceToken.value,
+            selectedClan: state.playerClan,
+            selectedAvatar: state.playerAvatar,
             minimalHud: state.ui.minimalHud,
             titleCardSkipped: state.ui.titleCardSkipped,
           }),
@@ -2124,6 +3257,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           if (typeof parsed.source === "string") dom.source.value = parsed.source;
           if (typeof parsed.externalId === "string") dom.externalId.value = parsed.externalId;
           if (typeof parsed.sourceToken === "string") dom.sourceToken.value = parsed.sourceToken;
+          if (typeof parsed.selectedClan === "string" && CLAN_PROFILES[parsed.selectedClan]) {
+            state.playerClan = parsed.selectedClan;
+          }
+          if (typeof parsed.selectedAvatar === "string") {
+            state.playerAvatar = parsed.selectedAvatar;
+          }
           if (typeof parsed.minimalHud === "boolean") state.ui.minimalHud = parsed.minimalHud;
           if (typeof parsed.titleCardSkipped === "boolean") state.ui.titleCardSkipped = parsed.titleCardSkipped;
         } catch (error) {
@@ -2140,9 +3279,20 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           solvedStructures: Array.from(state.progress.solvedStructures),
           collectedPickups: Array.from(state.progress.collectedPickups),
           cutscenesSeen: Array.from(state.progress.cutscenesSeen),
+          shrineDailyKey: state.progress.shrineDailyKey,
+          shrineSolvedToday: Array.from(state.progress.shrineSolvedToday),
           inventory: state.inventory,
           web3: state.web3,
+          aiModel: state.aiModel,
+          story: {
+            chapter: state.story.chapter,
+            entries: state.story.entries,
+            lastBeatAt: state.story.lastBeatAt,
+          },
           lastAdvice: state.lastAdvice,
+          playerClan: state.playerClan,
+          playerAvatar: state.playerAvatar,
+          burn: state.burn,
           enemyStates: state.enemies.map((enemy) => ({
             id: enemy.id,
             active: enemy.active,
@@ -2152,6 +3302,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           })),
         };
         localStorage.setItem(STORAGE_STATE_KEY, JSON.stringify(payload));
+        updateLeaderboardEntry();
       };
 
       const loadGame = () => {
@@ -2185,11 +3336,30 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             for (const id of parsed.cutscenesSeen ?? []) {
               if (typeof id === "string") state.progress.cutscenesSeen.add(id);
             }
+            if (typeof parsed.shrineDailyKey === "string") {
+              state.progress.shrineDailyKey = parsed.shrineDailyKey;
+            }
+            for (const id of parsed.shrineSolvedToday ?? []) {
+              if (typeof id === "string") state.progress.shrineSolvedToday.add(id);
+            }
             if (parsed.inventory && typeof parsed.inventory === "object") {
               state.inventory = {
                 ...state.inventory,
                 ...parsed.inventory,
               };
+            }
+            if (parsed.aiModel && typeof parsed.aiModel === "object") {
+              state.aiModel = {
+                ...state.aiModel,
+                ...parsed.aiModel,
+              };
+            }
+            if (parsed.story && typeof parsed.story === "object") {
+              state.story = {
+                ...state.story,
+                ...parsed.story,
+              };
+              if (!Array.isArray(state.story.entries)) state.story.entries = [];
             }
             if (parsed.web3 && typeof parsed.web3 === "object") {
               state.web3 = {
@@ -2203,6 +3373,21 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             if (typeof parsed.lastAdvice === "string") {
               state.lastAdvice = parsed.lastAdvice;
             }
+            if (typeof parsed.playerClan === "string" && CLAN_PROFILES[parsed.playerClan]) {
+              state.playerClan = parsed.playerClan;
+            }
+            if (typeof parsed.playerAvatar === "string") {
+              state.playerAvatar = parsed.playerAvatar;
+            }
+            if (parsed.burn && typeof parsed.burn === "object") {
+              state.burn = {
+                ...state.burn,
+                ...parsed.burn,
+              };
+              if (!Array.isArray(state.burn.events)) state.burn.events = [];
+              refreshDailyBurnQuota();
+            }
+            refreshDailyShrineProgress();
             for (const enemyState of parsed.enemyStates ?? []) {
               if (!enemyState || typeof enemyState !== "object") continue;
               const enemy = state.enemies.find((entry) => entry.id === enemyState.id);
@@ -2231,26 +3416,43 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const refreshTitleScreen = () => {
         const hasSave = hasSavedGame();
         if (!dom.continueAdventureBtn) return;
+        applyClanSelectionFromUi();
+        const profile = getClanProfile();
         dom.continueAdventureBtn.disabled = !hasSave;
         dom.continueAdventureBtn.textContent = hasSave ? "Continue Adventure" : "No Save Found";
+        const avatarName = getSelectedAvatarName();
         if (dom.titleHint) {
           dom.titleHint.textContent = hasSave
-            ? "Save detected. Continue your chronicle or begin a fresh arc."
-            : "No local save found. Start a new chronicle to begin.";
+            ? `Save detected for ${profile.name} (${avatarName}). Continue your chronicle or begin a fresh arc.`
+            : `No local save found. Begin a ${profile.name} chronicle as ${avatarName}.`;
+        }
+        if (dom.titleLore) {
+          dom.titleLore.textContent = `${profile.bannerTitle}\n${profile.slogan}\n${profile.storyThread}\n${profile.questThread}`;
         }
       };
 
       const startAdventure = () => {
         if (!state.intro.active) return;
+        applyClanSelectionFromUi();
+        saveConfig();
+        const profile = getClanProfile();
+        const avatarName = getSelectedAvatarName();
         state.intro.active = false;
         state.mode = "explore";
+        state.aiDirective = `${profile.name} directive: ${profile.questThread}`;
+        if (!state.story.entries.length) {
+          pushStoryEntry(`Chapter 1: ${profile.name} ${getSelectedAvatarName()} enters ${getCurrentRealm().name}.`, "chronicle");
+          state.story.lastBeatAt = Date.now();
+        }
         dom.titleScreen.classList.remove("active");
-        setStatus(`Chronicle initialized in ${getCurrentRealm().name}. Venture through portals to open other realm pages.`);
+        setStatus(`${profile.name} chronicle (${avatarName}) initialized in ${getCurrentRealm().name}. ${profile.storyThread}`);
+        updateLeaderboardEntry();
         checkCutsceneTriggers();
         syncCampaign();
       };
 
       const beginFreshAdventure = () => {
+        applyClanSelectionFromUi();
         clearGame();
         state.ui.titleCardSkipped = false;
         saveConfig();
@@ -2271,6 +3473,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const requestBase = () => ({
         source: dom.source.value.trim() || "kingmyco.io",
         externalId: dom.externalId.value.trim() || "myco-player-01",
+        clanId: state.playerClan,
+        avatarId: state.playerAvatar,
       });
 
       const callApi = async (path, body) => {
@@ -2288,6 +3492,212 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           throw new Error(`${response.status} ${response.statusText}: ${text}`);
         }
         return response.json();
+      };
+
+      const getLocalDayKey = (time = Date.now()) => {
+        const date = new Date(time);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      };
+
+      const getNextSunday = (time = Date.now()) => {
+        const date = new Date(time);
+        const day = date.getDay();
+        const delta = (7 - day) % 7;
+        date.setHours(0, 0, 0, 0);
+        date.setDate(date.getDate() + delta);
+        return date;
+      };
+
+      const formatShortDate = (dateInput) => {
+        const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      };
+
+      const pickDailyItem = (items, key) => items[hashString(key) % items.length];
+
+      const getDailyShrineChallenge = (structure, dayKey = getLocalDayKey()) => {
+        const quest = pickDailyItem(SHRINE_DAILY_QUESTS, `${dayKey}:${structure.id}:quest`);
+        const riddle = pickDailyItem(SHRINE_DAILY_RIDDLES, `${dayKey}:${structure.id}:riddle`);
+        const puzzle = pickDailyItem(SHRINE_DAILY_PUZZLES, `${dayKey}:${structure.id}:puzzle`);
+        const rewardSpores = 18 + (hashString(`${dayKey}:${structure.id}:reward`) % 12);
+        const grantsGolden = hashString(`${dayKey}:${structure.id}:golden`) % 5 === 0;
+        return {
+          dayKey,
+          quest,
+          riddle,
+          puzzle,
+          rewardSpores,
+          grantsGolden,
+        };
+      };
+
+      const isSundayNow = () => new Date().getDay() === 0;
+
+      const refreshDailyShrineProgress = () => {
+        const today = getLocalDayKey();
+        if (state.progress.shrineDailyKey === today) return;
+        state.progress.shrineDailyKey = today;
+        state.progress.shrineSolvedToday.clear();
+        for (const structure of STRUCTURES) {
+          if (structure.type === "shrine") {
+            state.progress.solvedStructures.delete(structure.id);
+          }
+        }
+      };
+
+      const refreshDailyBurnQuota = () => {
+        const today = getLocalDayKey();
+        if (state.burn.dayKey !== today) {
+          state.burn.dayKey = today;
+          state.burn.burnedToday = 0;
+        }
+      };
+
+      const getBurnRemainingToday = () => {
+        refreshDailyBurnQuota();
+        return Math.max(0, DAILY_SPORE_BURN_LIMIT - state.burn.burnedToday);
+      };
+
+      const getBurnPitStructure = () => STRUCTURES.find((entry) => entry.id === state.burnPit.structureId && entry.type === "burn-pit");
+
+      const renderBurnPitScreen = () => {
+        if (!state.burnPit.active) return;
+        const pit = getBurnPitStructure();
+        if (!pit) return;
+        const clan = getClanProfile();
+        const remaining = getBurnRemainingToday();
+        const nextSunday = getNextSunday();
+        const sundayLabel = formatShortDate(nextSunday);
+        if (dom.burnPitTitle) dom.burnPitTitle.textContent = pit.name;
+        if (dom.burnPitSubtitle) {
+          dom.burnPitSubtitle.textContent = `${getCurrentRealm().name} burn pit // Clan ${clan.name}`;
+        }
+        if (dom.burnPitDailyLimit) {
+          dom.burnPitDailyLimit.value = `${state.burn.burnedToday}/${DAILY_SPORE_BURN_LIMIT} used today`;
+        }
+        if (dom.burnPitAmountInput) {
+          const maxValue = Math.max(1, remaining);
+          dom.burnPitAmountInput.max = String(maxValue);
+          if (Number(dom.burnPitAmountInput.value) > maxValue) {
+            dom.burnPitAmountInput.value = String(maxValue);
+          }
+        }
+        if (dom.burnPitBurnBtn) {
+          dom.burnPitBurnBtn.disabled = remaining <= 0;
+        }
+        if (dom.burnPitMaxBtn) {
+          dom.burnPitMaxBtn.disabled = remaining <= 0;
+        }
+        if (dom.burnPitHint) {
+          dom.burnPitHint.textContent = `Daily cap remaining: ${remaining} spores. Sunday burn window: ${sundayLabel} (0.25 KING MYCO token schedule). Total burned by this player: ${state.burn.totalBurned}.`;
+        }
+      };
+
+      const openBurnPit = (pit) => {
+        state.keys.clear();
+        state.burnPit.active = true;
+        state.burnPit.structureId = pit.id;
+        state.mode = "burn-pit";
+        if (dom.burnPitScreen) dom.burnPitScreen.classList.add("active");
+        renderBurnPitScreen();
+      };
+
+      const closeBurnPit = () => {
+        if (!state.burnPit.active) return;
+        state.burnPit.active = false;
+        state.burnPit.structureId = null;
+        if (dom.burnPitScreen) dom.burnPitScreen.classList.remove("active");
+        if (state.mode === "burn-pit") state.mode = "explore";
+        state.contactLockUntil = Date.now() + 600;
+      };
+
+      const recordBurnPitEventRemote = async (eventRecord) => {
+        const base = dom.apiBase.value.trim();
+        if (!base) return "local-only";
+        try {
+          await callApi("/api/rpg/burn-pit/record", {
+            ...requestBase(),
+            sporesBurned: eventRecord.sporesBurned,
+            pitId: eventRecord.pitId,
+            pitName: eventRecord.pitName,
+            realmId: eventRecord.realmId,
+            clanId: eventRecord.clanId,
+            avatarId: eventRecord.avatarId,
+            sundayWindow: eventRecord.sundayWindow,
+            sundayTokenBurnAmount: WEEKLY_TOKEN_BURN_AMOUNT,
+            clientDayKey: state.burn.dayKey,
+          });
+          return "synced";
+        } catch (_error) {
+          return "queued";
+        }
+      };
+
+      const burnSporesAtPit = async (requestedAmount) => {
+        const pit = getBurnPitStructure();
+        if (!pit) return;
+        refreshDailyBurnQuota();
+        const remaining = getBurnRemainingToday();
+        if (remaining <= 0) {
+          setStatus(`Daily burn limit reached (${DAILY_SPORE_BURN_LIMIT} spores). Return tomorrow.`, true);
+          playSfx("error");
+          renderBurnPitScreen();
+          return;
+        }
+        const parsed = Math.floor(Number(requestedAmount));
+        if (!Number.isFinite(parsed) || parsed <= 0) {
+          setStatus("Enter a valid burn amount.", true);
+          playSfx("error");
+          return;
+        }
+        const burnAmount = Math.min(parsed, remaining);
+        if (state.hero.spores < burnAmount) {
+          setStatus(`Need ${burnAmount} spores to burn at ${pit.name}.`, true);
+          playSfx("error");
+          return;
+        }
+
+        state.hero.spores -= burnAmount;
+        recordAiSignal("rituals", 1);
+        recordAiSignal("commerce", 1);
+        state.burn.burnedToday += burnAmount;
+        state.burn.totalBurned += burnAmount;
+        const now = Date.now();
+        const sundayWindow = formatShortDate(getNextSunday(now));
+        const eventRecord = {
+          id: `burn-${now}`,
+          pitId: pit.id,
+          pitName: pit.name,
+          realmId: state.currentRealmId,
+          clanId: state.playerClan,
+          avatarId: state.playerAvatar,
+          sporesBurned: burnAmount,
+          recordedAt: now,
+          sundayWindow,
+          sundayTokenBurnAmount: WEEKLY_TOKEN_BURN_AMOUNT,
+          sundayBurnActive: isSundayNow(),
+          remoteStatus: "local",
+        };
+        state.burn.events.unshift(eventRecord);
+        state.burn.events = state.burn.events.slice(0, 30);
+        playSfx("portal");
+        const remoteStatus = await recordBurnPitEventRemote(eventRecord);
+        eventRecord.remoteStatus = remoteStatus;
+        if (remoteStatus === "synced") {
+          setStatus(`Burned ${burnAmount} spores at ${pit.name}. Recorded to kingmyco.io burn pit (${WEEKLY_TOKEN_BURN_AMOUNT} token Sunday schedule).`);
+        } else if (remoteStatus === "queued") {
+          setStatus(`Burned ${burnAmount} spores at ${pit.name}. Burn record queued for kingmyco.io sync.`);
+        } else {
+          setStatus(`Burned ${burnAmount} spores at ${pit.name}. Local burn ledger updated.`);
+        }
+        pushStoryEntry(`${pit.name} witnessed a ${burnAmount}-spore offering under your clan oath.`, "ritual");
+        updateLeaderboardEntry();
+        renderBurnPitScreen();
+        renderHud();
+        saveGame();
       };
 
       const createEnemyState = () =>
@@ -2418,11 +3828,14 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           .map((magicId) => MAGIC_SKILLS[magicId]?.name ?? magicId);
 
       const staticObstacles = [
-        { x: 1180, y: 360, w: 90, h: 360 },
-        { x: 1320, y: 620, w: 44, h: 420 },
-        { x: 1620, y: 1260, w: 320, h: 92 },
-        { x: 2820, y: 1120, w: 320, h: 92 },
-        { x: 2300, y: 2580, w: 360, h: 80 },
+        { x: 1360, y: 420, w: 110, h: 420 },
+        { x: 1720, y: 760, w: 52, h: 520 },
+        { x: 2280, y: 1460, w: 340, h: 92 },
+        { x: 3840, y: 1320, w: 340, h: 92 },
+        { x: 2740, y: 2960, w: 420, h: 86 },
+        { x: 4520, y: 2120, w: 260, h: 84 },
+        { x: 5200, y: 3620, w: 320, h: 88 },
+        { x: 1180, y: 3540, w: 560, h: 78 },
       ];
 
       const isBlocked = (nextX, nextY) => {
@@ -2453,6 +3866,126 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         return false;
       };
 
+      const scheduleRoamingSporeRespawn = (realmId, golden, now = Date.now(), forceFast = false) => {
+        const minMs = golden ? ROAMING_SPORE_SETTINGS.goldenRespawnMinMs : ROAMING_SPORE_SETTINGS.blueRespawnMinMs;
+        const maxMs = golden ? ROAMING_SPORE_SETTINGS.goldenRespawnMaxMs : ROAMING_SPORE_SETTINGS.blueRespawnMaxMs;
+        const delayMs = forceFast ? randomBetween(250, 1300) : randomBetween(minMs, maxMs);
+        const target = golden ? state.roamingSpores.nextGoldenByRealm : state.roamingSpores.nextBlueByRealm;
+        target[realmId] = now + delayMs;
+      };
+
+      const ensureRoamingSporeTimers = () => {
+        const now = Date.now();
+        for (const realm of REALMS) {
+          if (!Number.isFinite(state.roamingSpores.nextBlueByRealm[realm.id])) {
+            scheduleRoamingSporeRespawn(realm.id, false, now, true);
+          }
+          if (!Number.isFinite(state.roamingSpores.nextGoldenByRealm[realm.id])) {
+            scheduleRoamingSporeRespawn(realm.id, true, now, true);
+          }
+        }
+      };
+
+      const pickupCollisionBlocked = (realm, x, y) => {
+        const half = 10;
+        const testRect = { x: x - half, y: y - half, w: half * 2, h: half * 2 };
+        if (
+          testRect.x < realm.x ||
+          testRect.y < realm.y ||
+          testRect.x + testRect.w > realm.x + realm.w ||
+          testRect.y + testRect.h > realm.y + realm.h
+        ) {
+          return true;
+        }
+
+        for (const structure of STRUCTURES) {
+          if (!structure.solid) continue;
+          if (getEntityRealmId(structure) !== realm.id) continue;
+          if (intersectsRect(testRect, structure)) return true;
+        }
+        for (const wall of staticObstacles) {
+          if (getEntityRealmId(wall) !== realm.id) continue;
+          if (intersectsRect(testRect, wall)) return true;
+        }
+        for (const barrier of REALM_BARRIERS) {
+          if (getEntityRealmId(barrier) !== realm.id) continue;
+          if (intersectsRect(testRect, barrier)) return true;
+        }
+        for (const portal of PORTALS) {
+          if (portalSourceRealmId(portal) !== realm.id) continue;
+          if (dist(x, y, portal.x + portal.w / 2, portal.y + portal.h / 2) < 48) return true;
+        }
+        if (realm.id === state.currentRealmId && dist(x, y, state.hero.x, state.hero.y) < ROAMING_SPORE_SETTINGS.heroSafeRadius) {
+          return true;
+        }
+
+        for (const pickup of PICKUPS) {
+          if (getEntityRealmId(pickup) !== realm.id) continue;
+          if (dist(x, y, pickup.x, pickup.y) < ROAMING_SPORE_SETTINGS.pickupSpacing) return true;
+        }
+        for (const pickup of state.roamingSpores.active) {
+          if (pickup.region !== realm.id) continue;
+          if (dist(x, y, pickup.x, pickup.y) < ROAMING_SPORE_SETTINGS.pickupSpacing) return true;
+        }
+        return false;
+      };
+
+      const spawnRoamingSporeInRealm = (realm, golden, now = Date.now()) => {
+        const margin = ROAMING_SPORE_SETTINGS.spawnMargin;
+        const minX = realm.x + margin;
+        const maxX = realm.x + realm.w - margin;
+        const minY = realm.y + margin;
+        const maxY = realm.y + realm.h - margin;
+        if (maxX <= minX || maxY <= minY) return false;
+
+        for (let attempt = 0; attempt < ROAMING_SPORE_SETTINGS.spawnAttemptsPerTick; attempt += 1) {
+          const x = Math.round(randomBetween(minX, maxX));
+          const y = Math.round(randomBetween(minY, maxY));
+          if (pickupCollisionBlocked(realm, x, y)) continue;
+          const value = golden ? 1 : Math.round(randomBetween(10, 28));
+          state.roamingSpores.active.push({
+            id: `roam-${golden ? "gold" : "blue"}-${state.roamingSpores.seq}`,
+            region: realm.id,
+            x,
+            y,
+            value,
+            golden,
+            spawnedAt: now,
+          });
+          state.roamingSpores.seq += 1;
+          return true;
+        }
+        return false;
+      };
+
+      const maintainRoamingSporeSpawns = () => {
+        ensureRoamingSporeTimers();
+        const now = Date.now();
+        const profile = getNarrativeProfile();
+        const blueTargetPerRealm = Math.max(4, Math.round(ROAMING_SPORE_SETTINGS.blueTargetPerRealm * profile.blueSporeMultiplier));
+        const goldenTargetPerRealm = Math.max(1, Math.round(ROAMING_SPORE_SETTINGS.goldenTargetPerRealm * profile.goldenSporeMultiplier));
+        state.roamingSpores.active = state.roamingSpores.active.filter((pickup) =>
+          REALMS.some((realm) => realm.id === pickup.region),
+        );
+
+        for (const realm of REALMS) {
+          const activeInRealm = state.roamingSpores.active.filter((pickup) => pickup.region === realm.id);
+          const activeBlue = activeInRealm.filter((pickup) => !pickup.golden).length;
+          const activeGold = activeInRealm.filter((pickup) => pickup.golden).length;
+          const nextBlueAt = state.roamingSpores.nextBlueByRealm[realm.id] ?? 0;
+          const nextGoldAt = state.roamingSpores.nextGoldenByRealm[realm.id] ?? 0;
+
+          if (activeBlue < blueTargetPerRealm && now >= nextBlueAt) {
+            const spawned = spawnRoamingSporeInRealm(realm, false, now);
+            scheduleRoamingSporeRespawn(realm.id, false, now, !spawned);
+          }
+          if (activeGold < goldenTargetPerRealm && now >= nextGoldAt) {
+            const spawned = spawnRoamingSporeInRealm(realm, true, now);
+            scheduleRoamingSporeRespawn(realm.id, true, now, !spawned);
+          }
+        }
+      };
+
       const updateCamera = () => {
         const realm = getCurrentRealm();
         const maxX = Math.max(realm.x, realm.x + realm.w - worldCanvas.width);
@@ -2464,6 +3997,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const addClue = (clueId, clueLabel) => {
         if (!state.progress.clues.has(clueId)) {
           state.progress.clues.add(clueId);
+          recordAiSignal("curiosity", 2);
+          pushStoryEntry(`New clue secured: ${clueLabel}.`, "lore");
           setStatus(`Clue discovered: ${clueLabel}`);
           playSfx("clue");
         }
@@ -2480,16 +4015,39 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const map = {
           "rot-spore": "Rot Spore",
           "mold-raider": "Mold Raider",
+          "thorn-scout": "Thorn Scout",
+          "fungal-boar": "Fungal Boar",
+          "spore-imp": "Spore Imp",
           "fen-stalker": "Fen Stalker",
           "rot-jackal": "Rot Jackal",
+          "mire-lurker": "Mire Lurker",
+          "fang-mildew": "Fang Mildew",
           rougarou: "Rougarou",
           "ember-drone": "Ember Drone",
+          "ash-ripper": "Ash Ripper",
+          "cinder-harpy": "Cinder Harpy",
+          "basalt-drakelet": "Basalt Drakelet",
           "tri-drake": "Three-Headed Dragon",
           "shell-rot": "Shell Rot",
           "spine-fin": "Spine Fin",
+          "tide-reaver": "Tide Reaver",
+          "coral-wretch": "Coral Wretch",
           "evil-crab": "Evil Crab",
           "block-wraith": "Block Wraith",
+          "ledger-specter": "Ledger Specter",
+          "hash-raider": "Hash Raider",
+          "shard-lich": "Shard Lich",
+          "nonce-hunter": "Nonce Hunter",
           "dark-mycelius": "Dark Mycelius",
+          "thorn-bandit": "Thorn Bandit",
+          "spore-thief": "Spore Thief",
+          "briar-sneak": "Briar Sneak",
+          "bloom-raider": "Bloom Raider",
+          "basalt-hound": "Basalt Hound",
+          "void-miner": "Void Miner",
+          "rift-shade": "Rift Shade",
+          "slag-stalker": "Slag Stalker",
+          "dark-larva": "Dark Larva",
         };
         return map[kind] ?? kind;
       };
@@ -2561,6 +4119,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const scene = CUTSCENES[cutsceneId];
         if (!scene) return;
         state.progress.cutscenesSeen.add(cutsceneId);
+        pushStoryEntry(`Cutscene unlocked: ${scene.title}.`, "cutscene");
         state.cutscene = {
           active: true,
           id: cutsceneId,
@@ -2587,9 +4146,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const renderCutscene = () => {
         if (!state.cutscene.active) return;
+        const clan = getClanProfile();
         dom.cutsceneTitle.textContent = state.cutscene.title;
-        dom.cutsceneBody.textContent = state.cutscene.pages[state.cutscene.page] ?? "...";
-        dom.cutsceneMeta.textContent = `Scene ${state.cutscene.page + 1} / ${state.cutscene.pages.length}`;
+        dom.cutsceneBody.textContent = `${state.cutscene.pages[state.cutscene.page] ?? "..."}\n\n${clan.cutsceneThread}`;
+        dom.cutsceneMeta.textContent = `${clan.name} // Scene ${state.cutscene.page + 1} / ${state.cutscene.pages.length}`;
       };
 
       const advanceCutscene = () => {
@@ -2604,6 +4164,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const checkCutsceneTriggers = () => {
         if (state.cutscene.active || state.activeDialogue || state.mode === "battle") return;
+        const profile = getNarrativeProfile();
         if (!state.progress.cutscenesSeen.has("prologue")) {
           openCutscene("prologue");
           return;
@@ -2616,10 +4177,55 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           return;
         }
         if (
+          state.progress.clues.has("trade-charter") &&
+          state.progress.clues.size >= 6 &&
+          !state.progress.cutscenesSeen.has("commonsRise")
+        ) {
+          openCutscene("commonsRise");
+          return;
+        }
+        if (
+          state.progress.clues.has("peak-sky-map") &&
+          state.progress.defeatedBosses.has("tri-drake") &&
+          !state.progress.cutscenesSeen.has("towerSignals")
+        ) {
+          openCutscene("towerSignals");
+          return;
+        }
+        if (
           hasMagic("tidecall") &&
           !state.progress.cutscenesSeen.has("solanaReady")
         ) {
           openCutscene("solanaReady");
+          return;
+        }
+        if (
+          state.progress.clues.has("obsidian-oath") &&
+          !state.progress.cutscenesSeen.has("obsidianAwakening")
+        ) {
+          openCutscene("obsidianAwakening");
+          return;
+        }
+        if (
+          state.progress.interactedNpcs.size >= 10 &&
+          !state.progress.cutscenesSeen.has("voicesUnbound")
+        ) {
+          openCutscene("voicesUnbound");
+          return;
+        }
+        if (
+          state.story.entries.length >= 7 &&
+          !state.progress.cutscenesSeen.has("chronicleEngine")
+        ) {
+          openCutscene("chronicleEngine");
+          return;
+        }
+        if (
+          state.progress.defeatedBosses.size >= 3 &&
+          (profile.dominant === "warlord" || profile.dominant === "mystic" || profile.dominant === "seeker") &&
+          !state.progress.cutscenesSeen.has("endlessFrontier")
+        ) {
+          openCutscene("endlessFrontier");
           return;
         }
         if (
@@ -2649,6 +4255,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
         state.hero.spores -= price;
         state.inventory[itemType] += 1;
+        recordAiSignal("commerce", 1);
+        pushStoryEntry(`You purchased ${labels[itemType]} to prepare for the next arc.`, "economy");
         setStatus(`Purchased ${labels[itemType]}.`);
         playSfx("coin");
       };
@@ -2659,18 +4267,21 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           return;
         }
         if (itemType === "mycoPotion") {
+          recordAiSignal("rituals", 0.4);
           state.inventory.mycoPotion -= 1;
           const heal = 28 + state.hero.magic * 2;
           state.hero.hp = Math.min(state.hero.maxHp, state.hero.hp + heal);
           if (state.battle?.player) {
             state.battle.player.hp = Math.min(state.battle.player.maxHp, state.battle.player.hp + heal);
             state.battle.battleLog.push(`King Myco used a potion for +${heal} HP.`);
+            triggerBattleHealFx("player", heal);
           }
           setStatus(`Myco Potion used (+${heal} HP).`);
           playSfx("item");
           return;
         }
         if (itemType === "manaDew") {
+          recordAiSignal("rituals", 0.7);
           state.inventory.manaDew -= 1;
           state.hero.magicBoostTurns = Math.max(state.hero.magicBoostTurns, 3);
           setStatus("Mana Dew activated: skill power boosted for 3 turns.");
@@ -2678,6 +4289,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           return;
         }
         if (itemType === "smokeBomb") {
+          recordAiSignal("combat", 0.4);
           state.inventory.smokeBomb -= 1;
           if (state.mode !== "battle" || !state.battle || state.battle.status !== "active") {
             setStatus("Smoke Bomb can only be used in battle.", true);
@@ -2688,6 +4300,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             state.mode = "explore";
             state.battle = null;
             state.encounterEnemyId = null;
+            setBattlePopupActive(false);
+            resetBattleFx();
             setStatus("Smoke Bomb success: escaped battle.");
             playSfx("item");
             appendBattleLog("Escape succeeded.");
@@ -2705,16 +4319,23 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (now - state.aiRemoteDirectiveAt < 45000) return;
         state.aiRemoteDirectiveAt = now;
         try {
+          const clan = getClanProfile();
+          const profile = getNarrativeProfile();
+          const chroniclePulse = state.story.entries
+            .slice(0, 3)
+            .map((entry) => entry.text)
+            .join(" | ");
           const profilePulse = `morality=${state.hero.morality}, clues=${state.progress.clues.size}, bosses=${state.progress.defeatedBosses.size}, spores=${state.hero.spores}`;
           const coaching = await callApi("/api/mycoai/coach", {
             ...requestBase(),
-            prompt: `Myco Quest overworld directive (${profilePulse}). Give one concise narrative gameplay directive for next 60 seconds.`,
+            prompt: `Myco Quest adaptive chronicle (${profilePulse}, clan=${clan.name}, avatar=${getSelectedAvatarName()}, profile=${profile.text}). Recent story beats: ${chroniclePulse || "none yet"}. Return one concise immersive directive that evolves this player's unique narrative for the next minute.`,
           });
           const recommendation = Array.isArray(coaching?.recommendations)
             ? coaching.recommendations.find((entry) => typeof entry === "string")
             : null;
           if (recommendation) {
             state.aiDirective = `AI Coach: ${recommendation}`;
+            pushStoryEntry(`AI Coach evolved your route: ${recommendation}`, "ai");
           }
         } catch (_error) {
           // Optional enhancement; local loop continues when auth/scope is unavailable.
@@ -2725,6 +4346,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const alignment = state.hero.morality >= 20 ? "myco" : state.hero.morality <= -20 ? "dark" : "balanced";
         const bossCount = state.progress.defeatedBosses.size;
         const clueCount = state.progress.clues.size;
+        const clan = getClanProfile();
+        const profile = getNarrativeProfile();
+        const persona = getNpcPersonality(npc);
         const backstory = NPC_BACKSTORIES[npc.id];
         let body = npc.intro;
         if (alreadySpoken) {
@@ -2734,9 +4358,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         } else if (clueCount >= 3) {
           body = `${npc.intro} Clue density is high — puzzle routes now open if you read the signs.`;
         }
+        body = `${body}\n\nPersonality: ${persona.archetype} — ${persona.mannerism}`;
         if (backstory) {
           body = `${body}\n\nBackstory: ${backstory}`;
         }
+        body = `${body}\n\nReading You: ${npc.name} sees you as a ${profile.profileName} and adjusts counsel to match.`;
+        body = `${body}\n\nClan Thread (${clan.name}): ${clan.npcThread}`;
 
         const applyTrade = (trustful) => {
           const cost = npc.tradeCost ?? 0;
@@ -2757,6 +4384,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           if (npc.tradeItem === "manaDew") state.inventory.manaDew += qty;
           if (npc.tradeItem === "smokeBomb") state.inventory.smokeBomb += qty;
           if (npc.tradeItem === "goldenSpore") state.hero.goldenSpores += qty;
+          recordAiSignal("commerce", 2);
+          recordAiSignal("diplomacy", trustful ? 1 : 0);
+          pushStoryEntry(`${npc.name} completed a ${trustful ? "trust" : "risky"} trade with your banner.`, "npc");
           state.lastAdvice = npc.adviceGood;
           setStatus(`${npc.name} trade complete. ${npc.adviceGood}`);
           playSfx("coin");
@@ -2770,6 +4400,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           darkLabel: alignment === "myco" ? "Treat Rudely (-morality)" : "Darkside Path (-morality)",
           tradeLabel: `Trade (${npc.tradeCost ?? 0} spores)`,
           onMyco: () => {
+            recordAiSignal("compassion", 2);
+            recordAiSignal("diplomacy", 1);
+            recordAiSignal("curiosity", 1);
             applyMorality(8 + Math.floor(clueCount / 2));
             grantSpores(16 + bossCount * 2);
             state.lastAdvice = npc.adviceGood;
@@ -2778,9 +4411,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             }
             addClue(npc.clueId, npc.clueLabel);
             state.progress.interactedNpcs.add(npc.id);
+            pushStoryEntry(`${npc.name} pledged support after your compassionate choice.`, "npc");
             setStatus(`${npc.mycoText} Advice: ${npc.adviceGood}`);
           },
           onDark: () => {
+            recordAiSignal("ferocity", 2);
+            recordAiSignal("combat", 1);
             applyMorality(-10 - Math.floor(bossCount / 2));
             state.hero.attack += 1;
             state.lastAdvice = npc.adviceBad;
@@ -2789,6 +4425,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             }
             addClue(npc.clueId, npc.clueLabel);
             state.progress.interactedNpcs.add(npc.id);
+            pushStoryEntry(`${npc.name} yielded under pressure and marked your path with fear.`, "npc");
             setStatus(`${npc.darkText} Advice: ${npc.adviceBad}`);
           },
           onTrade: () => {
@@ -2798,7 +4435,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         };
       };
 
-      const ENTERABLE_STRUCTURE_TYPES = new Set(["house", "cave", "dungeon", "castle"]);
+      const ENTERABLE_STRUCTURE_TYPES = new Set(["house", "cave", "dungeon", "castle", "tower", "mushroom-shop"]);
 
       const isEnterableStructure = (structure) => ENTERABLE_STRUCTURE_TYPES.has(structure.type);
 
@@ -2809,7 +4446,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         state.mode = "interior";
         dom.interiorScreen.classList.add("active");
         dom.interiorTitle.textContent = structure.name;
-        dom.interiorSubtitle.textContent = `${structure.type.toUpperCase()} INTERIOR // ${getCurrentRealm().name}`;
+        dom.interiorSubtitle.textContent = `${structure.type.replace(/-/g, " ").toUpperCase()} INTERIOR // ${getCurrentRealm().name}`;
         dom.interiorHint.textContent = "Search for relics, clues, and supplies. Press E or Exit to leave.";
         drawInteriorScene(structure);
       };
@@ -2837,6 +4474,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           cave: ["#334155", "#0f172a", "#a5b4fc"],
           dungeon: ["#27272a", "#6d28d9", "#ddd6fe"],
           castle: ["#1e293b", "#2563eb", "#bfdbfe"],
+          tower: ["#1f2937", "#475569", "#cbd5e1"],
+          "mushroom-shop": ["#7c2d12", "#ef4444", "#fee2e2"],
         };
         const [base, accent, glow] = palette[structure.type] ?? ["#1f2937", "#4b5563", "#e2e8f0"];
         const roomGradient = interiorCtx.createLinearGradient(0, 0, width, height);
@@ -2897,6 +4536,24 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           interiorCtx.fillRect(width - 178, height - 130, 36, 36);
           interiorCtx.fillStyle = "#bfdbfe";
           interiorCtx.fillRect(width - 170, height - 120, 20, 14);
+        } else if (structure.type === "tower") {
+          interiorCtx.fillStyle = "#0f172a";
+          interiorCtx.fillRect(width - 230, height - 260, 120, 182);
+          interiorCtx.fillStyle = "#334155";
+          interiorCtx.fillRect(width - 216, height - 248, 92, 156);
+          interiorCtx.fillStyle = "#94a3b8";
+          interiorCtx.fillRect(width - 194, height - 220, 12, 12);
+          interiorCtx.fillRect(width - 162, height - 190, 12, 12);
+          interiorCtx.fillRect(width - 194, height - 160, 12, 12);
+        } else if (structure.type === "mushroom-shop") {
+          interiorCtx.fillStyle = "#7c2d12";
+          interiorCtx.fillRect(80, height - 178, 220, 98);
+          interiorCtx.fillStyle = "#ef4444";
+          interiorCtx.fillRect(66, height - 190, 248, 20);
+          interiorCtx.fillStyle = "#fecaca";
+          interiorCtx.fillRect(112, height - 146, 18, 14);
+          interiorCtx.fillRect(160, height - 146, 18, 14);
+          interiorCtx.fillRect(208, height - 146, 18, 14);
         }
 
         interiorCtx.fillStyle = "#f8fafc";
@@ -2936,43 +4593,83 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           state.hero.goldenSpores += 1;
           addClue("restoration-seed", "Restoration Seed");
           dom.interiorHint.textContent = "Castle vault opened: +1 Golden Spore and Restoration Seed clue.";
+        } else if (structure.type === "tower") {
+          grantSpores(26);
+          state.hero.magic += 1;
+          dom.interiorHint.textContent = "Tower relay calibrated: +26 Spores and +1 Magic.";
+        } else if (structure.type === "mushroom-shop") {
+          state.inventory.mycoPotion += 1;
+          state.inventory.manaDew += 1;
+          grantSpores(14);
+          dom.interiorHint.textContent = "Shop cache brokered: +1 Potion, +1 Mana Dew, +14 Spores.";
         }
         playSfx("pickup");
         drawInteriorScene(structure);
       };
 
       const buildStructureEncounter = (nearbyStructure) => {
-        const solved = state.progress.solvedStructures.has(nearbyStructure.id);
+        const isShrine = nearbyStructure.type === "shrine";
+        const shrineChallenge = isShrine ? getDailyShrineChallenge(nearbyStructure) : null;
+        const solved = isShrine
+          ? state.progress.shrineSolvedToday.has(nearbyStructure.id)
+          : state.progress.solvedStructures.has(nearbyStructure.id);
         const structurePortrait = {
           house: { glyph: "🏠", subtitle: "Village Contact" },
           cave: { glyph: "🕳️", subtitle: "Echoing Cavern" },
           dungeon: { glyph: "🏛️", subtitle: "Sealed Trial Hall" },
           castle: { glyph: "🏰", subtitle: "Royal Fortified Keep" },
-          shrine: { glyph: "🗿", subtitle: "Mycelic Shrine" },
+          tower: { glyph: "🗼", subtitle: "Signal Relay Tower" },
+          "mushroom-shop": { glyph: "🍄", subtitle: "Mushroom Supply Market" },
+          "burn-pit": { glyph: "🔥", subtitle: "Spore Burn Pit" },
+          shrine: { glyph: "🗿", subtitle: "Stone Sentinel Shrine" },
         };
         return {
           title: nearbyStructure.name,
           portrait: structurePortrait[nearbyStructure.type] ?? { glyph: "✨", subtitle: "Ancient Site" },
           body: solved
-            ? "You already solved this location's challenge. The echoes still guide your path."
-            : nearbyStructure.type === "shrine"
-              ? "A rune puzzle asks: 'What restores magic faster than conquest?'"
+            ? isShrine
+              ? `Today's shrine rite is complete. Return tomorrow for new quest, riddle, and puzzle rites.\n\nLast riddle answer: ${shrineChallenge?.riddle.answer ?? "Unknown"}`
+              : "You already solved this location's challenge. The echoes still guide your path."
+            : isShrine
+              ? `Daily Shrine Rite (${shrineChallenge?.dayKey}):\nQuest - ${shrineChallenge?.quest}\nRiddle - ${shrineChallenge?.riddle.prompt}\nPuzzle - ${shrineChallenge?.puzzle}`
               : nearbyStructure.type === "dungeon"
                 ? "A locked sigil puzzle blocks the inner chamber."
                 : nearbyStructure.type === "castle"
                   ? "A fortified hall hums with old crown wards and sealed relic doors."
-                : nearbyStructure.type === "house"
-                  ? "A household asks for aid and offers local intelligence in return."
-                  : "A villager asks for aid against roaming rot packs.",
-          mycoLabel: solved ? "Close" : "Resolve peacefully",
-          darkLabel: solved ? "Close" : "Force through",
+                  : nearbyStructure.type === "tower"
+                    ? "A relay tower calibration console flickers with unstable routes."
+                    : nearbyStructure.type === "mushroom-shop"
+                      ? "A market quarter offers rare mushroom brews and whispered route intel."
+                      : nearbyStructure.type === "house"
+                        ? "A household asks for aid and offers local intelligence in return."
+                      : nearbyStructure.type === "burn-pit"
+                        ? "The burn pit pulses with ritual heat. Offer spores to align with the Sunday token burn."
+                        : "A villager asks for aid against roaming rot packs.",
+          mycoLabel: solved ? "Close" : isShrine ? "Honor Shrine Rite" : "Resolve peacefully",
+          darkLabel: solved ? "Close" : isShrine ? "Break Through Rite" : "Force through",
           onMyco: () => {
             if (!solved) {
+              if (isShrine) {
+                recordAiSignal("rituals", 2);
+                recordAiSignal("curiosity", 1);
+                state.progress.solvedStructures.add(nearbyStructure.id);
+                state.progress.shrineSolvedToday.add(nearbyStructure.id);
+                applyMorality(6);
+                grantSpores(shrineChallenge.rewardSpores);
+                if (shrineChallenge.grantsGolden) {
+                  state.hero.goldenSpores += 1;
+                }
+                state.lastAdvice = `Shrine answer: ${shrineChallenge.riddle.answer}`;
+                pushStoryEntry(`${nearbyStructure.name} accepted your rite and revealed: ${shrineChallenge.riddle.answer}`, "shrine");
+                setStatus(`${nearbyStructure.name} renewed. +${shrineChallenge.rewardSpores} spores${shrineChallenge.grantsGolden ? " and +1 golden spore" : ""}.`);
+                return;
+              }
+              recordAiSignal("curiosity", 1);
+              if (nearbyStructure.type === "house" || nearbyStructure.type === "mushroom-shop") {
+                recordAiSignal("diplomacy", 1);
+              }
               state.progress.solvedStructures.add(nearbyStructure.id);
               applyMorality(7);
-              if (nearbyStructure.type === "shrine") {
-                state.hero.magic += 1;
-              }
               if (nearbyStructure.type === "dungeon") {
                 grantSpores(32);
                 addClue("dungeon-rune", "Ancient Dungeon Rune");
@@ -2980,20 +4677,44 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
               if (nearbyStructure.type === "castle") {
                 state.hero.goldenSpores += 1;
               }
+              if (nearbyStructure.type === "tower") {
+                state.hero.magic += 1;
+              }
+              if (nearbyStructure.type === "mushroom-shop") {
+                state.inventory.mycoPotion += 1;
+                state.inventory.manaDew += 1;
+              }
               if (nearbyStructure.type === "house") {
                 state.hero.hp = state.hero.maxHp;
                 state.lastAdvice = "House allies marked safer paths on your map.";
               }
+              pushStoryEntry(`${nearbyStructure.name} opened through disciplined strategy and trust.`, "quest");
               setStatus(`${nearbyStructure.name} completed. Your balanced path strengthens Myco magic.`);
             }
           },
           onDark: () => {
             if (!solved) {
+              if (isShrine) {
+                recordAiSignal("ferocity", 1);
+                recordAiSignal("rituals", 1);
+                state.progress.solvedStructures.add(nearbyStructure.id);
+                state.progress.shrineSolvedToday.add(nearbyStructure.id);
+                applyMorality(-6);
+                const darkReward = Math.max(10, shrineChallenge.rewardSpores - 7);
+                grantSpores(darkReward);
+                state.lastAdvice = `You forced the shrine. The true answer was: ${shrineChallenge.riddle.answer}`;
+                pushStoryEntry(`${nearbyStructure.name} was forced open; prophecy shifted around your choice.`, "shrine");
+                setStatus(`${nearbyStructure.name} was forced. +${darkReward} spores, but the shrine rejects your haste.`);
+                return;
+              }
+              recordAiSignal("ferocity", 2);
+              recordAiSignal("combat", 1);
               state.progress.solvedStructures.add(nearbyStructure.id);
               applyMorality(-9);
               state.hero.attack += 1;
               grantSpores(18);
               state.lastAdvice = "Rushed tactics unlocked riskier shortcuts with stronger enemies.";
+              pushStoryEntry(`${nearbyStructure.name} was breached by force, altering local rumor lines.`, "quest");
               setStatus(`${nearbyStructure.name} was forced open. You gained speed, but the realm darkened.`);
             }
           },
@@ -3067,8 +4788,27 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           return;
         }
 
+        const bumpBurnPit = STRUCTURES.find(
+          (entry) =>
+            entry.type === "burn-pit" &&
+            isInCurrentRealm(entry) &&
+            dist(state.hero.x, state.hero.y, entry.x + entry.w / 2, entry.y + entry.h / 2) < 42,
+        );
+        if (bumpBurnPit) {
+          if (state.contactLatch?.type === "structure" && state.contactLatch.id === bumpBurnPit.id) {
+            return;
+          }
+          state.contactLockUntil = now + 1200;
+          state.contactLatch = { type: "structure", id: bumpBurnPit.id };
+          openBurnPit(bumpBurnPit);
+          return;
+        }
+
         const bumpStructure = STRUCTURES.find(
-          (entry) => isInCurrentRealm(entry) && dist(state.hero.x, state.hero.y, entry.x + entry.w / 2, entry.y + entry.h / 2) < 44,
+          (entry) =>
+            entry.type !== "burn-pit" &&
+            isInCurrentRealm(entry) &&
+            dist(state.hero.x, state.hero.y, entry.x + entry.w / 2, entry.y + entry.h / 2) < 44,
         );
         if (bumpStructure) {
           if (state.contactLatch?.type === "structure" && state.contactLatch.id === bumpStructure.id) {
@@ -3086,6 +4826,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const interact = () => {
         if (state.intro.active || state.mode === "intro") {
+          return;
+        }
+        if (state.mode === "burn-pit" || state.burnPit.active) {
+          closeBurnPit();
           return;
         }
         if (state.mode === "interior" || state.interior.active) {
@@ -3111,6 +4855,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           (entry) => isInCurrentRealm(entry) && dist(state.hero.x, state.hero.y, entry.x + entry.w / 2, entry.y + entry.h / 2) < 88,
         );
         if (nearbyStructure) {
+          if (nearbyStructure.type === "burn-pit") {
+            openBurnPit(nearbyStructure);
+            return;
+          }
           if (isEnterableStructure(nearbyStructure)) {
             openInterior(nearbyStructure);
           } else {
@@ -3135,11 +4883,16 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (now - state.aiDirectiveAt < 9000) return;
         state.aiDirectiveAt = now;
         const realm = getRealmForPoint(state.hero.x, state.hero.y);
+        const profile = getNarrativeProfile();
         const options = [];
         options.push(`Realm pulse: ${realm?.name ?? "Unknown realm"} bends around your portal signature.`);
+        options.push(`Adaptive profile: ${profile.text}. The world is adjusting to your decisions.`);
         options.push(`AI director: ${state.progress.clues.size} clues gathered; new enemy paths are mutating.`);
         options.push(`Arcane loadout: ${learnedMagicIds().length} learned magic arts in your grimoire.`);
         options.push(`Inventory pulse: potion ${state.inventory.mycoPotion}, dew ${state.inventory.manaDew}, bomb ${state.inventory.smokeBomb}.`);
+        if (state.story.entries.length) {
+          options.push(`Latest chronicle beat: ${state.story.entries[0].text}`);
+        }
         if (state.hero.morality >= 35) {
           options.push("Mycoside influence surges. Villagers reveal safer routes.");
         } else if (state.hero.morality <= -35) {
@@ -3155,6 +4908,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const updateEnemies = (dt) => {
         const now = Date.now();
+        const profile = getNarrativeProfile();
         const regionSpeed = {
           "myco-kingdom": 34,
           "rougarou-fen": 42,
@@ -3180,7 +4934,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             enemy.directionShiftAt = now + randomBetween(1000, 3200);
           }
 
-          const speed = (enemy.boss ? 26 : (regionSpeed[enemy.region] ?? 36)) * (1 + darkPressure);
+          const speed = (enemy.boss ? 26 : (regionSpeed[enemy.region] ?? 36)) * (1 + darkPressure) * profile.enemyPaceMultiplier;
           const nextX = enemy.x + enemy.wanderDirX * speed * dt;
           const nextY = enemy.y + enemy.wanderDirY * speed * dt;
           const enemyRect = { x: nextX - 18, y: nextY - 18, w: 36, h: 36 };
@@ -3203,21 +4957,40 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const updatePickups = () => {
         const heroRect = getHeroRect();
+        const claimPickup = (pickup, fromRoaming = false) => {
+          if (pickup.golden) {
+            recordAiSignal("curiosity", fromRoaming ? 1 : 0.5);
+            state.hero.goldenSpores += pickup.value;
+            pushStoryEntry(`You recovered a golden spore in ${getCurrentRealm().name}.`, "explore");
+            setStatus(fromRoaming ? "Golden roaming spore collected!" : "Golden spore collected! Rare currency increased.");
+            playSfx("pickup");
+          } else {
+            recordAiSignal("exploration", fromRoaming ? 1.2 : 0.7);
+            grantSpores(pickup.value);
+            if (fromRoaming) {
+              pushStoryEntry(`You wandered off-script and found ${pickup.value} roaming blue spores.`, "explore");
+            }
+            setStatus(fromRoaming ? `Collected roaming blue spores (+${pickup.value}).` : `Collected ${pickup.value} spores.`);
+            playSfx("pickup");
+          }
+        };
+
         for (const pickup of PICKUPS) {
           if (!isInCurrentRealm(pickup)) continue;
           if (state.progress.collectedPickups.has(pickup.id)) continue;
           const pickupRect = { x: pickup.x - 10, y: pickup.y - 10, w: 20, h: 20 };
           if (!intersectsRect(heroRect, pickupRect)) continue;
           state.progress.collectedPickups.add(pickup.id);
-          if (pickup.golden) {
-            state.hero.goldenSpores += pickup.value;
-            setStatus("Golden spore collected! Rare currency increased.");
-            playSfx("pickup");
-          } else {
-            grantSpores(pickup.value);
-            setStatus(`Collected ${pickup.value} spores.`);
-            playSfx("pickup");
-          }
+          claimPickup(pickup, false);
+        }
+
+        for (let index = state.roamingSpores.active.length - 1; index >= 0; index -= 1) {
+          const pickup = state.roamingSpores.active[index];
+          if (pickup.region !== state.currentRealmId) continue;
+          const pickupRect = { x: pickup.x - 10, y: pickup.y - 10, w: 20, h: 20 };
+          if (!intersectsRect(heroRect, pickupRect)) continue;
+          state.roamingSpores.active.splice(index, 1);
+          claimPickup(pickup, true);
         }
       };
 
@@ -3260,11 +5033,15 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const engageEnemy = async (enemy) => {
         if (state.pendingBattle || state.mode === "battle") return;
+        recordAiSignal("combat", enemy.boss ? 1.4 : 0.8);
         state.pendingBattle = true;
         state.mode = "battle";
         state.encounterEnemyId = enemy.id;
+        setBattlePopupActive(true);
+        resetBattleFx();
         showBossIntro(enemy);
         setStatus(`Enemy contact: ${getEnemyDisplayName(enemy.kind)}. Initiating turn battle...`);
+        pushStoryEntry(`Encounter triggered: ${getEnemyDisplayName(enemy.kind)} challenges your path in ${getCurrentRealm().name}.`, "battle");
         playSfx("battle");
         appendBattleLog(`Encounter: ${getEnemyDisplayName(enemy.kind)}`);
 
@@ -3306,6 +5083,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           state.hero.hp = clamp(Math.round(battle.player.hp), 0, state.hero.maxHp);
         }
         if (battle.status === "won") {
+          recordAiSignal("combat", enemy?.boss ? 3 : 2);
           if (state.hero.hp <= 0) {
             state.hero.hp = Math.max(1, Math.floor(state.hero.maxHp * 0.2));
           }
@@ -3313,9 +5091,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           if (enemy?.boss) {
             state.hero.goldenSpores += 1;
             markBossDefeat(enemy.kind);
+            pushStoryEntry(`Boss Chronicle: ${getEnemyDisplayName(enemy.kind)} fell beneath your banner.`, "battle");
             setStatus(`Boss defeated: ${getEnemyDisplayName(enemy.kind)}. Golden spore gained.`);
             playSfx("win");
           } else {
+            pushStoryEntry(`Field report: ${getEnemyDisplayName(enemy?.kind ?? "hostile")} was defeated in ${getCurrentRealm().name}.`, "battle");
             setStatus(`Victory! +${battle.rewardSpores ?? 0} spores.`);
             playSfx("win");
           }
@@ -3331,18 +5111,24 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
               mycoLabel: "Seal the chain with mercy",
               darkLabel: "Bind the chain with force",
               onMyco: () => {
+                recordAiSignal("compassion", 3);
                 applyMorality(14);
                 addClue("restoration-seed", "Restoration Seed");
+                pushStoryEntry("Finale path chosen: mercy sealed the chain in cooperative light.", "finale");
                 setStatus("Mercy path selected. Cooperative endgame content unlocked.");
               },
               onDark: () => {
+                recordAiSignal("ferocity", 3);
                 applyMorality(-16);
                 state.hero.attack += 1;
+                pushStoryEntry("Finale path chosen: force bound the chain into a harsher era.", "finale");
                 setStatus("Force path selected. Hard-mode branch unlocked.");
               },
             });
           }
         } else if (battle.status === "lost") {
+          recordAiSignal("ferocity", 1);
+          pushStoryEntry(`You were defeated in ${getCurrentRealm().name}, but the chronicle continues from sanctuary.`, "battle");
           applyMorality(-6);
           state.hero.hp = state.hero.maxHp;
           const spawn = REALM_DEFAULT_SPAWNS[state.currentRealmId] ?? { x: 280, y: 500 };
@@ -3353,6 +5139,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
         state.mode = "explore";
         state.encounterEnemyId = null;
+        setBattlePopupActive(false);
+        resetBattleFx();
+        updateLeaderboardEntry();
         if (battle.status !== "active") {
           state.battle = null;
         }
@@ -3379,6 +5168,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           battle.enemy.hp = Math.max(0, battle.enemy.hp - mitigated);
           battle.enemy.guard = Math.max(0, battle.enemy.guard - Math.round(playerDamage * 0.6));
           battle.battleLog.push(`King Myco dealt ${mitigated} damage.`);
+          triggerBattleHitFx("enemy", mitigated, kind === "skill" && mitigated >= 20);
         } else {
           battle.battleLog.push("King Myco braces for impact.");
         }
@@ -3395,6 +5185,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         battle.player.guard = Math.max(0, battle.player.guard - 10);
         battle.enemy.guard = Math.min(16, battle.enemy.guard + 4);
         battle.battleLog.push(`${battle.enemy.name} hits for ${mitigatedEnemy}.`);
+        triggerBattleHitFx("player", mitigatedEnemy, mitigatedEnemy >= 22);
 
         if (battle.player.hp <= 0) {
           battle.status = "lost";
@@ -3413,7 +5204,17 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           setStatus("No active battle turn to resolve.", true);
           return;
         }
+        if (kind === "guard") {
+          recordAiSignal("diplomacy", 0.2);
+        } else if (kind === "skill") {
+          recordAiSignal("rituals", 0.5);
+          recordAiSignal("combat", 0.5);
+        } else {
+          recordAiSignal("ferocity", 0.3);
+        }
         const element = dom.elementSelect.value;
+        const beforePlayerHp = state.battle.player?.hp;
+        const beforeEnemyHp = state.battle.enemy?.hp;
         if (state.battleMode === "api") {
           try {
             const action = kind === "skill" ? { kind, element } : { kind };
@@ -3423,6 +5224,18 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             });
             state.battle = receipt.battle;
             appendBattleLog(`API turn ${receipt.battle.turnNumber}: ${kind}`);
+            if (typeof beforeEnemyHp === "number" && typeof receipt.battle.enemy?.hp === "number") {
+              const enemyDamage = Math.max(0, Math.round(beforeEnemyHp - receipt.battle.enemy.hp));
+              if (enemyDamage > 0) {
+                triggerBattleHitFx("enemy", enemyDamage, kind === "skill" && enemyDamage >= 20);
+              }
+            }
+            if (typeof beforePlayerHp === "number" && typeof receipt.battle.player?.hp === "number") {
+              const playerDamage = Math.max(0, Math.round(beforePlayerHp - receipt.battle.player.hp));
+              if (playerDamage > 0) {
+                triggerBattleHitFx("player", playerDamage, playerDamage >= 22);
+              }
+            }
           } catch (error) {
             setStatus(String(error), true);
             return;
@@ -3477,6 +5290,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const speed = state.hero.speed * (sprint ? 1.34 : 1);
         const vx = (xAxis / mag) * speed * dt;
         const vy = (yAxis / mag) * speed * dt;
+        const travel = Math.hypot(vx, vy);
+        if (travel > 0) {
+          recordAiSignal("exploration", travel / 120);
+        }
 
         const nextX = state.hero.x + vx;
         if (!isBlocked(nextX, state.hero.y)) {
@@ -3490,10 +5307,16 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const update = async (dt) => {
         state.worldTime += dt;
+        refreshDailyShrineProgress();
+        if (state.mode !== "intro" && !state.intro.active) {
+          maintainRoamingSporeSpawns();
+        }
         if (state.mode === "intro" || state.intro.active) return;
+        updateLivingStory();
         if (state.activeDialogue) return;
         if (state.cutscene.active || state.mode === "cutscene") return;
         if (state.mode === "interior" || state.interior.active) return;
+        if (state.mode === "burn-pit" || state.burnPit.active) return;
         if (state.mode === "battle") return;
         moveHero(dt);
         updateEnemies(dt);
@@ -3510,52 +5333,115 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         checkCutsceneTriggers();
       };
 
+      const withPaperPose = (ctx, x, y, seed, drawFn) => {
+        const sway = Math.sin(state.worldTime * 3.8 + seed) * 1.1;
+        const tilt = Math.sin(state.worldTime * 2.6 + seed * 1.8) * 0.07;
+        const stretch = 1 + Math.sin(state.worldTime * 4.1 + seed * 0.9) * 0.03;
+        ctx.save();
+        ctx.translate(x + sway, y);
+        ctx.transform(1, 0, tilt, stretch, 0, 0);
+        drawFn();
+        ctx.restore();
+      };
+
+      const drawCutoutOutline = (ctx, left, top, width, height) => {
+        ctx.strokeStyle = "rgba(2, 6, 23, 0.88)";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(left, top, width, height);
+        ctx.strokeStyle = "rgba(248, 250, 252, 0.22)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(left + 1, top + 1, Math.max(2, width - 2), Math.max(2, height - 2));
+      };
+
       const drawPixelCharacter = (ctx, screenX, screenY) => {
         const x = Math.round(screenX);
         const y = Math.round(screenY + Math.sin(state.worldTime * 8) * 1.2);
-        const aura = state.hero.morality >= 0 ? "rgba(34, 211, 238, 0.42)" : "rgba(244, 63, 94, 0.42)";
+        const clan = getClanProfile();
+        const aura = state.hero.morality >= 0 ? `${clan.colors.aura}66` : "rgba(244, 63, 94, 0.42)";
+        const capColor = clan.colors.cap;
+        const robeColor = clan.colors.robe;
+        const eyeColor = clan.colors.eye;
 
-        ctx.fillStyle = "rgba(2, 6, 23, 0.65)";
-        ctx.fillRect(x - 11, y + 12, 22, 5);
-        ctx.fillStyle = aura;
-        ctx.fillRect(x - 12, y - 15, 24, 4);
+        ctx.fillStyle = "rgba(2, 6, 23, 0.5)";
+        ctx.fillRect(x - 13, y + 12, 26, 5);
 
-        ctx.fillStyle = "#facc15";
-        ctx.fillRect(x - 7, y - 22, 14, 4);
-        ctx.fillRect(x - 5, y - 26, 2, 4);
-        ctx.fillRect(x - 1, y - 28, 2, 6);
-        ctx.fillRect(x + 3, y - 26, 2, 4);
+        withPaperPose(ctx, x, y, 0.25, () => {
+          drawCutoutOutline(ctx, -13, -30, 28, 46);
+          ctx.fillStyle = aura;
+          ctx.fillRect(-12, -15, 24, 4);
 
-        ctx.fillStyle = "#991b1b";
-        ctx.fillRect(x - 11, y - 19, 22, 8);
-        ctx.fillStyle = "#ef4444";
-        ctx.fillRect(x - 9, y - 17, 18, 4);
-        ctx.fillStyle = "#fca5a5";
-        ctx.fillRect(x - 5, y - 16, 4, 2);
-        ctx.fillRect(x + 1, y - 16, 4, 2);
+          ctx.fillStyle = "#facc15";
+          ctx.fillRect(-7, -22, 14, 4);
+          ctx.fillRect(-5, -26, 2, 4);
+          ctx.fillRect(-1, -28, 2, 6);
+          ctx.fillRect(3, -26, 2, 4);
 
-        ctx.fillStyle = "#020617";
-        ctx.fillRect(x - 7, y - 11, 14, 10);
-        ctx.fillStyle = "#22c55e";
-        ctx.fillRect(x - 4, y - 8, 2, 2);
-        ctx.fillRect(x + 2, y - 8, 2, 2);
-        ctx.fillStyle = "#86efac";
-        ctx.fillRect(x - 4, y - 6, 2, 1);
-        ctx.fillRect(x + 2, y - 6, 2, 1);
+          ctx.fillStyle = capColor;
+          ctx.fillRect(-11, -19, 22, 8);
+          ctx.fillStyle = clan.colors.primary;
+          ctx.fillRect(-9, -17, 18, 4);
+          ctx.fillStyle = "#fca5a5";
+          ctx.fillRect(-5, -16, 4, 2);
+          ctx.fillRect(1, -16, 4, 2);
 
-        ctx.fillStyle = "#6d28d9";
-        ctx.fillRect(x - 10, y - 1, 20, 14);
-        ctx.fillStyle = "#4c1d95";
-        ctx.fillRect(x - 8, y + 3, 16, 10);
-        ctx.fillStyle = "#c4b5fd";
-        ctx.fillRect(x - 1, y + 2, 2, 10);
+          ctx.fillStyle = "#020617";
+          ctx.fillRect(-7, -11, 14, 10);
+          ctx.fillStyle = eyeColor;
+          ctx.fillRect(-4, -8, 2, 2);
+          ctx.fillRect(2, -8, 2, 2);
+          ctx.fillStyle = "#86efac";
+          ctx.fillRect(-4, -6, 2, 1);
+          ctx.fillRect(2, -6, 2, 1);
 
-        ctx.fillStyle = "#713f12";
-        ctx.fillRect(x + 12, y - 10, 2, 21);
-        ctx.fillStyle = "#22c55e";
-        ctx.fillRect(x + 9, y - 14, 8, 5);
-        ctx.fillStyle = "#86efac";
-        ctx.fillRect(x + 11, y - 13, 4, 2);
+          ctx.fillStyle = robeColor;
+          ctx.fillRect(-10, -1, 20, 14);
+          ctx.fillStyle = clan.colors.accent;
+          ctx.fillRect(-8, 3, 16, 10);
+          ctx.fillStyle = "#c4b5fd";
+          ctx.fillRect(-1, 2, 2, 10);
+
+          ctx.fillStyle = "#713f12";
+          ctx.fillRect(12, -10, 2, 21);
+          ctx.fillStyle = "#22c55e";
+          ctx.fillRect(9, -14, 8, 5);
+          ctx.fillStyle = "#86efac";
+          ctx.fillRect(11, -13, 4, 2);
+
+          if (state.playerClan === "rougarou") {
+            ctx.fillStyle = "#a855f7";
+            ctx.fillRect(-9, -22, 5, 5);
+            ctx.fillRect(4, -22, 5, 5);
+          } else if (state.playerClan === "dragon-brood") {
+            ctx.fillStyle = "#f97316";
+            ctx.fillRect(-9, -25, 3, 6);
+            ctx.fillRect(6, -25, 3, 6);
+          } else if (state.playerClan === "dark-mycelius") {
+            ctx.fillStyle = "#84cc16";
+            ctx.fillRect(-6, -10, 12, 1);
+            ctx.fillRect(-2, -12, 4, 2);
+          } else if (state.playerClan === "tegbot") {
+            ctx.fillStyle = "#22d3ee";
+            ctx.fillRect(-8, -20, 16, 2);
+            ctx.fillRect(-1, -24, 2, 4);
+          } else if (state.playerClan === "shiba-inu") {
+            ctx.fillStyle = "#f97316";
+            ctx.fillRect(-8, -22, 4, 4);
+            ctx.fillRect(4, -22, 4, 4);
+          }
+
+          if (state.playerAvatar.includes("prime") || state.playerAvatar.includes("code")) {
+            ctx.fillStyle = "#22d3ee";
+            ctx.fillRect(-6, 8, 12, 2);
+          } else if (state.playerAvatar.includes("fang") || state.playerAvatar.includes("claw")) {
+            ctx.fillStyle = "#a855f7";
+            ctx.fillRect(-10, 9, 3, 3);
+            ctx.fillRect(7, 9, 3, 3);
+          } else if (state.playerAvatar.includes("brood") || state.playerAvatar.includes("ember")) {
+            ctx.fillStyle = "#f97316";
+            ctx.fillRect(-12, -2, 2, 6);
+            ctx.fillRect(10, -2, 2, 6);
+          }
+        });
       };
 
       const drawNpc = (ctx, npc, screenX, screenY) => {
@@ -3569,17 +5455,20 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         ];
         const [cloak, accent, eye] = palettes[tone];
 
-        ctx.fillStyle = "rgba(2, 6, 23, 0.58)";
-        ctx.fillRect(x - 10, y + 7, 20, 4);
-        ctx.fillStyle = cloak;
-        ctx.fillRect(x - 10, y - 15, 20, 21);
-        ctx.fillStyle = accent;
-        ctx.fillRect(x - 7, y - 12, 14, 6);
-        ctx.fillStyle = eye;
-        ctx.fillRect(x - 4, y - 5, 2, 2);
-        ctx.fillRect(x + 2, y - 5, 2, 2);
-        ctx.fillStyle = "#94a3b8";
-        ctx.fillRect(x - 1, y - 1, 2, 6);
+        ctx.fillStyle = "rgba(2, 6, 23, 0.42)";
+        ctx.fillRect(x - 11, y + 7, 22, 4);
+        withPaperPose(ctx, x, y, tone + 0.5, () => {
+          drawCutoutOutline(ctx, -11, -16, 22, 24);
+          ctx.fillStyle = cloak;
+          ctx.fillRect(-10, -15, 20, 21);
+          ctx.fillStyle = accent;
+          ctx.fillRect(-7, -12, 14, 6);
+          ctx.fillStyle = eye;
+          ctx.fillRect(-4, -5, 2, 2);
+          ctx.fillRect(2, -5, 2, 2);
+          ctx.fillStyle = "#94a3b8";
+          ctx.fillRect(-1, -1, 2, 6);
+        });
       };
 
       const drawEnemy = (ctx, enemy, screenX, screenY) => {
@@ -3588,66 +5477,132 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const kindPalette = {
           "rot-spore": ["#ef4444", "#fca5a5"],
           "mold-raider": ["#f97316", "#fdba74"],
+          "thorn-scout": ["#65a30d", "#d9f99d"],
+          "fungal-boar": ["#78350f", "#fbbf24"],
+          "spore-imp": ["#dc2626", "#fecaca"],
           "fen-stalker": ["#84cc16", "#d9f99d"],
           "rot-jackal": ["#65a30d", "#bef264"],
+          "mire-lurker": ["#3f6212", "#a3e635"],
+          "fang-mildew": ["#4d7c0f", "#d9f99d"],
           rougarou: ["#7e22ce", "#d8b4fe"],
           "ember-drone": ["#fb923c", "#fdba74"],
           "ash-ripper": ["#ea580c", "#fdba74"],
+          "cinder-harpy": ["#f97316", "#fed7aa"],
+          "basalt-drakelet": ["#57534e", "#d6d3d1"],
           "tri-drake": ["#dc2626", "#fca5a5"],
           "shell-rot": ["#0891b2", "#67e8f9"],
           "spine-fin": ["#0e7490", "#a5f3fc"],
+          "tide-reaver": ["#0f766e", "#99f6e4"],
+          "coral-wretch": ["#14b8a6", "#99f6e4"],
           "evil-crab": ["#ef4444", "#fecaca"],
           "block-wraith": ["#7c3aed", "#c4b5fd"],
           "ledger-specter": ["#6366f1", "#a5b4fc"],
+          "hash-raider": ["#4338ca", "#c7d2fe"],
+          "shard-lich": ["#312e81", "#a5b4fc"],
+          "nonce-hunter": ["#4f46e5", "#c4b5fd"],
           "dark-mycelius": ["#111827", "#22c55e"],
           "thorn-bandit": ["#16a34a", "#86efac"],
           "spore-thief": ["#059669", "#6ee7b7"],
+          "briar-sneak": ["#15803d", "#4ade80"],
+          "bloom-raider": ["#65a30d", "#bef264"],
           "basalt-hound": ["#52525b", "#d4d4d8"],
           "void-miner": ["#1e293b", "#94a3b8"],
+          "rift-shade": ["#334155", "#cbd5e1"],
+          "slag-stalker": ["#78716c", "#e7e5e4"],
+          "dark-larva": ["#374151", "#9ca3af"],
         };
         const [base, accent] = kindPalette[enemy.kind] ?? ["#f97316", "#7c2d12"];
 
-        ctx.fillStyle = "rgba(2, 6, 23, 0.58)";
-        ctx.fillRect(x - 12, y + 10, 24, 4);
-        ctx.fillStyle = base;
-        ctx.fillRect(x - 11, y - 10, 22, 20);
-        ctx.fillStyle = accent;
-        ctx.fillRect(x - 9, y - 8, 18, 8);
+        ctx.fillStyle = "rgba(2, 6, 23, 0.42)";
+        ctx.fillRect(x - 13, y + 10, 26, 4);
+        withPaperPose(ctx, x, y, enemy.x * 0.0007 + enemy.y * 0.0004, () => {
+          drawCutoutOutline(ctx, -14, -12, 28, 24);
+          ctx.fillStyle = base;
+          ctx.fillRect(-11, -10, 22, 20);
+          ctx.fillStyle = accent;
+          ctx.fillRect(-9, -8, 18, 8);
 
-        if (enemy.kind.includes("drake")) {
-          ctx.fillStyle = accent;
-          ctx.fillRect(x - 16, y - 2, 5, 5);
-          ctx.fillRect(x + 11, y - 2, 5, 5);
-          ctx.fillStyle = "#fef08a";
-          ctx.fillRect(x - 1, y - 14, 2, 4);
-        } else if (enemy.kind.includes("crab") || enemy.kind.includes("shell")) {
-          ctx.fillStyle = accent;
-          ctx.fillRect(x - 16, y - 2, 5, 3);
-          ctx.fillRect(x + 11, y - 2, 5, 3);
-          ctx.fillRect(x - 14, y + 6, 4, 3);
-          ctx.fillRect(x + 10, y + 6, 4, 3);
-        } else if (enemy.kind.includes("wraith") || enemy.kind.includes("specter")) {
-          ctx.fillStyle = accent;
-          ctx.fillRect(x - 6, y + 10, 4, 3);
-          ctx.fillRect(x + 2, y + 10, 4, 3);
-          ctx.fillStyle = "rgba(196, 181, 253, 0.38)";
-          ctx.fillRect(x - 10, y - 16, 20, 4);
-        } else if (enemy.kind === "dark-mycelius") {
-          ctx.fillStyle = "#22c55e";
-          ctx.fillRect(x - 8, y - 12, 16, 2);
-          ctx.fillRect(x - 1, y - 16, 2, 4);
-        }
+          if (enemy.kind.includes("drake")) {
+            ctx.fillStyle = accent;
+            ctx.fillRect(-16, -2, 5, 5);
+            ctx.fillRect(11, -2, 5, 5);
+            ctx.fillStyle = "#fef08a";
+            ctx.fillRect(-1, -14, 2, 4);
+          } else if (enemy.kind.includes("crab") || enemy.kind.includes("shell")) {
+            ctx.fillStyle = accent;
+            ctx.fillRect(-16, -2, 5, 3);
+            ctx.fillRect(11, -2, 5, 3);
+            ctx.fillRect(-14, 6, 4, 3);
+            ctx.fillRect(10, 6, 4, 3);
+          } else if (enemy.kind.includes("wraith") || enemy.kind.includes("specter")) {
+            ctx.fillStyle = accent;
+            ctx.fillRect(-6, 10, 4, 3);
+            ctx.fillRect(2, 10, 4, 3);
+            ctx.fillStyle = "rgba(196, 181, 253, 0.38)";
+            ctx.fillRect(-10, -16, 20, 4);
+          } else if (enemy.kind === "dark-mycelius") {
+            ctx.fillStyle = "#22c55e";
+            ctx.fillRect(-8, -12, 16, 2);
+            ctx.fillRect(-1, -16, 2, 4);
+          }
 
-        ctx.fillStyle = "#020617";
-        ctx.fillRect(x - 4, y - 3, 3, 3);
-        ctx.fillRect(x + 1, y - 3, 3, 3);
-        ctx.fillStyle = "#86efac";
-        ctx.fillRect(x - 3, y - 2, 1, 1);
-        ctx.fillRect(x + 2, y - 2, 1, 1);
-        if (enemy.boss) {
-          ctx.strokeStyle = "#f8fafc";
-          ctx.lineWidth = 2;
-          ctx.strokeRect(x - 15, y - 14, 30, 30);
+          ctx.fillStyle = "#020617";
+          ctx.fillRect(-4, -3, 3, 3);
+          ctx.fillRect(1, -3, 3, 3);
+          ctx.fillStyle = "#86efac";
+          ctx.fillRect(-3, -2, 1, 1);
+          ctx.fillRect(2, -2, 1, 1);
+          if (enemy.boss) {
+            ctx.strokeStyle = "#f8fafc";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(-15, -14, 30, 30);
+          }
+        });
+      };
+
+      const drawParallaxDecoration = (ctx, deco, sx, sy) => {
+        if (deco.kind === "canopy") {
+          ctx.fillStyle = "rgba(21, 128, 61, 0.8)";
+          ctx.fillRect(sx, sy + 18, deco.w, deco.h - 22);
+          ctx.fillStyle = "rgba(74, 222, 128, 0.58)";
+          ctx.fillRect(sx + 14, sy + 30, deco.w - 30, 18);
+        } else if (deco.kind === "cloud") {
+          ctx.fillStyle = "rgba(226, 232, 240, 0.32)";
+          ctx.fillRect(sx + 18, sy + 24, deco.w - 36, deco.h - 44);
+          ctx.fillStyle = "rgba(248, 250, 252, 0.24)";
+          ctx.fillRect(sx + 40, sy + 16, deco.w - 90, 18);
+        } else if (deco.kind === "mist") {
+          ctx.fillStyle = "rgba(148, 163, 184, 0.24)";
+          ctx.fillRect(sx, sy + 34, deco.w, deco.h - 48);
+          ctx.fillStyle = "rgba(226, 232, 240, 0.18)";
+          ctx.fillRect(sx + 26, sy + 48, deco.w - 56, 20);
+        } else if (deco.kind === "vine") {
+          ctx.fillStyle = "rgba(22, 163, 74, 0.52)";
+          ctx.fillRect(sx + 20, sy, 12, deco.h);
+          ctx.fillRect(sx + 62, sy + 18, 10, deco.h - 40);
+          ctx.fillStyle = "rgba(134, 239, 172, 0.36)";
+          ctx.fillRect(sx + 16, sy + 44, 28, 12);
+          ctx.fillRect(sx + 56, sy + 112, 24, 10);
+        } else if (deco.kind === "banner") {
+          ctx.fillStyle = "rgba(127, 29, 29, 0.64)";
+          ctx.fillRect(sx + 24, sy + 12, deco.w - 52, deco.h - 30);
+          ctx.fillStyle = "rgba(248, 250, 252, 0.2)";
+          ctx.fillRect(sx + 32, sy + 26, deco.w - 68, 14);
+          ctx.fillStyle = "rgba(15, 23, 42, 0.6)";
+          ctx.fillRect(sx + 18, sy, 6, deco.h);
+          ctx.fillRect(sx + deco.w - 28, sy, 6, deco.h);
+        } else if (deco.kind === "chain") {
+          ctx.strokeStyle = "rgba(148, 163, 184, 0.5)";
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.moveTo(sx + 4, sy + 18);
+          ctx.lineTo(sx + deco.w * 0.33, sy + deco.h * 0.52);
+          ctx.lineTo(sx + deco.w * 0.66, sy + deco.h * 0.28);
+          ctx.lineTo(sx + deco.w - 6, sy + deco.h * 0.66);
+          ctx.stroke();
+          ctx.fillStyle = "rgba(226, 232, 240, 0.28)";
+          ctx.fillRect(sx + 14, sy + 20, 16, 10);
+          ctx.fillRect(sx + deco.w - 30, sy + deco.h - 18, 16, 10);
         }
       };
 
@@ -3716,15 +5671,79 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           ctx.fillRect(sx + 22, sy + 10, 24, 7);
           ctx.fillRect(sx + structure.w - 46, sy + 10, 24, 7);
           ctx.fillRect(sx + structure.w / 2 - 9, sy + 40, 18, 14);
-        } else if (structure.type === "shrine") {
-          ctx.fillStyle = "#0f766e";
-          ctx.fillRect(sx, sy, structure.w, structure.h);
+        } else if (structure.type === "tower") {
+          ctx.fillStyle = "#1f2937";
+          ctx.fillRect(sx + 24, sy + 8, structure.w - 48, structure.h - 8);
+          ctx.fillStyle = "#334155";
+          ctx.fillRect(sx + 34, sy + 18, structure.w - 68, structure.h - 32);
+          ctx.fillStyle = "#94a3b8";
+          for (let y = sy + 34; y < sy + structure.h - 38; y += 30) {
+            ctx.fillRect(sx + structure.w / 2 - 9, y, 18, 10);
+          }
+          ctx.fillStyle = "#111827";
+          ctx.fillRect(sx + structure.w / 2 - 12, sy + structure.h - 28, 24, 20);
+          ctx.fillStyle = "#64748b";
+          ctx.fillRect(sx + structure.w / 2 - 18, sy, 36, 10);
+        } else if (structure.type === "mushroom-shop") {
+          ctx.fillStyle = "#7c2d12";
+          ctx.fillRect(sx, sy + 24, structure.w, structure.h - 24);
+          ctx.fillStyle = "#ef4444";
+          ctx.fillRect(sx - 10, sy + 10, structure.w + 20, 18);
+          ctx.fillStyle = "#fecaca";
+          ctx.fillRect(sx + 16, sy + 40, 12, 10);
+          ctx.fillRect(sx + 46, sy + 40, 12, 10);
+          ctx.fillRect(sx + 76, sy + 40, 12, 10);
+          ctx.fillStyle = "#fca5a5";
+          ctx.fillRect(sx + structure.w / 2 - 10, sy + structure.h - 26, 20, 16);
+        } else if (structure.type === "burn-pit") {
+          ctx.fillStyle = "#1f2937";
+          ctx.fillRect(sx, sy + 18, structure.w, structure.h - 18);
+          ctx.fillStyle = "#374151";
+          ctx.fillRect(sx + 8, sy + 26, structure.w - 16, structure.h - 26);
+          ctx.fillStyle = "#111827";
+          ctx.fillRect(sx + 20, sy + 32, structure.w - 40, structure.h - 36);
+          ctx.fillStyle = "#f97316";
+          ctx.fillRect(sx + structure.w / 2 - 10, sy + 10, 20, 12);
           ctx.fillStyle = "#facc15";
-          ctx.fillRect(sx + 28, sy + 20, 22, 22);
+          ctx.fillRect(sx + structure.w / 2 - 6, sy + 6, 12, 8);
+          ctx.fillStyle = "#22c55e";
+          ctx.fillRect(sx + structure.w / 2 - 3, sy + 2, 6, 4);
+        } else if (structure.type === "shrine") {
+          // Easter Island-inspired moai shrine face
+          ctx.fillStyle = "#1f2937";
+          ctx.fillRect(sx + 18, sy + 8, structure.w - 36, structure.h - 14);
+          ctx.fillStyle = "#374151";
+          ctx.fillRect(sx + 24, sy + 14, structure.w - 48, structure.h - 24);
+          ctx.fillStyle = "#4b5563";
+          ctx.fillRect(sx + 28, sy + 18, structure.w - 56, structure.h - 36);
+          ctx.fillStyle = "#0f172a";
+          ctx.fillRect(sx + 30, sy + 26, 10, 4);
+          ctx.fillRect(sx + structure.w - 40, sy + 26, 10, 4);
+          ctx.fillRect(sx + structure.w / 2 - 4, sy + 28, 8, 18);
+          ctx.fillStyle = "#111827";
+          ctx.fillRect(sx + structure.w / 2 - 14, sy + structure.h - 22, 28, 5);
+          ctx.fillStyle = "#94a3b8";
+          ctx.fillRect(sx + structure.w / 2 - 16, sy + 6, 32, 4);
+          ctx.strokeStyle = "rgba(2, 6, 23, 0.84)";
+          ctx.lineWidth = 2;
+          ctx.strokeRect(sx + 18, sy + 8, structure.w - 36, structure.h - 14);
+          ctx.strokeStyle = "rgba(148, 163, 184, 0.35)";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(sx + 24, sy + 14, structure.w - 48, structure.h - 24);
+        }
+        if (structure.type !== "shrine") {
+          ctx.strokeStyle = "rgba(2, 6, 23, 0.82)";
+          ctx.lineWidth = 2;
+          ctx.strokeRect(sx - 1, sy - 1, structure.w + 2, structure.h + 2);
+          ctx.strokeStyle = "rgba(248, 250, 252, 0.16)";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(sx + 2, sy + 2, Math.max(2, structure.w - 4), Math.max(2, structure.h - 4));
         }
       };
 
       const drawScenicProp = (ctx, prop, sx, sy) => {
+        ctx.fillStyle = "rgba(2, 6, 23, 0.22)";
+        ctx.fillRect(sx - 8, sy + 6, 16, 3);
         if (prop.kind === "tree") {
           ctx.fillStyle = "#713f12";
           ctx.fillRect(sx - 4, sy - 2, 8, 16);
@@ -3795,6 +5814,23 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           y + h >= state.camera.y &&
           x <= state.camera.x + worldCanvas.width &&
           y <= state.camera.y + worldCanvas.height;
+        const visibleScreen = (x, y, w, h) =>
+          x + w >= -80 &&
+          y + h >= -80 &&
+          x <= worldCanvas.width + 80 &&
+          y <= worldCanvas.height + 80;
+        const drawParallaxLayer = (layer, factor, alpha) => {
+          worldCtx.save();
+          worldCtx.globalAlpha = alpha;
+          for (const deco of PAPER_PARALLAX_DECOR) {
+            if (deco.realm !== state.currentRealmId || deco.layer !== layer) continue;
+            const sx = deco.x - state.camera.x * factor;
+            const sy = deco.y - state.camera.y * factor;
+            if (!visibleScreen(sx, sy, deco.w, deco.h)) continue;
+            drawParallaxDecoration(worldCtx, deco, sx, sy);
+          }
+          worldCtx.restore();
+        };
 
         const overworld = REGIONS[0];
         worldCtx.fillStyle = "#0b1223";
@@ -3847,23 +5883,30 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           worldCtx.fillText(realm.name, rx + 12, ry + 24);
         }
 
+        drawParallaxLayer("back", 0.62, 0.58);
+
         // Route overlays
         worldCtx.strokeStyle = "rgba(226, 232, 240, 0.34)";
         worldCtx.lineWidth = 8;
         worldCtx.beginPath();
         worldCtx.moveTo(300 - state.camera.x, 500 - state.camera.y);
-        worldCtx.lineTo(1640 - state.camera.x, 420 - state.camera.y);
-        worldCtx.lineTo(3180 - state.camera.x, 360 - state.camera.y);
-        worldCtx.moveTo(1700 - state.camera.x, 1090 - state.camera.y);
-        worldCtx.lineTo(1960 - state.camera.x, 1860 - state.camera.y);
-        worldCtx.lineTo(3080 - state.camera.x, 1880 - state.camera.y);
-        worldCtx.moveTo(690 - state.camera.x, 1320 - state.camera.y);
-        worldCtx.lineTo(740 - state.camera.x, 2380 - state.camera.y);
-        worldCtx.lineTo(1540 - state.camera.x, 2850 - state.camera.y);
+        worldCtx.lineTo(2140 - state.camera.x, 640 - state.camera.y);
+        worldCtx.lineTo(3720 - state.camera.x, 620 - state.camera.y);
+        worldCtx.lineTo(4560 - state.camera.x, 760 - state.camera.y);
+        worldCtx.moveTo(2140 - state.camera.x, 1600 - state.camera.y);
+        worldCtx.lineTo(2360 - state.camera.x, 2460 - state.camera.y);
+        worldCtx.lineTo(3520 - state.camera.x, 2460 - state.camera.y);
+        worldCtx.lineTo(4360 - state.camera.x, 2680 - state.camera.y);
+        worldCtx.moveTo(760 - state.camera.x, 1700 - state.camera.y);
+        worldCtx.lineTo(960 - state.camera.x, 3160 - state.camera.y);
+        worldCtx.lineTo(1520 - state.camera.x, 3560 - state.camera.y);
+        worldCtx.lineTo(2640 - state.camera.x, 3580 - state.camera.y);
+        worldCtx.lineTo(3300 - state.camera.x, 3740 - state.camera.y);
         worldCtx.stroke();
         worldCtx.strokeStyle = "rgba(248, 250, 252, 0.26)";
         worldCtx.lineWidth = 3;
         worldCtx.stroke();
+        drawParallaxLayer("mid", 0.84, 0.44);
 
         // Static scene props
         for (const prop of SCENIC_PROPS) {
@@ -3941,6 +5984,18 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           worldCtx.fillStyle = "#f8fafc";
           worldCtx.fillRect(Math.round(sx - 2), Math.round(sy - 2), 4, 4);
         }
+        for (const pickup of state.roamingSpores.active) {
+          if (pickup.region !== state.currentRealmId) continue;
+          if (!visible(pickup.x - 10, pickup.y - 10, 20, 20)) continue;
+          const sx = pickup.x - state.camera.x;
+          const sy = pickup.y - state.camera.y;
+          worldCtx.fillStyle = pickup.golden ? "#fbbf24" : "#22d3ee";
+          worldCtx.fillRect(Math.round(sx - 7), Math.round(sy - 7), 14, 14);
+          worldCtx.fillStyle = pickup.golden ? "#fde68a" : "#bae6fd";
+          worldCtx.fillRect(Math.round(sx - 2), Math.round(sy - 2), 4, 4);
+          worldCtx.strokeStyle = pickup.golden ? "rgba(251, 191, 36, 0.72)" : "rgba(56, 189, 248, 0.72)";
+          worldCtx.strokeRect(Math.round(sx - 8), Math.round(sy - 8), 16, 16);
+        }
 
         for (const structure of STRUCTURES) {
           if (!isInCurrentRealm(structure)) continue;
@@ -3962,6 +6017,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
 
         drawPixelCharacter(worldCtx, state.hero.x - state.camera.x, state.hero.y - state.camera.y);
+        drawParallaxLayer("front", 1.08, 0.8);
 
         const miniW = 210;
         const miniH = 132;
@@ -3986,6 +6042,64 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         worldCtx.fillRect(miniX + state.hero.x * sx - 2, miniY + state.hero.y * sy - 2, 4, 4);
       };
 
+      const drawBattleTurnFx = (ctx, stage) => {
+        const now = Date.now();
+        pruneBattleFx(now);
+        const anchors = {
+          player: { x: stage.playerCenterX, y: stage.actorCenterY, panelX: stage.playerPanelX },
+          enemy: { x: stage.enemyCenterX, y: stage.actorCenterY, panelX: stage.enemyPanelX },
+        };
+
+        for (const impact of state.battleFx.impacts) {
+          const anchor = anchors[impact.target];
+          if (!anchor) continue;
+          const progress = clamp((now - impact.startedAt) / impact.duration, 0, 1);
+          const alpha = 1 - progress;
+          const radius = 14 + progress * 38 * impact.magnitude;
+
+          ctx.fillStyle = `rgba(${impact.rgb}, ${0.28 * alpha * impact.magnitude})`;
+          ctx.fillRect(anchor.panelX, stage.panelY, stage.panelW, stage.panelH);
+          ctx.strokeStyle = `rgba(${impact.rgb}, ${0.82 * alpha})`;
+          ctx.lineWidth = Math.max(1.5, 4 * alpha);
+          ctx.beginPath();
+          ctx.arc(anchor.x, anchor.y, radius, 0, Math.PI * 2);
+          ctx.stroke();
+
+          for (let ray = 0; ray < 4; ray += 1) {
+            const angle = progress * Math.PI * 2 + ray * (Math.PI / 2);
+            const inner = 9 + progress * 8;
+            const outer = inner + 18 * impact.magnitude;
+            ctx.beginPath();
+            ctx.moveTo(anchor.x + Math.cos(angle) * inner, anchor.y + Math.sin(angle) * inner);
+            ctx.lineTo(anchor.x + Math.cos(angle) * outer, anchor.y + Math.sin(angle) * outer);
+            ctx.stroke();
+          }
+        }
+
+        ctx.save();
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        for (const popup of state.battleFx.popups) {
+          const anchor = anchors[popup.target];
+          if (!anchor) continue;
+          const progress = clamp((now - popup.startedAt) / popup.duration, 0, 1);
+          const alpha = 1 - progress;
+          const rise = 38 * progress;
+          const drift = Math.sin(progress * Math.PI * 3) * 4;
+          const px = anchor.x + drift;
+          const py = anchor.y - 22 - rise;
+          ctx.font = popup.critical ? "700 20px sans-serif" : "700 17px sans-serif";
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = `rgba(2, 6, 23, ${0.86 * alpha})`;
+          ctx.strokeText(popup.text, px, py);
+          ctx.fillStyle = popup.color;
+          ctx.globalAlpha = Math.max(0, alpha);
+          ctx.fillText(popup.text, px, py);
+          ctx.globalAlpha = 1;
+        }
+        ctx.restore();
+      };
+
       const drawBattleScene = () => {
         const bg = battleCtx.createLinearGradient(0, 0, 0, battleCanvas.height);
         bg.addColorStop(0, "#0b1530");
@@ -3996,6 +6110,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         battleCtx.fillRect(0, 170, battleCanvas.width, 60);
 
         if (!state.battle) {
+          resetBattleFx();
           battleCtx.fillStyle = "#93c5fd";
           battleCtx.font = "700 16px sans-serif";
           battleCtx.fillText("No active battle", 20, 36);
@@ -4003,6 +6118,22 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
 
         const battle = state.battle;
+        const stage = {
+          panelY: 72,
+          panelW: 108,
+          panelH: 84,
+          playerPanelX: 50,
+          enemyPanelX: battleCanvas.width - 158,
+          bodyY: 84,
+          bodyW: 56,
+          bodyH: 56,
+          playerBodyX: 74,
+          enemyBodyX: battleCanvas.width - 130,
+          actorCenterY: 112,
+          playerCenterX: 102,
+          enemyCenterX: battleCanvas.width - 102,
+        };
+        const enemyBarX = battleCanvas.width - 174;
         const laneColor = {
           speed: "#38bdf8",
           precision: "#67e8f9",
@@ -4018,22 +6149,23 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         battleCtx.fillText(`Lane: ${battle.encounterLane} | Turn: ${battle.turnNumber}`, 12, 28);
 
         battleCtx.fillStyle = "rgba(59, 130, 246, 0.24)";
-        battleCtx.fillRect(50, 72, 108, 84);
+        battleCtx.fillRect(stage.playerPanelX, stage.panelY, stage.panelW, stage.panelH);
         battleCtx.fillStyle = "rgba(239, 68, 68, 0.24)";
-        battleCtx.fillRect(302, 72, 108, 84);
+        battleCtx.fillRect(stage.enemyPanelX, stage.panelY, stage.panelW, stage.panelH);
         battleCtx.fillStyle = "#2563eb";
-        battleCtx.fillRect(74, 84, 56, 56);
+        battleCtx.fillRect(stage.playerBodyX, stage.bodyY, stage.bodyW, stage.bodyH);
         battleCtx.fillStyle = "#ef4444";
-        battleCtx.fillRect(330, 84, 56, 56);
+        battleCtx.fillRect(stage.enemyBodyX, stage.bodyY, stage.bodyW, stage.bodyH);
         battleCtx.fillStyle = "#bfdbfe";
-        battleCtx.fillRect(94, 100, 16, 20);
+        battleCtx.fillRect(stage.playerCenterX - 8, stage.actorCenterY - 12, 16, 20);
         battleCtx.fillStyle = "#fecaca";
-        battleCtx.fillRect(350, 100, 16, 20);
+        battleCtx.fillRect(stage.enemyCenterX - 8, stage.actorCenterY - 12, 16, 20);
+        drawBattleTurnFx(battleCtx, stage);
 
         battleCtx.fillStyle = "#dbeafe";
         battleCtx.font = "700 13px sans-serif";
         battleCtx.fillText(battle.player.name, 52, 66);
-        battleCtx.fillText(battle.enemy.name, 306, 66);
+        battleCtx.fillText(battle.enemy.name, stage.enemyPanelX + 4, 66);
 
         const drawBar = (x, y, width, ratio, color) => {
           battleCtx.fillStyle = "#0f172a";
@@ -4045,11 +6177,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         };
 
         drawBar(20, 146, 156, battle.player.maxHp > 0 ? battle.player.hp / battle.player.maxHp : 0, "#22c55e");
-        drawBar(286, 146, 156, battle.enemy.maxHp > 0 ? battle.enemy.hp / battle.enemy.maxHp : 0, "#22c55e");
+        drawBar(enemyBarX, 146, 156, battle.enemy.maxHp > 0 ? battle.enemy.hp / battle.enemy.maxHp : 0, "#22c55e");
         battleCtx.fillStyle = "#cbd5e1";
         battleCtx.font = "12px sans-serif";
         battleCtx.fillText(`HP ${battle.player.hp}/${battle.player.maxHp} | Guard ${battle.player.guard}`, 20, 164);
-        battleCtx.fillText(`HP ${battle.enemy.hp}/${battle.enemy.maxHp} | Guard ${battle.enemy.guard}`, 286, 164);
+        battleCtx.fillText(`HP ${battle.enemy.hp}/${battle.enemy.maxHp} | Guard ${battle.enemy.guard}`, enemyBarX, 164);
 
         battleCtx.fillStyle = battle.status === "won" ? "#4ade80" : battle.status === "lost" ? "#fb7185" : "#cbd5e1";
         battleCtx.font = "700 15px sans-serif";
@@ -4057,6 +6189,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       };
 
       const renderHud = () => {
+        refreshDailyBurnQuota();
         const hpRatio = state.hero.maxHp > 0 ? state.hero.hp / state.hero.maxHp : 0;
         dom.hpFill.style.width = `${Math.floor(clamp(hpRatio, 0, 1) * 100)}%`;
         dom.hpText.textContent = `${state.hero.hp} / ${state.hero.maxHp}`;
@@ -4099,14 +6232,41 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
         const unlockedLore = BACKSTORY_BEATS.filter((entry) => entry.isUnlocked(state));
         const latestLore = unlockedLore[unlockedLore.length - 1];
+        const clan = getClanProfile();
+        const narrativeProfile = getNarrativeProfile();
+        const latestStoryEntry = state.story.entries[0];
         dom.storyBackdrop.textContent = latestLore
-          ? `${latestLore.title}: ${latestLore.text}`
-          : "Lore thread dormant.";
+          ? `${latestLore.title}: ${latestLore.text} // ${clan.storyThread} // Adaptive Profile: ${narrativeProfile.text}`
+          : `${clan.name} lore thread: ${clan.storyThread} // Adaptive Profile: ${narrativeProfile.text}`;
+        if (dom.storyPersona) {
+          dom.storyPersona.textContent = `Persona Engine: ${narrativeProfile.text} // Chapter ${state.story.chapter} // ${latestStoryEntry ? "Story pulse active" : "Awaiting first chronicle beat"}`;
+        }
+        if (dom.livingChronicle) {
+          dom.livingChronicle.textContent = state.story.entries.length
+            ? state.story.entries
+                .slice(0, 10)
+                .map((entry) => `• ${entry.text}`)
+                .join("\n")
+            : "The world is quiet... for now.";
+        }
+
+        const enterableClears = Array.from(state.progress.solvedStructures).filter((id) => {
+          const structure = STRUCTURES.find((entry) => entry.id === id);
+          return structure && isEnterableStructure(structure);
+        }).length;
+        const towerClears = Array.from(state.progress.solvedStructures).filter((id) => {
+          const structure = STRUCTURES.find((entry) => entry.id === id);
+          return structure?.type === "tower";
+        }).length;
+        const shopClears = Array.from(state.progress.solvedStructures).filter((id) => {
+          const structure = STRUCTURES.find((entry) => entry.id === id);
+          return structure?.type === "mushroom-shop";
+        }).length;
 
         const questEntries = [
           {
             chapter: "Chapter I - Crownfall Echoes",
-            hook: "Restore the first memory-art to reconnect the Nexus portals.",
+            hook: `Restore the first memory-art to reconnect the Nexus portals. ${clan.questThread}`,
             objectives: [
               { text: "Recover the Royal Oath from Elder Myca.", done: state.progress.clues.has("royal-oath") },
               { text: "Learn Mycelic Sight and activate the Fen Moon Portal.", done: hasMagic("mycelic-sight") },
@@ -4139,6 +6299,33 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
               { text: "Defeat Dark Mycelius.", done: state.progress.defeatedBosses.has("dark-mycelius") },
             ],
           },
+          {
+            chapter: "Chapter V - Markets and Relay Towers",
+            hook: "Secure mushroom shops and tower relays to stabilize larger realm logistics.",
+            objectives: [
+              { text: "Recover the Myco Market Seal and Commons Ballad Verse.", done: state.progress.clues.has("myco-market-seal") && state.progress.clues.has("commons-ballad") },
+              { text: "Clear at least 3 relay towers.", done: towerClears >= 3 },
+              { text: "Reopen 4 mushroom shops by clearing their interiors.", done: shopClears >= 4 },
+            ],
+          },
+          {
+            chapter: "Chapter VI - Deep Frontier Oaths",
+            hook: `Push into the expanded Obsidian Wilds and bind the final frontier alliances. ${clan.npcThread}`,
+            objectives: [
+              { text: "Earn Obsidian Oath and Ledger Fragment clues.", done: state.progress.clues.has("obsidian-oath") && state.progress.clues.has("ledger-fragment") },
+              { text: "Recruit 10 NPC allies across all regions.", done: state.progress.interactedNpcs.size >= 10 },
+              { text: "Clear 12 enterable structures (houses, caves, dungeons, castles, towers, shops).", done: enterableClears >= 12 },
+            ],
+          },
+          {
+            chapter: `Chapter VII - Living Chronicle (${narrativeProfile.profileName})`,
+            hook: "Your playstyle now writes endless narrative branches that evolve this world around you.",
+            objectives: [
+              { text: "Unlock 3 adaptive story beats in the Living Chronicle.", done: state.story.entries.length >= 3 },
+              { text: "Reach a clear persona profile through your choices.", done: narrativeProfile.dominant !== "balanced" || state.story.entries.length >= 8 },
+              { text: "Trigger at least one adaptive cutscene branch.", done: state.progress.cutscenesSeen.has("chronicleEngine") || state.progress.cutscenesSeen.has("endlessFrontier") },
+            ],
+          },
         ];
         const totalObjectives = questEntries.reduce((sum, chapter) => sum + chapter.objectives.length, 0);
         const completedObjectives = questEntries.reduce(
@@ -4163,10 +6350,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           .map((portal) => REALMS.find((entry) => entry.id === portalDestinationRealmId(portal))?.name)
           .filter((name, idx, list) => Boolean(name) && list.indexOf(name) === idx)
           .join(", ");
-        dom.regionHint.textContent = `World region: ${region?.name ?? "Unknown"}\nCurrent realm page: ${realm?.name ?? "Unknown"}\nLinked pages: ${linkedRealms || "None"}\n${realm?.label ?? region?.label ?? ""}\nAI directive: ${state.aiDirective}`;
+        dom.regionHint.textContent = `World region: ${region?.name ?? "Unknown"}\nCurrent realm page: ${realm?.name ?? "Unknown"}\nLinked pages: ${linkedRealms || "None"}\nClan: ${clan.name} // Avatar: ${getSelectedAvatarName()}\nNarrative Persona: ${narrativeProfile.text}\n${realm?.label ?? region?.label ?? ""}\nAI directive: ${state.aiDirective}\nStory pulse: ${latestStoryEntry?.text ?? "No active beat yet."}`;
         if (dom.realmBanner) {
           const pathTone = state.hero.morality >= 0 ? "Mycoside" : "Darkside";
-          dom.realmBanner.textContent = `${realm?.name ?? "Unknown Realm"} // ${pathTone} path`;
+          dom.realmBanner.textContent = `${realm?.name ?? "Unknown Realm"} // ${clan.bannerTitle} // ${pathTone} path`;
         }
         if (dom.realmPageTitle) {
           dom.realmPageTitle.textContent = `${realm?.name ?? "Unknown Realm"} // Regional Play Page`;
@@ -4176,6 +6363,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const syncAge = state.web3.lastSyncedAt
           ? `${Math.max(0, Math.floor((Date.now() - state.web3.lastSyncedAt) / 1000))}s ago`
           : "never";
+        const burnRemaining = getBurnRemainingToday();
+        const nextSundayLabel = formatShortDate(getNextSunday());
+        const latestBurnEvent = state.burn.events[0] ?? null;
         dom.web3Status.textContent = connected
           ? `Wallet: ${shortWallet(state.web3.wallet)} // ${state.web3.chainRank}`
           : "Wallet: not connected";
@@ -4183,14 +6373,26 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           `<span class="chip">Relic Power ${state.web3.relicPower}</span>`,
           `<span class="chip">Bosses Synced ${state.progress.defeatedBosses.size}</span>`,
           `<span class="chip">Last Sync ${syncAge}</span>`,
+          `<span class="chip">Spore Burn Today ${state.burn.burnedToday}/${DAILY_SPORE_BURN_LIMIT}</span>`,
+          `<span class="chip">Burn Remaining ${burnRemaining}</span>`,
+          `<span class="chip">Sunday Token Burn ${WEEKLY_TOKEN_BURN_AMOUNT} KING MYCO (${nextSundayLabel})</span>`,
         ].join("");
-        dom.web3Relics.innerHTML = state.web3.mintedRelics.length
+        const relicChips = state.web3.mintedRelics.length
           ? state.web3.mintedRelics.map((relic) => `<span class="chip">${relic}</span>`).join("")
           : `<span class="chip">No minted relics</span>`;
+        const burnChip = latestBurnEvent
+          ? `<span class="chip">Last Burn ${latestBurnEvent.sporesBurned} @ ${latestBurnEvent.pitName} (${latestBurnEvent.remoteStatus})</span>`
+          : `<span class="chip">No burn pit records yet</span>`;
+        dom.web3Relics.innerHTML = `${relicChips}${burnChip}`;
         dom.connectWalletBtn.textContent = connected ? "Wallet Connected" : "Connect Wallet (Demo)";
         dom.syncWeb3Btn.disabled = !connected;
         dom.mintSigilBtn.disabled = !connected;
+        if (state.burnPit.active) {
+          renderBurnPitScreen();
+        }
 
+        const battleOverlayActive = state.mode === "battle" || state.pendingBattle;
+        setBattlePopupActive(battleOverlayActive);
         const battleActive = state.mode === "battle" && state.battle && state.battle.status === "active";
         dom.strikeBtn.disabled = !battleActive;
         dom.guardBtn.disabled = !battleActive;
@@ -4261,6 +6463,15 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (state.intro.active) {
           if (key === "enter") {
             startAdventure();
+          }
+          event.preventDefault();
+          return;
+        }
+        if (state.mode === "burn-pit" || state.burnPit.active) {
+          if (key === "escape" || key === "e") {
+            closeBurnPit();
+          } else if (key === "enter" || key === " ") {
+            burnSporesAtPit(dom.burnPitAmountInput.value);
           }
           event.preventDefault();
           return;
@@ -4352,6 +6563,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       dom.mintSigilBtn.addEventListener("click", mintVictorySigil);
       dom.interiorSearchBtn.addEventListener("click", searchInterior);
       dom.interiorExitBtn.addEventListener("click", closeInterior);
+      dom.burnPitBurnBtn.addEventListener("click", () => burnSporesAtPit(dom.burnPitAmountInput.value));
+      dom.burnPitMaxBtn.addEventListener("click", () => burnSporesAtPit(getBurnRemainingToday()));
+      dom.burnPitCloseBtn.addEventListener("click", closeBurnPit);
 
       dom.upgradeAttackBtn.addEventListener("click", () => tryUpgrade("attack"));
       dom.upgradeDefenseBtn.addEventListener("click", () => tryUpgrade("defense"));
@@ -4359,6 +6573,16 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       [dom.apiBase, dom.source, dom.externalId, dom.sourceToken].forEach((input) => {
         input.addEventListener("change", saveConfig);
+      });
+      dom.clanSelect.addEventListener("change", () => {
+        applyClanSelectionFromUi();
+        refreshTitleScreen();
+        saveConfig();
+      });
+      dom.avatarSelect.addEventListener("change", () => {
+        applyClanSelectionFromUi();
+        refreshTitleScreen();
+        saveConfig();
       });
 
       window.addEventListener("beforeunload", saveGame);
@@ -4368,6 +6592,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       loadConfig();
       loadGame();
+      populateClanSelect();
       applyRealmPageEntry();
       populateRealmSelector();
       setupCornerMenus();
@@ -4379,6 +6604,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       resizeCanvases();
       updateCamera();
       renderHud();
+      renderLeaderboard();
       drawWorld();
       drawBattleScene();
       requestAnimationFrame(frameLoop);
