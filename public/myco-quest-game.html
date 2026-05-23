@@ -295,6 +295,21 @@
       #interiorCanvas {
         height: min(62vh, 460px);
         min-height: 260px;
+        image-rendering: pixelated;
+        filter: contrast(1.16) saturate(1.08);
+      }
+      #interiorSubtitle {
+        font-size: 11px;
+        max-width: 62ch;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #interiorHint {
+        margin-top: 6px !important;
+        font-size: 11px;
+        line-height: 1.22;
+        color: #a8bedf;
       }
       .quest-list {
         margin: 0;
@@ -6637,24 +6652,24 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (!force && state.interior.nearbyNodeId === nearbyId) return;
         state.interior.nearbyNodeId = nearbyId;
         const solved = state.progress.solvedStructures.has(structure.id);
-        let guide = `${getInteriorFeatureHint(layout.feature)} Explore this interior map and move between interior nodes.`;
+        let guide = getInteriorFeatureHint(layout.feature);
         if (nearbyEnemy) {
           guide = `Hostile contact nearby: ${nearbyEnemy.title}. Touch the enemy to trigger a battle.`;
         } else if (nearbyNpc) {
-          guide = `${nearbyNpc.name} nearby (${nearbyNpc.subtitle}). Press Enter or Search to talk/trade.`;
+          guide = `${nearbyNpc.name} nearby (${nearbyNpc.subtitle}). Enter/Search to talk.`;
         } else if (nearbyNode?.kind === "feature") {
           guide = solved
-            ? "Feature already cleared here. You can still inspect lore/cache nodes or exit."
-            : `Feature node nearby: ${nearbyNode.label}. Press Enter or Search to resolve this interior objective.`;
+            ? "Feature already cleared. Inspect lore/cache nodes or exit."
+            : `Feature node nearby: ${nearbyNode.label}. Enter/Search to resolve.`;
         } else if (nearbyNode?.kind === "cache") {
-          guide = "Supply cache nearby. Press Enter or Search to inspect it.";
+          guide = "Supply cache nearby. Enter/Search to inspect.";
         } else if (nearbyNode?.kind === "lore") {
-          guide = "Lore node nearby. Press Enter or Search to reveal story text.";
+          guide = "Lore node nearby. Enter/Search to reveal story text.";
         } else if (nearbyNode?.kind === "exit") {
-          guide = "Exit gate nearby. Press Enter or Search to leave this interior map.";
+          guide = "Exit gate nearby. Enter/Search to leave this interior.";
         }
         const lastResult = state.interior.lastResult ? ` Last action: ${state.interior.lastResult}` : "";
-        dom.interiorHint.textContent = `${guide} Controls: move with arrows/WASD, Shift to sprint, E to exit.${lastResult}`;
+        dom.interiorHint.textContent = `${guide} Controls: WASD/arrows move, Shift sprint, Enter interact, E exit.${lastResult}`;
       };
 
       const buildInteriorNpcEncounter = (structure, npc, alreadySpoken) => {
@@ -6788,7 +6803,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         updateInteriorCamera(layout);
         dom.interiorScreen.classList.add("active");
         dom.interiorTitle.textContent = structure.name;
-        dom.interiorSubtitle.textContent = `${layout.interiorType.replace(/-/g, " ").toUpperCase()} INTERIOR MAP // ${getCurrentRealm().name} // ${INTERIOR_FEATURE_LABELS[layout.feature]} // ${layout.sigil}`;
+        dom.interiorSubtitle.textContent = `${layout.interiorType.replace(/-/g, " ").toUpperCase()} INTERIOR // ${INTERIOR_FEATURE_LABELS[layout.feature]} // ${layout.sigil}`;
         refreshInteriorHint(structure, true);
         drawInteriorScene(structure);
       };
@@ -6827,6 +6842,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const layout = state.interior.layout;
         const width = interiorCanvas.width;
         const height = interiorCanvas.height;
+        interiorCtx.imageSmoothingEnabled = false;
         interiorCtx.fillStyle = "#050913";
         interiorCtx.fillRect(0, 0, width, height);
         if (!structure || !layout) return;
@@ -6954,59 +6970,22 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           state.interior.heroY - cameraY,
         );
 
-        interiorCtx.fillStyle = "#f8fafc";
-        interiorCtx.font = "700 16px sans-serif";
-        interiorCtx.fillText(structure.name, 20, 30);
-        interiorCtx.font = "12px sans-serif";
-        interiorCtx.fillText(`Explorable interior map // ${layout.width}x${layout.height}`, 20, 48);
-        interiorCtx.fillStyle = "#93c5fd";
-        interiorCtx.fillText(`Feature: ${INTERIOR_FEATURE_LABELS[layout.feature]} // ${layout.sigil}`, 20, 64);
-        if (nearbyNode) {
-          interiorCtx.fillStyle = "#facc15";
-          interiorCtx.fillText(`Nearby node: ${nearbyNode.label}`, 20, 80);
-        } else if (nearbyNpc) {
-          interiorCtx.fillStyle = "#a7f3d0";
-          interiorCtx.fillText(`Nearby resident: ${nearbyNpc.name}`, 20, 80);
-        }
-
         const solved = state.progress.solvedStructures.has(structure.id);
+        interiorCtx.fillStyle = "rgba(2, 6, 23, 0.66)";
+        interiorCtx.fillRect(14, 12, 280, 28);
+        interiorCtx.strokeStyle = `${glow}88`;
+        interiorCtx.lineWidth = 1;
+        interiorCtx.strokeRect(14.5, 12.5, 279, 27);
+        interiorCtx.font = "700 11px sans-serif";
+        interiorCtx.fillStyle = "#dbeafe";
+        const contextTag = nearbyNode
+          ? nearbyNode.label
+          : nearbyNpc
+            ? `Resident: ${nearbyNpc.name}`
+            : "Exploration";
+        interiorCtx.fillText(contextTag, 22, 30);
         interiorCtx.fillStyle = solved ? "#4ade80" : "#facc15";
-        interiorCtx.fillText(solved ? "Core feature clear: complete." : "Core feature unresolved: explore and trigger node.", 20, 96);
-
-        const miniW = 158;
-        const miniH = 98;
-        const miniX = width - miniW - 14;
-        const miniY = 12;
-        interiorCtx.fillStyle = "rgba(2, 6, 23, 0.76)";
-        interiorCtx.fillRect(miniX, miniY, miniW, miniH);
-        interiorCtx.strokeStyle = `${glow}bb`;
-        interiorCtx.strokeRect(miniX + 0.5, miniY + 0.5, miniW - 1, miniH - 1);
-        const sx = miniW / layout.width;
-        const sy = miniH / layout.height;
-        interiorCtx.fillStyle = "rgba(148, 163, 184, 0.38)";
-        for (const obstacle of layout.obstacles) {
-          interiorCtx.fillRect(
-            miniX + obstacle.x * sx,
-            miniY + obstacle.y * sy,
-            Math.max(2, obstacle.w * sx),
-            Math.max(2, obstacle.h * sy),
-          );
-        }
-        for (const node of layout.nodes) {
-          interiorCtx.fillStyle = INTERIOR_NODE_COLORS[node.kind] ?? "#f8fafc";
-          interiorCtx.fillRect(miniX + node.x * sx - 1, miniY + node.y * sy - 1, 3, 3);
-        }
-        for (const npc of layout.npcs ?? []) {
-          interiorCtx.fillStyle = "#86efac";
-          interiorCtx.fillRect(miniX + npc.x * sx - 1, miniY + npc.y * sy - 1, 3, 3);
-        }
-        for (const enemy of layout.enemies ?? []) {
-          if (!enemy.active) continue;
-          interiorCtx.fillStyle = "#f87171";
-          interiorCtx.fillRect(miniX + enemy.x * sx - 1, miniY + enemy.y * sy - 1, 3, 3);
-        }
-        interiorCtx.fillStyle = "#22d3ee";
-        interiorCtx.fillRect(miniX + state.interior.heroX * sx - 2, miniY + state.interior.heroY * sy - 2, 4, 4);
+        interiorCtx.fillText(solved ? "Feature clear" : "Feature active", 196, 30);
       };
 
       const triggerInteriorTrialBattle = (structure) => {
