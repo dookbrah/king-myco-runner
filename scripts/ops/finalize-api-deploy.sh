@@ -20,6 +20,21 @@ assert_contains() {
   fi
 }
 
+assert_contains_ci() {
+  local label="$1"
+  local haystack="$2"
+  local needle="$3"
+  local haystack_lower
+  local needle_lower
+  haystack_lower="${haystack,,}"
+  needle_lower="${needle,,}"
+
+  if [[ "$haystack_lower" != *"$needle_lower"* ]]; then
+    echo "❌ $label did not contain expected token (case-insensitive): $needle"
+    exit 1
+  fi
+}
+
 wait_for_http() {
   local label="$1"
   local url="$2"
@@ -138,6 +153,18 @@ fi
 LOCAL_DEV_UI="$(cat /tmp/kingmyco-dev-ui.html)"
 assert_contains "local /api/dev/myco-quest" "$LOCAL_DEV_UI" "Myco Quest Dev"
 
+LOCAL_GAME_STATUS="$(curl -fsS -o /tmp/kingmyco-game-ui.html -w '%{http_code}' "$LOCAL_BASE_URL/api/game/myco-quest")"
+if [[ "$LOCAL_GAME_STATUS" != "200" ]]; then
+  echo "❌ local /api/game/myco-quest returned status $LOCAL_GAME_STATUS"
+  exit 1
+fi
+
+LOCAL_GAME_UI="$(cat /tmp/kingmyco-game-ui.html)"
+assert_contains "local /api/game/myco-quest" "$LOCAL_GAME_UI" "MYCO QUEST"
+assert_contains "local /api/game/myco-quest" "$LOCAL_GAME_UI" "Claim Seasonal Reward"
+LOCAL_GAME_HEADERS="$(curl -sS -D - -o /dev/null "$LOCAL_BASE_URL/api/game/myco-quest")"
+assert_contains_ci "local /api/game/myco-quest headers" "$LOCAL_GAME_HEADERS" "cache-control: no-store"
+
 run_generate_with_optional_token "local" "$LOCAL_BASE_URL" "/tmp/kingmyco-local-run.json"
 
 echo "==> Checking public endpoints"
@@ -153,6 +180,18 @@ fi
 
 PUBLIC_DEV_UI="$(cat /tmp/kingmyco-public-dev-ui.html)"
 assert_contains "public /api/dev/myco-quest" "$PUBLIC_DEV_UI" "Myco Quest Dev"
+
+PUBLIC_GAME_STATUS="$(curl -fsS -o /tmp/kingmyco-public-game-ui.html -w '%{http_code}' "$PUBLIC_BASE_URL/api/game/myco-quest")"
+if [[ "$PUBLIC_GAME_STATUS" != "200" ]]; then
+  echo "❌ public /api/game/myco-quest returned status $PUBLIC_GAME_STATUS"
+  exit 1
+fi
+
+PUBLIC_GAME_UI="$(cat /tmp/kingmyco-public-game-ui.html)"
+assert_contains "public /api/game/myco-quest" "$PUBLIC_GAME_UI" "MYCO QUEST"
+assert_contains "public /api/game/myco-quest" "$PUBLIC_GAME_UI" "Claim Seasonal Reward"
+PUBLIC_GAME_HEADERS="$(curl -sS -D - -o /dev/null "$PUBLIC_BASE_URL/api/game/myco-quest")"
+assert_contains_ci "public /api/game/myco-quest headers" "$PUBLIC_GAME_HEADERS" "cache-control: no-store"
 
 run_generate_with_optional_token "public" "$PUBLIC_BASE_URL" "/tmp/kingmyco-public-run.json"
 
