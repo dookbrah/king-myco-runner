@@ -1025,6 +1025,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             <p id="web3Status" class="web3-pill" style="margin-top: 8px">Wallet: not connected</p>
             <div id="web3Stats" class="chips" style="margin-top: 8px"></div>
             <div id="web3Relics" class="chips" style="margin-top: 6px"></div>
+            <p id="onchainMilestoneSummary" class="subtle" style="margin-top: 8px">On-chain milestones pending.</p>
+            <div id="onchainMilestoneList" class="chips" style="margin-top: 6px"></div>
             <div class="web3-grid">
               <button id="connectWalletBtn" class="primary">Connect Solana Wallet</button>
               <button id="syncWeb3Btn">Sync Chain Profile</button>
@@ -1048,6 +1050,16 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
               <h3>Clan Burn Leaderboard</h3>
               <p id="burnLeaderboardSummary" class="subtle">No burn records yet.</p>
               <div id="burnLeaderboardList" class="leaderboard-list"></div>
+            </div>
+            <div class="leaderboard-subsection">
+              <h3>Season Warfront</h3>
+              <p id="seasonWarSummary" class="subtle">Season warfront is calibrating.</p>
+              <div id="seasonWarList" class="leaderboard-list"></div>
+            </div>
+            <div class="leaderboard-subsection">
+              <h3>Live World Mutation</h3>
+              <p id="worldMutationSummary" class="subtle">Mutation engine is stabilizing.</p>
+              <div id="worldMutationList" class="leaderboard-list"></div>
             </div>
           </section>
 
@@ -1298,12 +1310,18 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         web3Status: document.getElementById("web3Status"),
         web3Stats: document.getElementById("web3Stats"),
         web3Relics: document.getElementById("web3Relics"),
+        onchainMilestoneSummary: document.getElementById("onchainMilestoneSummary"),
+        onchainMilestoneList: document.getElementById("onchainMilestoneList"),
         leaderboardSummary: document.getElementById("leaderboardSummary"),
         leaderboardList: document.getElementById("leaderboardList"),
         clanLeaderboardSummary: document.getElementById("clanLeaderboardSummary"),
         clanLeaderboardList: document.getElementById("clanLeaderboardList"),
         burnLeaderboardSummary: document.getElementById("burnLeaderboardSummary"),
         burnLeaderboardList: document.getElementById("burnLeaderboardList"),
+        seasonWarSummary: document.getElementById("seasonWarSummary"),
+        seasonWarList: document.getElementById("seasonWarList"),
+        worldMutationSummary: document.getElementById("worldMutationSummary"),
+        worldMutationList: document.getElementById("worldMutationList"),
         connectWalletBtn: document.getElementById("connectWalletBtn"),
         syncWeb3Btn: document.getElementById("syncWeb3Btn"),
         mintSigilBtn: document.getElementById("mintSigilBtn"),
@@ -2489,6 +2507,76 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           { id: "astro-shiba", name: "Astro Shiba" },
         ],
       };
+      const CLAN_IDS = Object.keys(CLAN_PROFILES);
+      const WORLD_MUTATION_CATALOG = [
+        {
+          id: "spore-bloom-convergence",
+          title: "Spore Bloom Convergence",
+          description: "Mycelial blooms accelerate roaming spore recovery while calming hostile routes.",
+          enemyPaceMultiplier: 0.9,
+          sporeRespawnMultiplier: 0.72,
+          magicFindMultiplier: 1.22,
+        },
+        {
+          id: "chain-storm-uplink",
+          title: "Chain Storm Uplink",
+          description: "Chainlands pressure surges. Enemies move faster but arcane rewards spike.",
+          enemyPaceMultiplier: 1.16,
+          sporeRespawnMultiplier: 1.08,
+          magicFindMultiplier: 1.18,
+        },
+        {
+          id: "moonfen-hunt-cycle",
+          title: "Moonfen Hunt Cycle",
+          description: "Predator tides tighten the map. Combat tempo rises and mutation traces intensify.",
+          enemyPaceMultiplier: 1.2,
+          sporeRespawnMultiplier: 0.92,
+          magicFindMultiplier: 1.1,
+        },
+        {
+          id: "ritual-solarity",
+          title: "Ritual Solarity",
+          description: "Shrine harmonics stabilize portals and empower spell path progression.",
+          enemyPaceMultiplier: 0.96,
+          sporeRespawnMultiplier: 0.88,
+          magicFindMultiplier: 1.24,
+        },
+        {
+          id: "obsidian-frontline",
+          title: "Obsidian Frontline",
+          description: "Frontline war sigils ignite. Clan war gains and territorial shifts accelerate.",
+          enemyPaceMultiplier: 1.08,
+          sporeRespawnMultiplier: 1.0,
+          magicFindMultiplier: 1.14,
+        },
+      ];
+      const ONCHAIN_MILESTONES = [
+        {
+          id: "wallet-oath",
+          title: "Wallet Oath",
+          description: "Link a valid Solana wallet to your chronicle identity.",
+        },
+        {
+          id: "crown-breaker",
+          title: "Crown Breaker",
+          description: "Defeat at least two realm bosses under one signed-in wallet.",
+        },
+        {
+          id: "burn-vanguard",
+          title: "Burn Vanguard",
+          description: "Burn 500+ spores in clan burn pits.",
+        },
+        {
+          id: "arcane-ascendant",
+          title: "Arcane Ascendant",
+          description: "Reach magic level 8 to unlock high-tier portal influence.",
+        },
+        {
+          id: "living-ledger",
+          title: "Living Ledger",
+          description: "Record 20 chronicle story entries and keep evolving your timeline.",
+        },
+      ];
 
       const state = {
         mode: "intro",
@@ -2538,7 +2626,22 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           chainRank: "Unranked",
           relicPower: 0,
           mintedRelics: [],
+          unlockedMilestones: [],
           lastSyncedAt: 0,
+        },
+        season: {
+          weekKey: "",
+          clanWarScores: {},
+          recentEvents: [],
+        },
+        worldMutation: {
+          key: "",
+          title: "Dormant Drift",
+          description: "The mutation engine is calibrating.",
+          enemyPaceMultiplier: 1,
+          sporeRespawnMultiplier: 1,
+          magicFindMultiplier: 1,
+          generatedAt: 0,
         },
         bossIntro: {
           activeUntil: 0,
@@ -2647,6 +2750,137 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           hash |= 0;
         }
         return Math.abs(hash);
+      };
+
+      const toIsoDateKey = (inputDate) => {
+        const date = inputDate instanceof Date ? inputDate : new Date(inputDate);
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      };
+
+      const getSeasonWeekKey = (time = Date.now()) => {
+        const date = new Date(time);
+        date.setHours(0, 0, 0, 0);
+        const mondayOffset = (date.getDay() + 6) % 7;
+        date.setDate(date.getDate() - mondayOffset);
+        return `week-${toIsoDateKey(date)}`;
+      };
+
+      const makeDefaultClanScoreMap = () =>
+        Object.fromEntries(CLAN_IDS.map((clanId) => [clanId, 0]));
+
+      const ensureSeasonState = (time = Date.now()) => {
+        const weekKey = getSeasonWeekKey(time);
+        if (state.season.weekKey !== weekKey) {
+          state.season.weekKey = weekKey;
+          state.season.clanWarScores = makeDefaultClanScoreMap();
+          state.season.recentEvents = [];
+        }
+        if (!state.season.clanWarScores || typeof state.season.clanWarScores !== "object") {
+          state.season.clanWarScores = makeDefaultClanScoreMap();
+        }
+        for (const clanId of CLAN_IDS) {
+          if (!Number.isFinite(state.season.clanWarScores[clanId])) {
+            state.season.clanWarScores[clanId] = 0;
+          }
+        }
+        if (!Array.isArray(state.season.recentEvents)) {
+          state.season.recentEvents = [];
+        }
+        return weekKey;
+      };
+
+      const recordSeasonImpact = (eventType, clanId = state.playerClan, scoreDelta = 0, note = "") => {
+        const normalizedClan = CLAN_PROFILES[clanId] ? clanId : "myco";
+        ensureSeasonState();
+        if (!Number.isFinite(scoreDelta) || scoreDelta === 0) return;
+        state.season.clanWarScores[normalizedClan] += scoreDelta;
+        state.season.recentEvents.unshift({
+          id: `season-${Date.now()}-${Math.abs(Math.round(scoreDelta))}`,
+          type: eventType,
+          clanId: normalizedClan,
+          points: scoreDelta,
+          note,
+          at: Date.now(),
+        });
+        state.season.recentEvents = state.season.recentEvents.slice(0, 36);
+      };
+
+      const getWorldMutationEffects = () => ({
+        enemyPaceMultiplier: clamp(state.worldMutation.enemyPaceMultiplier ?? 1, 0.75, 1.35),
+        sporeRespawnMultiplier: clamp(state.worldMutation.sporeRespawnMultiplier ?? 1, 0.65, 1.35),
+        magicFindMultiplier: clamp(state.worldMutation.magicFindMultiplier ?? 1, 0.9, 1.45),
+      });
+
+      const refreshWorldMutation = (force = false) => {
+        const now = Date.now();
+        const minimumIntervalMs = 48000;
+        if (!force && now - (state.worldMutation.generatedAt ?? 0) < minimumIntervalMs) return;
+        const weekKey = ensureSeasonState(now);
+        const profile = getNarrativeProfile();
+        const seed = `${weekKey}:${state.playerClan}:${profile.dominant}:${state.progress.clues.size}:${state.story.entries.length}`;
+        const next = WORLD_MUTATION_CATALOG[hashString(seed) % WORLD_MUTATION_CATALOG.length];
+        const wasKey = state.worldMutation.key;
+        state.worldMutation = {
+          key: next.id,
+          title: next.title,
+          description: next.description,
+          enemyPaceMultiplier: next.enemyPaceMultiplier,
+          sporeRespawnMultiplier: next.sporeRespawnMultiplier,
+          magicFindMultiplier: next.magicFindMultiplier,
+          generatedAt: now,
+        };
+        if (!force && wasKey && wasKey !== next.id) {
+          pushStoryEntry(`World Mutation Shift: ${next.title} now influences every realm lane.`, "chronicle");
+        }
+      };
+
+      const milestoneUnlocked = (milestoneId) => {
+        if (milestoneId === "wallet-oath") {
+          return isValidSolanaWalletAddress(state.web3.wallet) && Boolean(getSignedInNickname());
+        }
+        if (milestoneId === "crown-breaker") {
+          return state.progress.defeatedBosses.size >= 2;
+        }
+        if (milestoneId === "burn-vanguard") {
+          return state.burn.totalBurned >= 500;
+        }
+        if (milestoneId === "arcane-ascendant") {
+          return state.hero.magic >= 8;
+        }
+        if (milestoneId === "living-ledger") {
+          return state.story.entries.length >= 20;
+        }
+        return false;
+      };
+
+      const evaluateOnchainMilestones = (announce = false) => {
+        if (!isValidSolanaWalletAddress(state.web3.wallet) || !getSignedInNickname()) {
+          return 0;
+        }
+        if (!Array.isArray(state.web3.unlockedMilestones)) {
+          state.web3.unlockedMilestones = [];
+        }
+        const unlockedSet = new Set(state.web3.unlockedMilestones);
+        const newlyUnlocked = [];
+        for (const milestone of ONCHAIN_MILESTONES) {
+          if (unlockedSet.has(milestone.id)) continue;
+          if (!milestoneUnlocked(milestone.id)) continue;
+          unlockedSet.add(milestone.id);
+          newlyUnlocked.push(milestone);
+          const relicTag = `Milestone // ${milestone.title}`;
+          if (!state.web3.mintedRelics.includes(relicTag)) {
+            state.web3.mintedRelics.unshift(relicTag);
+            state.web3.mintedRelics = state.web3.mintedRelics.slice(0, 10);
+          }
+          state.hero.goldenSpores += 1;
+          pushStoryEntry(`On-chain milestone unlocked: ${milestone.title}.`, "web3");
+        }
+        state.web3.unlockedMilestones = Array.from(unlockedSet);
+        if (announce && newlyUnlocked.length) {
+          setStatus(`On-chain milestone unlocked: ${newlyUnlocked[0].title}${newlyUnlocked.length > 1 ? ` (+${newlyUnlocked.length - 1} more)` : ""}.`);
+          playSfx("coin");
+        }
+        return newlyUnlocked.length;
       };
 
       const recordAiSignal = (field, amount = 1) => {
@@ -2884,8 +3118,13 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           burnTotal: state.burn.totalBurned,
           updatedAt: Date.now(),
         };
+        let incrementalSeasonGain = 0;
         if (existingIdx >= 0) {
           const prior = entries[existingIdx];
+          const scoreRise = Math.max(0, draft.score - (prior.score ?? 0));
+          const burnRise = Math.max(0, draft.burnTotal - (prior.burnTotal ?? 0));
+          const magicRise = Math.max(0, draft.magic - (prior.magic ?? 0));
+          incrementalSeasonGain = Math.round(scoreRise * 0.08 + burnRise * 0.3 + magicRise * 8);
           entries[existingIdx] = {
             ...prior,
             ...draft,
@@ -2895,6 +3134,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           };
         } else {
           entries.push(draft);
+          incrementalSeasonGain = Math.round(draft.score * 0.06);
+        }
+        if (incrementalSeasonGain > 0) {
+          recordSeasonImpact("chronicle-growth", state.playerClan, incrementalSeasonGain, `${draft.nickname} progression`);
         }
         entries.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
         saveLeaderboardEntries(entries);
@@ -2932,52 +3175,98 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const renderLeaderboard = () => {
         if (!dom.leaderboardList || !dom.leaderboardSummary) return;
+        ensureSeasonState();
+        refreshWorldMutation();
         const entries = loadLeaderboardEntries();
         if (!entries.length) {
           dom.leaderboardSummary.textContent = "No rankings yet. Connect wallet and start a clan chronicle.";
           dom.leaderboardList.innerHTML = `<span class="chip">No player leaderboard entries yet</span>`;
-          if (dom.clanLeaderboardSummary) dom.clanLeaderboardSummary.textContent = "No clan stats yet.";
-          if (dom.clanLeaderboardList) dom.clanLeaderboardList.innerHTML = `<span class="chip">No clan metrics yet</span>`;
-          if (dom.burnLeaderboardSummary) dom.burnLeaderboardSummary.textContent = "No clan burn stats yet.";
-          if (dom.burnLeaderboardList) dom.burnLeaderboardList.innerHTML = `<span class="chip">No clan burn records yet</span>`;
-          return;
-        }
-        entries.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
-        const top = entries[0];
-        dom.leaderboardSummary.textContent = `Top player: ${top.nickname} (${top.clanName}) • Score ${top.score} • Wallet ${shortWallet(top.wallet)}`;
-        dom.leaderboardList.innerHTML = entries
-          .slice(0, 12)
-          .map((entry, idx) => {
-            const dateLabel = new Date(entry.updatedAt ?? Date.now()).toLocaleDateString();
-            return `<article class="leaderboard-entry"><strong>#${idx + 1} ${entry.nickname} // ${entry.clanName}</strong><small>${entry.avatarName} | Wallet ${shortWallet(entry.wallet)} | Score ${entry.score}</small><small>Bosses ${entry.bosses} | Clues ${entry.clues} | Morality ${entry.morality} | Magic ${entry.magic} | Burned ${entry.burnTotal}</small><small>${entry.slogan} • ${dateLabel}</small></article>`;
-          })
-          .join("");
-
-        const clanRows = aggregateClanLeaderboard(entries);
-        if (dom.clanLeaderboardSummary) {
-          const strongestClan = clanRows[0];
-          dom.clanLeaderboardSummary.textContent = `Most powerful clan: ${strongestClan.clanName} • Power ${strongestClan.powerScore}`;
-        }
-        const maxMagicAvg = Math.max(...clanRows.map((entry) => entry.magicAvg), 1);
-        if (dom.clanLeaderboardList) {
-          dom.clanLeaderboardList.innerHTML = clanRows
+        } else {
+          entries.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+          const top = entries[0];
+          dom.leaderboardSummary.textContent = `Top player: ${top.nickname} (${top.clanName}) • Score ${top.score} • Wallet ${shortWallet(top.wallet)}`;
+          dom.leaderboardList.innerHTML = entries
+            .slice(0, 12)
             .map((entry, idx) => {
-              const moralityPercent = clamp((entry.moralityAvg + 100) / 2, 0, 100);
-              const moralityColor = entry.moralityAvg >= 0 ? "#22c55e" : "#f97316";
-              const magicPercent = clamp((entry.magicAvg / maxMagicAvg) * 100, 0, 100);
-              return `<article class="leaderboard-entry"><strong>#${idx + 1} ${entry.clanName}</strong><small>Players ${entry.players} | Power ${entry.powerScore} | Avg Morality ${Math.round(entry.moralityAvg)} | Avg Magic ${entry.magicAvg.toFixed(1)}</small><div class="leaderboard-meter"><small>Morality Meter</small><div class="leaderboard-meter-track"><div class="leaderboard-meter-fill" style="width:${moralityPercent}%;background:${moralityColor};"></div></div></div><div class="leaderboard-meter"><small>Magic Meter</small><div class="leaderboard-meter-track"><div class="leaderboard-meter-fill" style="width:${magicPercent}%;"></div></div></div></article>`;
+              const dateLabel = new Date(entry.updatedAt ?? Date.now()).toLocaleDateString();
+              return `<article class="leaderboard-entry"><strong>#${idx + 1} ${entry.nickname} // ${entry.clanName}</strong><small>${entry.avatarName} | Wallet ${shortWallet(entry.wallet)} | Score ${entry.score}</small><small>Bosses ${entry.bosses} | Clues ${entry.clues} | Morality ${entry.morality} | Magic ${entry.magic} | Burned ${entry.burnTotal}</small><small>${entry.slogan} • ${dateLabel}</small></article>`;
             })
             .join("");
         }
+
+        const clanRows = aggregateClanLeaderboard(entries);
+        if (dom.clanLeaderboardSummary) {
+          if (clanRows.length) {
+            const strongestClan = clanRows[0];
+            dom.clanLeaderboardSummary.textContent = `Most powerful clan: ${strongestClan.clanName} • Power ${strongestClan.powerScore}`;
+          } else {
+            dom.clanLeaderboardSummary.textContent = "No clan stats yet.";
+          }
+        }
+        const maxMagicAvg = Math.max(...clanRows.map((entry) => entry.magicAvg), 1);
+        if (dom.clanLeaderboardList) {
+          dom.clanLeaderboardList.innerHTML = clanRows.length
+            ? clanRows
+                .map((entry, idx) => {
+                  const moralityPercent = clamp((entry.moralityAvg + 100) / 2, 0, 100);
+                  const moralityColor = entry.moralityAvg >= 0 ? "#22c55e" : "#f97316";
+                  const magicPercent = clamp((entry.magicAvg / maxMagicAvg) * 100, 0, 100);
+                  return `<article class="leaderboard-entry"><strong>#${idx + 1} ${entry.clanName}</strong><small>Players ${entry.players} | Power ${entry.powerScore} | Avg Morality ${Math.round(entry.moralityAvg)} | Avg Magic ${entry.magicAvg.toFixed(1)}</small><div class="leaderboard-meter"><small>Morality Meter</small><div class="leaderboard-meter-track"><div class="leaderboard-meter-fill" style="width:${moralityPercent}%;background:${moralityColor};"></div></div></div><div class="leaderboard-meter"><small>Magic Meter</small><div class="leaderboard-meter-track"><div class="leaderboard-meter-fill" style="width:${magicPercent}%;"></div></div></div></article>`;
+                })
+                .join("")
+            : `<span class="chip">No clan metrics yet</span>`;
+        }
         const burnRows = [...clanRows].sort((left, right) => right.burnTotal - left.burnTotal);
         if (dom.burnLeaderboardSummary) {
-          const burnLeader = burnRows[0];
-          dom.burnLeaderboardSummary.textContent = `Top burn clan: ${burnLeader.clanName} • ${burnLeader.burnTotal} total spores burned`;
+          if (burnRows.length) {
+            const burnLeader = burnRows[0];
+            dom.burnLeaderboardSummary.textContent = `Top burn clan: ${burnLeader.clanName} • ${burnLeader.burnTotal} total spores burned`;
+          } else {
+            dom.burnLeaderboardSummary.textContent = "No clan burn stats yet.";
+          }
         }
         if (dom.burnLeaderboardList) {
-          dom.burnLeaderboardList.innerHTML = burnRows
-            .map((entry, idx) => `<article class="leaderboard-entry"><strong>#${idx + 1} ${entry.clanName}</strong><small>Total Burned ${entry.burnTotal} spores</small><small>Morality Avg ${Math.round(entry.moralityAvg)} • Magic Avg ${entry.magicAvg.toFixed(1)} • Players ${entry.players}</small></article>`)
+          dom.burnLeaderboardList.innerHTML = burnRows.length
+            ? burnRows
+                .map((entry, idx) => `<article class="leaderboard-entry"><strong>#${idx + 1} ${entry.clanName}</strong><small>Total Burned ${entry.burnTotal} spores</small><small>Morality Avg ${Math.round(entry.moralityAvg)} • Magic Avg ${entry.magicAvg.toFixed(1)} • Players ${entry.players}</small></article>`)
+                .join("")
+            : `<span class="chip">No clan burn records yet</span>`;
+        }
+
+        const seasonRows = CLAN_IDS
+          .map((clanId) => {
+            const aggregated = clanRows.find((entry) => entry.clanId === clanId);
+            const baseWar = state.season.clanWarScores[clanId] ?? 0;
+            const networkContribution = Math.round((aggregated?.scoreTotal ?? 0) * 0.06 + (aggregated?.burnTotal ?? 0) * 0.42 + (aggregated?.magicTotal ?? 0) * 2.5);
+            const totalWarScore = baseWar + networkContribution;
+            return {
+              clanId,
+              clanName: CLAN_PROFILES[clanId]?.name ?? clanId,
+              warScore: totalWarScore,
+              players: aggregated?.players ?? 0,
+              moralityAvg: aggregated?.moralityAvg ?? 0,
+              magicAvg: aggregated?.magicAvg ?? 0,
+            };
+          })
+          .sort((left, right) => right.warScore - left.warScore);
+        const territoryPool = seasonRows.reduce((sum, row) => sum + Math.max(20, row.warScore + 120), 0);
+        for (const row of seasonRows) {
+          row.territory = territoryPool > 0 ? (Math.max(20, row.warScore + 120) / territoryPool) * 100 : 0;
+        }
+        if (dom.seasonWarSummary) {
+          const seasonTop = seasonRows[0];
+          dom.seasonWarSummary.textContent = `${state.season.weekKey.toUpperCase()} // Frontline leader: ${seasonTop?.clanName ?? "N/A"} (${Math.round(seasonTop?.warScore ?? 0)} war points)`;
+        }
+        if (dom.seasonWarList) {
+          dom.seasonWarList.innerHTML = seasonRows
+            .map((entry, idx) => `<article class="leaderboard-entry"><strong>#${idx + 1} ${entry.clanName}</strong><small>War Points ${Math.round(entry.warScore)} | Territory ${entry.territory.toFixed(1)}% | Players ${entry.players}</small><div class="leaderboard-meter"><small>Territory Control</small><div class="leaderboard-meter-track"><div class="leaderboard-meter-fill" style="width:${entry.territory.toFixed(1)}%;"></div></div></div></article>`)
             .join("");
+        }
+        if (dom.worldMutationSummary) {
+          dom.worldMutationSummary.textContent = `${state.worldMutation.title} // ${state.worldMutation.description}`;
+        }
+        if (dom.worldMutationList) {
+          dom.worldMutationList.innerHTML = `<article class="leaderboard-entry"><strong>${state.worldMutation.title}</strong><small>Enemy Pace x${state.worldMutation.enemyPaceMultiplier.toFixed(2)} | Spore Respawn x${state.worldMutation.sporeRespawnMultiplier.toFixed(2)} | Arcane Yield x${state.worldMutation.magicFindMultiplier.toFixed(2)}</small><small>Mutation key: ${state.worldMutation.key}</small></article>`;
         }
       };
 
@@ -3486,6 +3775,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         state.web3.wallet = trimmed;
         state.web3.lastSyncedAt = Date.now();
         syncIdentityInputs();
+        evaluateOnchainMilestones();
+        updateLeaderboardEntry();
         saveConfig();
         setStatus(`Wallet linked (${sourceLabel}): ${shortWallet(trimmed)}.`);
         if (dom.titleWalletStatus) dom.titleWalletStatus.textContent = `Wallet connected: ${shortWallet(trimmed)}`;
@@ -3543,6 +3834,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         state.web3.relicPower = score;
         state.web3.chainRank = computeChainTier(score);
         state.web3.lastSyncedAt = Date.now();
+        evaluateOnchainMilestones(true);
         setStatus(`Chain sync complete. Rank: ${state.web3.chainRank}.`);
         playSfx("portal");
       };
@@ -3782,6 +4074,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           playerClan: state.playerClan,
           playerAvatar: state.playerAvatar,
           burn: state.burn,
+          season: state.season,
+          worldMutation: state.worldMutation,
           enemyStates: state.enemies.map((enemy) => ({
             id: enemy.id,
             active: enemy.active,
@@ -3858,6 +4152,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
               if (!Array.isArray(state.web3.mintedRelics)) {
                 state.web3.mintedRelics = [];
               }
+              if (!Array.isArray(state.web3.unlockedMilestones)) {
+                state.web3.unlockedMilestones = [];
+              }
             }
             if (typeof parsed.lastAdvice === "string") {
               state.lastAdvice = parsed.lastAdvice;
@@ -3875,6 +4172,22 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
               };
               if (!Array.isArray(state.burn.events)) state.burn.events = [];
               refreshDailyBurnQuota();
+            }
+            if (parsed.season && typeof parsed.season === "object") {
+              state.season = {
+                ...state.season,
+                ...parsed.season,
+              };
+            }
+            if (parsed.worldMutation && typeof parsed.worldMutation === "object") {
+              state.worldMutation = {
+                ...state.worldMutation,
+                ...parsed.worldMutation,
+              };
+            }
+            ensureSeasonState();
+            if (!state.worldMutation.key) {
+              refreshWorldMutation(true);
             }
             refreshDailyShrineProgress();
             for (const enemyState of parsed.enemyStates ?? []) {
@@ -3953,6 +4266,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
         dom.titleScreen.classList.remove("active");
         setStatus(`${profile.name} chronicle (${avatarName}) initialized in ${getCurrentRealm().name}. ${profile.storyThread}`);
+        evaluateOnchainMilestones();
         updateLeaderboardEntry();
         checkCutsceneTriggers();
         syncCampaign();
@@ -4208,6 +4522,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           setStatus(`Burned ${burnAmount} spores at ${pit.name}. Local burn ledger updated.`);
         }
         pushStoryEntry(`${pit.name} witnessed a ${burnAmount}-spore offering under your clan oath.`, "ritual");
+        recordSeasonImpact("burn-offering", state.playerClan, Math.max(4, Math.round(burnAmount * 0.32)), `${pit.name} (+${burnAmount})`);
+        evaluateOnchainMilestones();
         updateLeaderboardEntry();
         renderBurnPitScreen();
         renderHud();
@@ -4478,7 +4794,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const scheduleRoamingSporeRespawn = (realmId, golden, now = Date.now(), forceFast = false) => {
         const minMs = golden ? ROAMING_SPORE_SETTINGS.goldenRespawnMinMs : ROAMING_SPORE_SETTINGS.blueRespawnMinMs;
         const maxMs = golden ? ROAMING_SPORE_SETTINGS.goldenRespawnMaxMs : ROAMING_SPORE_SETTINGS.blueRespawnMaxMs;
-        const delayMs = forceFast ? randomBetween(250, 1300) : randomBetween(minMs, maxMs);
+        const mutation = getWorldMutationEffects();
+        const baseDelay = forceFast ? randomBetween(250, 1300) : randomBetween(minMs, maxMs);
+        const delayMs = baseDelay * mutation.sporeRespawnMultiplier;
         const target = golden ? state.roamingSpores.nextGoldenByRealm : state.roamingSpores.nextBlueByRealm;
         target[realmId] = now + delayMs;
       };
@@ -4571,8 +4889,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         ensureRoamingSporeTimers();
         const now = Date.now();
         const profile = getNarrativeProfile();
-        const blueTargetPerRealm = Math.max(4, Math.round(ROAMING_SPORE_SETTINGS.blueTargetPerRealm * profile.blueSporeMultiplier));
-        const goldenTargetPerRealm = Math.max(1, Math.round(ROAMING_SPORE_SETTINGS.goldenTargetPerRealm * profile.goldenSporeMultiplier));
+        const mutation = getWorldMutationEffects();
+        const blueTargetPerRealm = Math.max(4, Math.round(ROAMING_SPORE_SETTINGS.blueTargetPerRealm * profile.blueSporeMultiplier * mutation.magicFindMultiplier));
+        const goldenTargetPerRealm = Math.max(1, Math.round(ROAMING_SPORE_SETTINGS.goldenTargetPerRealm * profile.goldenSporeMultiplier * mutation.magicFindMultiplier));
         state.roamingSpores.active = state.roamingSpores.active.filter((pickup) =>
           REALMS.some((realm) => realm.id === pickup.region),
         );
@@ -4607,9 +4926,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (!state.progress.clues.has(clueId)) {
           state.progress.clues.add(clueId);
           recordAiSignal("curiosity", 2);
+          recordSeasonImpact("clue", state.playerClan, 8, clueLabel);
           pushStoryEntry(`New clue secured: ${clueLabel}.`, "lore");
           setStatus(`Clue discovered: ${clueLabel}`);
           playSfx("clue");
+          evaluateOnchainMilestones();
         }
       };
 
@@ -5520,9 +5841,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           rewards.push("+22 Spores", "Hidden Vault Route clue");
         }
 
+        const seasonGain = 10 + rewards.length * 3 + (feature === "combat-trial" ? 16 : 0);
+        recordSeasonImpact("interior-clear", state.playerClan, seasonGain, `${structure.name} // ${INTERIOR_FEATURE_LABELS[feature]}`);
         dom.interiorHint.textContent = `${INTERIOR_FEATURE_LABELS[feature]} cleared: ${rewards.join(", ")}.`;
         playSfx("pickup");
         drawInteriorScene(structure);
+        evaluateOnchainMilestones();
         if (triggerTrial) {
           triggerInteriorTrialBattle(structure);
         }
@@ -5810,6 +6134,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         options.push(`Realm pulse: ${realm?.name ?? "Unknown realm"} bends around your portal signature.`);
         options.push(`Adaptive profile: ${profile.text}. The world is adjusting to your decisions.`);
         options.push(`AI director: ${state.progress.clues.size} clues gathered; new enemy paths are mutating.`);
+        options.push(`Mutation alert: ${state.worldMutation.title} [${state.worldMutation.key}] is warping lanes.`);
         options.push(`Arcane loadout: ${learnedMagicIds().length} learned magic arts in your grimoire.`);
         options.push(`Inventory pulse: potion ${state.inventory.mycoPotion}, dew ${state.inventory.manaDew}, bomb ${state.inventory.smokeBomb}.`);
         if (state.story.entries.length) {
@@ -5831,6 +6156,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const updateEnemies = (dt) => {
         const now = Date.now();
         const profile = getNarrativeProfile();
+        const mutation = getWorldMutationEffects();
         const regionSpeed = {
           "myco-kingdom": 34,
           "rougarou-fen": 42,
@@ -5856,7 +6182,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             enemy.directionShiftAt = now + randomBetween(1000, 3200);
           }
 
-          const speed = (enemy.boss ? 26 : (regionSpeed[enemy.region] ?? 36)) * (1 + darkPressure) * profile.enemyPaceMultiplier;
+          const speed = (enemy.boss ? 26 : (regionSpeed[enemy.region] ?? 36)) * (1 + darkPressure) * profile.enemyPaceMultiplier * mutation.enemyPaceMultiplier;
           const nextX = enemy.x + enemy.wanderDirX * speed * dt;
           const nextY = enemy.y + enemy.wanderDirY * speed * dt;
           const enemyRect = { x: nextX - 18, y: nextY - 18, w: 36, h: 36 };
@@ -5880,19 +6206,24 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const updatePickups = () => {
         const heroRect = getHeroRect();
         const claimPickup = (pickup, fromRoaming = false) => {
+          const mutation = getWorldMutationEffects();
           if (pickup.golden) {
             recordAiSignal("curiosity", fromRoaming ? 1 : 0.5);
             state.hero.goldenSpores += pickup.value;
+            if (mutation.magicFindMultiplier > 1.2 && Math.random() < 0.22) {
+              state.hero.goldenSpores += 1;
+            }
             pushStoryEntry(`You recovered a golden spore in ${getCurrentRealm().name}.`, "explore");
             setStatus(fromRoaming ? "Golden roaming spore collected!" : "Golden spore collected! Rare currency increased.");
             playSfx("pickup");
           } else {
             recordAiSignal("exploration", fromRoaming ? 1.2 : 0.7);
-            grantSpores(pickup.value);
+            const mutationBonus = Math.max(1, Math.round(pickup.value * (fromRoaming ? mutation.magicFindMultiplier : 1)));
+            grantSpores(mutationBonus);
             if (fromRoaming) {
-              pushStoryEntry(`You wandered off-script and found ${pickup.value} roaming blue spores.`, "explore");
+              pushStoryEntry(`You wandered off-script and found ${mutationBonus} roaming blue spores.`, "explore");
             }
-            setStatus(fromRoaming ? `Collected roaming blue spores (+${pickup.value}).` : `Collected ${pickup.value} spores.`);
+            setStatus(fromRoaming ? `Collected roaming blue spores (+${mutationBonus}).` : `Collected ${mutationBonus} spores.`);
             playSfx("pickup");
           }
         };
@@ -6013,6 +6344,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
         if (battle.status === "won") {
           recordAiSignal("combat", enemy?.boss ? 3 : 2);
+          recordSeasonImpact(
+            enemy?.boss ? "boss-victory" : "battle-victory",
+            state.playerClan,
+            enemy?.boss ? 64 : 20,
+            enemy ? getEnemyDisplayName(enemy.kind) : "Unknown enemy",
+          );
           if (state.hero.hp <= 0) {
             state.hero.hp = Math.max(1, Math.floor(state.hero.maxHp * 0.2));
           }
@@ -6058,8 +6395,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           playBattleActionSfx("death", "enemy");
           playBattleActionSfx("victory", "player");
           playSfx("victory");
+          evaluateOnchainMilestones();
         } else if (battle.status === "lost") {
           recordAiSignal("ferocity", 1);
+          recordSeasonImpact("battle-loss", state.playerClan, -8, "Recovery required");
           pushStoryEntry(`You were defeated in ${getCurrentRealm().name}, but the chronicle continues from sanctuary.`, "battle");
           applyMorality(-6);
           state.hero.hp = state.hero.maxHp;
@@ -6299,6 +6638,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const update = async (dt) => {
         state.worldTime += dt;
+        ensureSeasonState();
+        refreshWorldMutation();
         refreshDailyShrineProgress();
         if (state.mode !== "intro" && !state.intro.active) {
           maintainRoamingSporeSpawns();
@@ -7440,6 +7781,16 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const renderHud = () => {
         refreshDailyBurnQuota();
+        ensureSeasonState();
+        if (!renderHud.lastMutationRefresh || Date.now() - renderHud.lastMutationRefresh > 50000) {
+          refreshWorldMutation();
+          renderHud.lastMutationRefresh = Date.now();
+        }
+        evaluateOnchainMilestones();
+        if (!renderHud.lastLeaderboardRender || Date.now() - renderHud.lastLeaderboardRender > 1800) {
+          renderLeaderboard();
+          renderHud.lastLeaderboardRender = Date.now();
+        }
         const hpRatio = state.hero.maxHp > 0 ? state.hero.hp / state.hero.maxHp : 0;
         dom.hpFill.style.width = `${Math.floor(clamp(hpRatio, 0, 1) * 100)}%`;
         dom.hpText.textContent = `${state.hero.hp} / ${state.hero.maxHp}`;
@@ -7600,7 +7951,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           .map((portal) => REALMS.find((entry) => entry.id === portalDestinationRealmId(portal))?.name)
           .filter((name, idx, list) => Boolean(name) && list.indexOf(name) === idx)
           .join(", ");
-        dom.regionHint.textContent = `World region: ${region?.name ?? "Unknown"}\nCurrent realm page: ${realm?.name ?? "Unknown"}\nLinked pages: ${linkedRealms || "None"}\nClan: ${clan.name} // Avatar: ${getSelectedAvatarName()}\nNarrative Persona: ${narrativeProfile.text}\n${realm?.label ?? region?.label ?? ""}\nAI directive: ${state.aiDirective}\nStory pulse: ${latestStoryEntry?.text ?? "No active beat yet."}`;
+        const seasonScores = state.season.clanWarScores ?? {};
+        const seasonLeaderId = [...CLAN_IDS].sort((left, right) => (seasonScores[right] ?? 0) - (seasonScores[left] ?? 0))[0] ?? "myco";
+        const seasonLeaderName = CLAN_PROFILES[seasonLeaderId]?.name ?? seasonLeaderId;
+        dom.regionHint.textContent = `World region: ${region?.name ?? "Unknown"}\nCurrent realm page: ${realm?.name ?? "Unknown"}\nLinked pages: ${linkedRealms || "None"}\nClan: ${clan.name} // Avatar: ${getSelectedAvatarName()}\nNarrative Persona: ${narrativeProfile.text}\nSeason: ${state.season.weekKey} // Warfront Leader: ${seasonLeaderName}\nWorld Mutation: ${state.worldMutation.title} (${state.worldMutation.key})\n${realm?.label ?? region?.label ?? ""}\nAI directive: ${state.aiDirective}\nStory pulse: ${latestStoryEntry?.text ?? "No active beat yet."}`;
         if (dom.realmBanner) {
           const pathTone = state.hero.morality >= 0 ? "Mycoside" : "Darkside";
           dom.realmBanner.textContent = `${realm?.name ?? "Unknown Realm"} // ${clan.bannerTitle} // ${pathTone} path`;
@@ -7636,6 +7990,18 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           ? `<span class="chip">Last Burn ${latestBurnEvent.sporesBurned} @ ${latestBurnEvent.pitName} (${latestBurnEvent.remoteStatus})</span>`
           : `<span class="chip">No burn pit records yet</span>`;
         dom.web3Relics.innerHTML = `${relicChips}${burnChip}`;
+        const unlockedMilestones = Array.isArray(state.web3.unlockedMilestones) ? state.web3.unlockedMilestones : [];
+        if (dom.onchainMilestoneSummary) {
+          dom.onchainMilestoneSummary.textContent = unlockedMilestones.length
+            ? `On-chain progression: ${unlockedMilestones.length}/${ONCHAIN_MILESTONES.length} milestones unlocked`
+            : "On-chain milestones pending.";
+        }
+        if (dom.onchainMilestoneList) {
+          dom.onchainMilestoneList.innerHTML = ONCHAIN_MILESTONES.map((milestone) => {
+            const done = unlockedMilestones.includes(milestone.id);
+            return `<span class="chip">${done ? "✓" : "○"} ${milestone.title}</span>`;
+          }).join("");
+        }
         dom.connectWalletBtn.textContent = connected ? `Wallet Connected (${shortWallet(state.web3.wallet)})` : "Connect Solana Wallet";
         dom.syncWeb3Btn.disabled = !connected;
         dom.mintSigilBtn.disabled = !connected;
@@ -7664,6 +8030,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           dom.battleSummary.textContent = "No active battle. Touch an enemy in the overworld to engage.";
         }
       };
+      renderHud.lastMutationRefresh = 0;
+      renderHud.lastLeaderboardRender = 0;
 
       const syncCampaign = async () => {
         if (!requireSignedInIdentity(true)) return;
@@ -7885,17 +8253,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       dom.titleWalletInput.addEventListener("change", () => {
         const manualWallet = String(dom.titleWalletInput.value ?? "").trim();
         if (!manualWallet) return;
-        if (!isValidSolanaWalletAddress(manualWallet)) {
-          if (dom.titleWalletStatus) dom.titleWalletStatus.textContent = "Wallet format invalid. Use a valid Solana address.";
-          setStatus("Wallet format invalid. Use a valid Solana address.", true);
-          return;
-        }
-        state.web3.wallet = manualWallet;
-        state.web3.lastSyncedAt = Date.now();
-        syncIdentityInputs();
+        setConnectedWallet(manualWallet, "manual");
         refreshTitleScreen();
         renderHud();
-        saveConfig();
       });
       dom.clanSelect.addEventListener("change", () => {
         applyClanSelectionFromUi();
@@ -7921,6 +8281,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       state.ui.titleCardSkipped = false;
       saveConfig();
       loadGame();
+      ensureSeasonState();
+      refreshWorldMutation(true);
       syncIdentityInputs();
       populateClanSelect();
       const realmEntry = applyRealmPageEntry();
