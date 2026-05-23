@@ -324,7 +324,7 @@
       .battle-controls {
         margin-top: 8px;
         display: grid;
-        grid-template-columns: 1fr auto auto auto auto;
+        grid-template-columns: 1fr auto auto auto auto auto;
         gap: 6px;
       }
       @media (max-width: 520px) {
@@ -370,6 +370,29 @@
       .dialogue p {
         margin-bottom: 8px;
         color: #e2e8f0;
+      }
+      .dialogue-qa {
+        margin: 8px 0 10px;
+        border: 1px solid #304e83;
+        border-radius: 10px;
+        background: rgba(10, 19, 39, 0.84);
+        padding: 8px;
+      }
+      .dialogue-qa p {
+        margin: 0 0 6px;
+      }
+      .dialogue-qa ul {
+        margin: 0;
+        padding-left: 16px;
+        display: grid;
+        gap: 4px;
+      }
+      .dialogue-qa li {
+        font-size: 12px;
+        color: #dbeafe;
+      }
+      .dialogue-qa li small {
+        color: #9fb6dd;
       }
       .dialogue-head {
         display: flex;
@@ -1148,6 +1171,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
               <button id="guardBtn">Guard</button>
               <button id="skillBtn" class="primary">Skill</button>
               <button id="itemBtn">Use Potion</button>
+              <button id="fleeBtn" class="warn">Flee</button>
             </div>
             <div id="battleLog" class="log">No combat logs yet.</div>
           </section>
@@ -1158,6 +1182,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
               Move: WASD / Arrow keys<br />
               Interact: E<br />
               Sprint: Hold Shift<br />
+              Flee Battle: F or Flee button<br />
               Cutscene Next: Space<br />
               Enter houses/caves/castles/dungeons to open interior screens. Step onto unlocked portals to load linked region pages.
             </p>
@@ -1205,6 +1230,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         <button class="touch-btn" data-action="strike">Strike</button>
         <button class="touch-btn" data-action="guard">Guard</button>
         <button class="touch-btn" data-action="skill">Skill</button>
+        <button class="touch-btn" data-action="flee">Flee</button>
         <button class="touch-btn" data-action="sync">Sync</button>
       </div>
     </section>
@@ -1218,6 +1244,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         </div>
       </div>
       <p id="dialogueBody">...</p>
+      <div id="dialogueQaWrap" class="dialogue-qa" hidden>
+        <p class="subtle">Questions &amp; Answers</p>
+        <ul id="dialogueQaList"></ul>
+      </div>
       <div class="dialogue-actions">
         <button id="choiceMycoBtn" class="primary">Mycoside Choice</button>
         <button id="choiceDarkBtn" class="warn">Darkside Choice</button>
@@ -1365,6 +1395,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         guardBtn: document.getElementById("guardBtn"),
         skillBtn: document.getElementById("skillBtn"),
         itemBtn: document.getElementById("itemBtn"),
+        fleeBtn: document.getElementById("fleeBtn"),
         upgradeAttackBtn: document.getElementById("upgradeAttackBtn"),
         upgradeDefenseBtn: document.getElementById("upgradeDefenseBtn"),
         upgradeMagicBtn: document.getElementById("upgradeMagicBtn"),
@@ -1401,6 +1432,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         dialogueTitle: document.getElementById("dialogueTitle"),
         dialogueSubtitle: document.getElementById("dialogueSubtitle"),
         dialogueBody: document.getElementById("dialogueBody"),
+        dialogueQaWrap: document.getElementById("dialogueQaWrap"),
+        dialogueQaList: document.getElementById("dialogueQaList"),
         choiceMycoBtn: document.getElementById("choiceMycoBtn"),
         choiceDarkBtn: document.getElementById("choiceDarkBtn"),
         choiceTradeBtn: document.getElementById("choiceTradeBtn"),
@@ -2955,6 +2988,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           bossWins: 0,
           puzzleSolves: 0,
           trainingMarks: 0,
+          enemiesSpared: 0,
+          enemiesExecuted: 0,
+          npcRobberies: 0,
+          battleFlees: 0,
+          askedNpcQuestions: new Set(),
         },
         hero: {
           x: 280,
@@ -2977,6 +3015,13 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       };
 
       const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+      const escapeHtml = (value) =>
+        String(value ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
 
       const randomBetween = (min, max) => min + Math.random() * (max - min);
 
@@ -4101,6 +4146,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
               playTurn("skill");
               return;
             }
+            if (action === "flee") {
+              attemptBattleFlee();
+              return;
+            }
             if (action === "sync") {
               syncCampaign();
             }
@@ -4660,6 +4709,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           bossWins: state.progress.bossWins ?? 0,
           puzzleSolves: state.progress.puzzleSolves ?? 0,
           trainingMarks: state.progress.trainingMarks ?? 0,
+          enemiesSpared: state.progress.enemiesSpared ?? 0,
+          enemiesExecuted: state.progress.enemiesExecuted ?? 0,
+          npcRobberies: state.progress.npcRobberies ?? 0,
+          battleFlees: state.progress.battleFlees ?? 0,
+          askedNpcQuestions: Array.from(state.progress.askedNpcQuestions ?? []),
           inventory: state.inventory,
           web3: state.web3,
           aiModel: state.aiModel,
@@ -4735,6 +4789,21 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             }
             if (typeof parsed.trainingMarks === "number") {
               state.progress.trainingMarks = Math.max(0, Math.round(parsed.trainingMarks));
+            }
+            if (typeof parsed.enemiesSpared === "number") {
+              state.progress.enemiesSpared = Math.max(0, Math.round(parsed.enemiesSpared));
+            }
+            if (typeof parsed.enemiesExecuted === "number") {
+              state.progress.enemiesExecuted = Math.max(0, Math.round(parsed.enemiesExecuted));
+            }
+            if (typeof parsed.npcRobberies === "number") {
+              state.progress.npcRobberies = Math.max(0, Math.round(parsed.npcRobberies));
+            }
+            if (typeof parsed.battleFlees === "number") {
+              state.progress.battleFlees = Math.max(0, Math.round(parsed.battleFlees));
+            }
+            for (const entry of parsed.askedNpcQuestions ?? []) {
+              if (typeof entry === "string") state.progress.askedNpcQuestions.add(entry);
             }
             if (parsed.inventory && typeof parsed.inventory === "object") {
               state.inventory = {
@@ -5739,16 +5808,47 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const tradeEnabled = typeof payload.onTrade === "function";
         dom.choiceTradeBtn.style.display = tradeEnabled ? "inline-block" : "none";
         dom.choiceTradeBtn.textContent = payload.tradeLabel ?? "Trade";
+        dom.closeDialogueBtn.textContent = payload.closeLabel ?? "Close";
+        if (dom.dialogueQaWrap && dom.dialogueQaList) {
+          const qaPairs = Array.isArray(payload.qaPairs)
+            ? payload.qaPairs.filter((entry) => entry && typeof entry.question === "string" && typeof entry.answer === "string")
+            : [];
+          if (qaPairs.length) {
+            dom.dialogueQaList.innerHTML = qaPairs
+              .map((entry, index) => {
+                const nftPart = entry.nftTag ? ` // NFT: ${escapeHtml(entry.nftTag)}` : "";
+                return `<li><strong>Q${index + 1}: ${escapeHtml(entry.question)}</strong><br /><small>A: ${escapeHtml(entry.answer)}${nftPart}</small></li>`;
+              })
+              .join("");
+            dom.dialogueQaWrap.hidden = false;
+          } else {
+            dom.dialogueQaWrap.hidden = true;
+            dom.dialogueQaList.innerHTML = "";
+          }
+        }
         dom.dialoguePanel.classList.add("active");
         playSfx("talk");
       };
 
-      const closeDialogue = () => {
+      const closeDialogue = (reason = "leave") => {
+        const active = state.activeDialogue;
+        if (reason === "leave" && active && typeof active.onClose === "function") {
+          try {
+            active.onClose();
+          } catch (_error) {
+            // Dialogue close callback failures should not block game flow.
+          }
+        }
         state.activeDialogue = null;
         state.contactLockUntil = Date.now() + 1200;
         dom.choiceTradeBtn.style.display = "none";
         dom.dialogueSubtitle.textContent = "Speaker profile";
         dom.dialoguePortrait.textContent = "?";
+        dom.closeDialogueBtn.textContent = "Close";
+        if (dom.dialogueQaWrap && dom.dialogueQaList) {
+          dom.dialogueQaWrap.hidden = true;
+          dom.dialogueQaList.innerHTML = "";
+        }
         dom.dialoguePanel.classList.remove("active");
       };
 
@@ -6024,12 +6124,103 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
       };
 
+      const buildNpcQuestionAnswers = (npc, contextLabel = "Overworld") => {
+        const clan = getClanProfile();
+        const profile = getNarrativeProfile();
+        const clueTag = npc.clueLabel ?? "Uncatalogued clue";
+        const guidance = npc.adviceGood ?? npc.mycoText ?? "Stay alert, gather clues, and invest in upgrades.";
+        return [
+          {
+            id: "routes",
+            question: "How do I unlock safer routes from here?",
+            answer: `${guidance} Focus your ${profile.profileName} strengths to reveal shortcut lanes.`,
+            nftTag: `${clueTag} Route Cipher`,
+          },
+          {
+            id: "nft",
+            question: "How do dialogue NFTs and relics work?",
+            answer: `Complete dialogue branches and clue chains to mint conversation relic tags in your Web3 relic ledger.`,
+            nftTag: `${npc.name} Dialogue Relic`,
+          },
+          {
+            id: "clan",
+            question: `What does ${clan.name} gain in this zone?`,
+            answer: `${clan.npcThread} Keep your morality choices aligned with your objective in ${contextLabel}.`,
+            nftTag: `${clan.shortName} Chronicle Thread`,
+          },
+        ];
+      };
+
+      const askNpcQuestionDialogue = (npc, qaPairs, contextLabel = "Overworld") => {
+        const questions = Array.isArray(qaPairs) && qaPairs.length ? qaPairs : buildNpcQuestionAnswers(npc, contextLabel);
+        const seed = hashString(`${npc.id}:${state.progress.askedNpcQuestions.size}:${state.story.entries.length}`);
+        const entryIndex = seed % questions.length;
+        const entry = questions[entryIndex];
+        const questionKey = `${npc.id}:${entry.id ?? entryIndex}`;
+        const isFirstAsk = !state.progress.askedNpcQuestions.has(questionKey);
+        state.progress.askedNpcQuestions.add(questionKey);
+        state.progress.interactedNpcs.add(npc.id);
+        recordAiSignal("curiosity", 1.5);
+        recordAiSignal("diplomacy", 0.8);
+        applyMorality(isFirstAsk ? 4 : 1);
+        grantSpores(isFirstAsk ? 10 : 4);
+        state.lastAdvice = npc.adviceGood ?? entry.answer;
+        addClue(npc.clueId, npc.clueLabel);
+        const relicTag = `Dialogue NFT // ${npc.name} // ${entry.nftTag ?? "Conversation Thread"}`;
+        const minted = isFirstAsk
+          ? addMintedRelic(
+            relicTag,
+            "web3",
+            `${npc.name} encoded a dialogue NFT route during ${contextLabel}.`,
+          )
+          : false;
+        if (minted && Math.random() < 0.35) {
+          state.hero.goldenSpores += 1;
+        }
+        pushStoryEntry(`Q&A with ${npc.name}: ${entry.question} -> ${entry.answer}`, "npc");
+        setStatus(`${npc.name} answered: ${entry.answer}${minted ? " Dialogue NFT relic added." : ""}`);
+        playSfx("clue");
+      };
+
+      const robNpcDialogue = (npc, contextLabel = "Overworld", bonusClueLabel = "") => {
+        recordAiSignal("ferocity", 2.2);
+        recordAiSignal("combat", 1);
+        applyMorality(-12);
+        state.progress.npcRobberies = (state.progress.npcRobberies ?? 0) + 1;
+        state.progress.interactedNpcs.add(npc.id);
+        const successChance = clamp(0.46 + (state.hero.morality <= -20 ? 0.12 : 0) - (state.hero.morality >= 30 ? 0.1 : 0), 0.2, 0.78);
+        if (Math.random() <= successChance) {
+          const stolenSpores = 14 + Math.round(randomBetween(8, 24));
+          grantSpores(stolenSpores);
+          const stoleBomb = Math.random() < 0.44;
+          const stoleMana = Math.random() < 0.28;
+          if (stoleBomb) state.inventory.smokeBomb += 1;
+          if (stoleMana) state.inventory.manaDew += 1;
+          addClue(`rob-${npc.id}`, bonusClueLabel || `${npc.name} Stash Route`);
+          pushStoryEntry(`You robbed ${npc.name} in ${contextLabel} and seized supplies.`, "npc");
+          const lootNotes = [
+            `+${stolenSpores} spores`,
+            stoleBomb ? "+1 smoke bomb" : "",
+            stoleMana ? "+1 mana dew" : "",
+          ].filter(Boolean).join(", ");
+          setStatus(`Rob successful: ${lootNotes}.`, true);
+          playSfx("coin");
+          return;
+        }
+        const backlash = Math.round(randomBetween(10, 22));
+        state.hero.hp = Math.max(1, state.hero.hp - backlash);
+        pushStoryEntry(`${npc.name} resisted your robbery attempt in ${contextLabel}.`, "npc");
+        setStatus(`Rob failed: ${npc.name}'s guards struck back (-${backlash} HP).`, true);
+        playSfx("error");
+      };
+
       const buildNpcEncounter = (npc, alreadySpoken) => {
         const alignment = state.hero.morality >= 20 ? "myco" : state.hero.morality <= -20 ? "dark" : "balanced";
         const bossCount = state.progress.defeatedBosses.size;
         const clueCount = state.progress.clues.size;
         const clan = getClanProfile();
         const profile = getNarrativeProfile();
+        const qaPairs = buildNpcQuestionAnswers(npc, getCurrentRealm().name);
         const persona = getNpcPersonality(npc);
         const backstory = NPC_BACKSTORIES[npc.id];
         let body = npc.intro;
@@ -6078,41 +6269,29 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           title: npc.name,
           portrait: NPC_PORTRAITS[npc.id] ?? { glyph: "🧭", subtitle: "Nexus Resident" },
           body,
-          mycoLabel: alignment === "dark" ? "Treat Kindly (+morality)" : "Mycoside Path (+morality)",
-          darkLabel: alignment === "myco" ? "Treat Rudely (-morality)" : "Darkside Path (-morality)",
+          qaPairs,
+          mycoLabel: "Ask Questions (+NFT lore)",
+          darkLabel: "Rob NPC (-morality)",
           tradeLabel: `Trade (${npc.tradeCost ?? 0} spores)`,
+          closeLabel: "Leave Conversation",
           onMyco: () => {
-            recordAiSignal("compassion", 2);
-            recordAiSignal("diplomacy", 1);
-            recordAiSignal("curiosity", 1);
-            applyMorality(8 + Math.floor(clueCount / 2));
-            grantSpores(16 + bossCount * 2);
             state.lastAdvice = npc.adviceGood;
-            if (Math.random() < 0.25) {
-              state.inventory.mycoPotion += 1;
-            }
-            addClue(npc.clueId, npc.clueLabel);
-            state.progress.interactedNpcs.add(npc.id);
-            pushStoryEntry(`${npc.name} pledged support after your compassionate choice.`, "npc");
-            setStatus(`${npc.mycoText} Advice: ${npc.adviceGood}`);
+            askNpcQuestionDialogue(npc, qaPairs, getCurrentRealm().name);
+            if (Math.random() < 0.2) state.inventory.mycoPotion += 1;
+            pushStoryEntry(`${npc.name} reinforced a mycoside path insight: ${npc.mycoText}`, "npc");
           },
           onDark: () => {
-            recordAiSignal("ferocity", 2);
-            recordAiSignal("combat", 1);
-            applyMorality(-10 - Math.floor(bossCount / 2));
-            grantGrindLoot({ armorShards: 1, guardRunes: 1 });
+            robNpcDialogue(npc, getCurrentRealm().name, npc.clueLabel);
             state.lastAdvice = npc.adviceBad;
-            if (Math.random() < 0.45) {
-              state.inventory.smokeBomb += 1;
-            }
-            addClue(npc.clueId, npc.clueLabel);
-            state.progress.interactedNpcs.add(npc.id);
-            pushStoryEntry(`${npc.name} yielded under pressure and marked your path with fear.`, "npc");
-            setStatus(`${npc.darkText} Advice: ${npc.adviceBad}`);
+            grantGrindLoot({ armorShards: 1, guardRunes: 1 });
+            pushStoryEntry(`${npc.name} reacted to your robbery pressure: ${npc.darkText}`, "npc");
           },
           onTrade: () => {
             const trustful = state.hero.morality >= -10;
             applyTrade(trustful);
+          },
+          onClose: () => {
+            setStatus(`You left ${npc.name}'s conversation.`);
           },
         };
       };
@@ -6675,6 +6854,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const buildInteriorNpcEncounter = (structure, npc, alreadySpoken) => {
         const roleText = `${npc.subtitle} at ${structure.name}`;
         const clueLabel = npc.clueLabel ?? `${structure.name} Interior Lead`;
+        const qaPairs = buildNpcQuestionAnswers(npc, `${structure.name} interior`);
         const applyInteriorTrade = () => {
           const cost = npc.tradeCost ?? 0;
           if (state.hero.spores < cost) {
@@ -6700,29 +6880,26 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           body: alreadySpoken
             ? `${npc.name}: Good to see you back in ${structure.name}. Need another exchange?`
             : `${npc.intro}\n\nRole: ${roleText}\n\nThis resident tracks your interior discoveries and reacts to your path decisions.`,
-          mycoLabel: "Respectfully Ask",
-          darkLabel: "Demand Answers",
+          qaPairs,
+          mycoLabel: "Ask Questions (+NFT lore)",
+          darkLabel: "Rob NPC (-morality)",
           tradeLabel: `Trade (${npc.tradeCost ?? 0} spores)`,
+          closeLabel: "Leave Conversation",
           onMyco: () => {
-            recordAiSignal("compassion", 1.5);
-            recordAiSignal("diplomacy", 1);
-            applyMorality(5);
-            grantSpores(8);
-            addClue(npc.clueId, clueLabel);
-            state.progress.interactedNpcs.add(npc.id);
+            askNpcQuestionDialogue(npc, qaPairs, `${structure.name} interior`);
             pushStoryEntry(`${npc.name} shared trusted advice inside ${structure.name}.`, "npc");
-            setStatus(npc.mycoText);
+            state.lastAdvice = npc.mycoText;
           },
           onDark: () => {
-            recordAiSignal("ferocity", 1.2);
-            applyMorality(-6);
+            robNpcDialogue(npc, `${structure.name} interior`, clueLabel);
             grantGrindLoot({ armorShards: 1 });
-            addClue(npc.clueId, clueLabel);
-            state.progress.interactedNpcs.add(npc.id);
             pushStoryEntry(`${npc.name} surrendered information under pressure in ${structure.name}.`, "npc");
-            setStatus(npc.darkText);
+            state.lastAdvice = npc.darkText;
           },
           onTrade: applyInteriorTrade,
+          onClose: () => {
+            setStatus(`You left ${npc.name}'s conversation.`);
+          },
         };
       };
 
@@ -7811,9 +7988,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
                 body: "You reclaimed your crown flame. The Solana corruption retreats, and the kingdom enters restoration phase.",
                 mycoLabel: "Seal the chain with mercy",
                 darkLabel: "Bind the chain with force",
+                closeLabel: "Leave Conversation",
                 onMyco: () => {
                   recordAiSignal("compassion", 3);
                   applyMorality(14);
+                  state.progress.enemiesSpared = (state.progress.enemiesSpared ?? 0) + 1;
                   addClue("restoration-seed", "Restoration Seed");
                   pushStoryEntry("Finale path chosen: mercy sealed the chain in cooperative light.", "finale");
                   setStatus("Mercy path selected. Cooperative endgame content unlocked.");
@@ -7821,11 +8000,60 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
                 onDark: () => {
                   recordAiSignal("ferocity", 3);
                   applyMorality(-16);
+                  state.progress.enemiesExecuted = (state.progress.enemiesExecuted ?? 0) + 1;
                   state.hero.attack += 1;
                   pushStoryEntry("Finale path chosen: force bound the chain into a harsher era.", "finale");
                   setStatus("Force path selected. Hard-mode branch unlocked.");
                 },
               });
+          } else if (battle.enemy?.name) {
+            const defeatedName = battle.enemy.name;
+            postBattleAction = () => {
+              let resolved = false;
+              const resolveOutcome = (choice) => {
+                if (resolved) return;
+                resolved = true;
+                if (choice === "spare") {
+                  recordAiSignal("compassion", 1.8);
+                  recordAiSignal("diplomacy", 0.8);
+                  applyMorality(7);
+                  state.progress.enemiesSpared = (state.progress.enemiesSpared ?? 0) + 1;
+                  if (enemy && !enemy.boss) {
+                    enemy.active = false;
+                    enemy.respawnAt = Math.max(Date.now() + 34000, enemy.respawnAt ?? 0);
+                  }
+                  pushStoryEntry(`You spared ${defeatedName} after battle.`, "morality");
+                  setStatus(`${defeatedName} was spared. Morality increased.`);
+                  return;
+                }
+                recordAiSignal("ferocity", 1.9);
+                recordAiSignal("combat", 0.9);
+                applyMorality(-9);
+                state.progress.enemiesExecuted = (state.progress.enemiesExecuted ?? 0) + 1;
+                const executionBonus = 8 + Math.round(randomBetween(4, 12));
+                grantSpores(executionBonus);
+                if (Math.random() < 0.26) {
+                  grantGrindLoot({ guardRunes: 1 });
+                }
+                if (enemy && !enemy.boss) {
+                  enemy.active = false;
+                  enemy.respawnAt = Math.max(Date.now() + 76000, enemy.respawnAt ?? 0);
+                }
+                pushStoryEntry(`You executed ${defeatedName} after battle.`, "morality");
+                setStatus(`${defeatedName} was executed. +${executionBonus} spores, morality decreased.`, true);
+              };
+              openDialogue({
+                title: "Enemy Defeated",
+                portrait: { glyph: "⚖️", subtitle: "Moral Decision" },
+                body: `${defeatedName} lies defeated. Your next choice shifts the chronicle tone for this run.`,
+                mycoLabel: "Let Enemy Go (+morality)",
+                darkLabel: "Kill Enemy (-morality)",
+                closeLabel: "Leave Conversation",
+                onMyco: () => resolveOutcome("spare"),
+                onDark: () => resolveOutcome("kill"),
+                onClose: () => resolveOutcome("spare"),
+              });
+            };
           }
           triggerBattleOutcomeFx("won");
           playBattleActionSfx("death", "enemy");
@@ -7846,6 +8074,24 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           triggerBattleOutcomeFx("lost");
           playBattleActionSfx("death", "player");
           playSfx("death");
+        } else if (battle.status === "fled") {
+          recordAiSignal("exploration", 0.8);
+          state.progress.battleFlees = (state.progress.battleFlees ?? 0) + 1;
+          recordSeasonImpact("battle-flee", state.playerClan, -3, "Retreated from encounter");
+          const escapedName = battle.enemy?.name ?? getEnemyDisplayName(enemy?.kind ?? "hostile");
+          pushStoryEntry(`You fled from ${escapedName} in ${getCurrentRealm().name}.`, "battle");
+          if (enemy && enemy.active) {
+            const angle = Math.atan2(state.hero.y - enemy.y, state.hero.x - enemy.x);
+            const retreatX = state.hero.x + Math.cos(angle || 0) * 96;
+            const retreatY = state.hero.y + Math.sin(angle || 0) * 96;
+            if (!isBlocked(retreatX, retreatY)) {
+              state.hero.x = retreatX;
+              state.hero.y = retreatY;
+            }
+          }
+          state.contactLockUntil = Date.now() + 2200;
+          setStatus(`You fled from ${escapedName}.`, true);
+          playSfx("error");
         }
         window.setTimeout(() => {
           state.mode = "explore";
@@ -8017,6 +8263,53 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
         if (state.battle.status !== "active") {
           processBattleEnd(state.battle);
+        }
+        renderHud();
+      };
+
+      const attemptBattleFlee = () => {
+        if (!state.battle || state.battle.status !== "active") {
+          setStatus("No active battle to flee from.", true);
+          return;
+        }
+        const battle = state.battle;
+        const isBoss = Boolean(battle.enemy?.boss);
+        const fleeChance = clamp(
+          0.42 + state.hero.guardRank * 0.04 + state.hero.armorTier * 0.03 + (state.hero.speed - 180) / 420 - (isBoss ? 0.24 : 0),
+          0.16,
+          0.86,
+        );
+        if (Math.random() <= fleeChance) {
+          battle.status = "fled";
+          battle.updatedAt = new Date().toISOString();
+          battle.battleLog.push(`Escape succeeded (${Math.round(fleeChance * 100)}% chance).`);
+          appendBattleLog("Flee action succeeded.");
+          processBattleEnd(battle);
+          renderHud();
+          return;
+        }
+        const enemyMoveName = pickEnemyMoveName(battle);
+        const penalty = Math.max(2, Math.round(8 + randomBetween(2, 9) - state.hero.defense * 0.7));
+        triggerBattleActionFx({
+          source: "enemy",
+          target: "player",
+          kind: "strike",
+          moveName: enemyMoveName,
+          element: getEnemyBattleKind(battle).includes("void") ? "void" : "nature",
+          power: penalty >= 16 ? 1.2 : 1,
+        });
+        battle.player.hp = Math.max(0, battle.player.hp - penalty);
+        battle.player.guard = Math.max(0, battle.player.guard - 8);
+        battle.turnNumber += 1;
+        battle.updatedAt = new Date().toISOString();
+        battle.battleLog.push(`Flee failed. ${battle.enemy?.name ?? "Enemy"} hit for ${penalty}.`);
+        appendBattleLog(`Flee failed (${Math.round(fleeChance * 100)}% chance).`);
+        triggerBattleHitFx("player", penalty, penalty >= 18);
+        setStatus(`Flee failed. ${battle.enemy?.name ?? "Enemy"} hit for ${penalty}.`, true);
+        playSfx("error");
+        if (battle.player.hp <= 0) {
+          battle.status = "lost";
+          processBattleEnd(battle);
         }
         renderHud();
       };
@@ -9343,13 +9636,19 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           battleCtx.fillText(state.battleFx.lastMoveName.enemy, stage.enemyPanelX - 6, floorY + 24);
         }
 
-        battleCtx.fillStyle = battle.status === "won" ? "#4ade80" : battle.status === "lost" ? "#fb7185" : "#cbd5e1";
+        battleCtx.fillStyle = battle.status === "won"
+          ? "#4ade80"
+          : battle.status === "lost"
+            ? "#fb7185"
+            : battle.status === "fled"
+              ? "#facc15"
+              : "#cbd5e1";
         battleCtx.font = "700 16px sans-serif";
         battleCtx.fillText(`Status: ${battle.status.toUpperCase()}`, 14, battleCanvas.height - 16);
         if (battle.status === "active") {
           battleCtx.fillStyle = "rgba(191, 219, 254, 0.9)";
           battleCtx.font = "12px sans-serif";
-          battleCtx.fillText("Select strike, guard, or skill to chain tactical move combos.", 14, battleCanvas.height - 34);
+          battleCtx.fillText("Select strike, guard, skill, or flee to shape tactical outcomes.", 14, battleCanvas.height - 34);
         }
       };
 
@@ -9400,6 +9699,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           `<span class="chip">Enemy Wins ${state.progress.enemyWins ?? 0}</span>`,
           `<span class="chip">Boss Wins ${state.progress.bossWins ?? 0}</span>`,
           `<span class="chip">Puzzle Solves ${state.progress.puzzleSolves ?? 0}</span>`,
+          `<span class="chip">Enemies Spared ${state.progress.enemiesSpared ?? 0}</span>`,
+          `<span class="chip">Enemies Executed ${state.progress.enemiesExecuted ?? 0}</span>`,
+          `<span class="chip">NPC Robberies ${state.progress.npcRobberies ?? 0}</span>`,
+          `<span class="chip">Battle Flees ${state.progress.battleFlees ?? 0}</span>`,
           `<span class="chip">Magic Boost Turns: ${state.hero.magicBoostTurns}</span>`,
         ].join("");
         if (dom.upgradeAttackBtn) dom.upgradeAttackBtn.textContent = `+ Attack (${formatUpgradeCostLabel(getUpgradeCost("attack"))})`;
@@ -9622,6 +9925,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         dom.guardBtn.disabled = !battleActive;
         dom.skillBtn.disabled = !battleActive;
         dom.itemBtn.disabled = !battleActive || state.inventory.mycoPotion <= 0;
+        if (dom.fleeBtn) dom.fleeBtn.disabled = !battleActive;
 
         if (state.battle) {
           const lastAction = state.battle.lastAction
@@ -9680,7 +9984,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (choice === "trade" && typeof state.activeDialogue.onTrade === "function") {
           state.activeDialogue.onTrade();
         }
-        closeDialogue();
+        closeDialogue("choice");
         renderHud();
       };
 
@@ -9750,6 +10054,13 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           event.preventDefault();
           return;
         }
+        if (state.mode === "battle" && state.battle?.status === "active") {
+          if (key === "f") {
+            attemptBattleFlee();
+            event.preventDefault();
+            return;
+          }
+        }
         if (isMoveKey) {
           state.keys.add(key);
           event.preventDefault();
@@ -9768,7 +10079,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       dom.choiceMycoBtn.addEventListener("click", () => handleChoice("myco"));
       dom.choiceDarkBtn.addEventListener("click", () => handleChoice("dark"));
       dom.choiceTradeBtn.addEventListener("click", () => handleChoice("trade"));
-      dom.closeDialogueBtn.addEventListener("click", closeDialogue);
+      dom.closeDialogueBtn.addEventListener("click", () => closeDialogue("leave"));
       dom.cutsceneNextBtn.addEventListener("click", advanceCutscene);
       dom.cutsceneSkipBtn.addEventListener("click", closeCutscene);
       dom.continueAdventureBtn.addEventListener("click", beginFreshAdventure);
@@ -9814,6 +10125,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       dom.guardBtn.addEventListener("click", () => playTurn("guard"));
       dom.skillBtn.addEventListener("click", () => playTurn("skill"));
       dom.itemBtn.addEventListener("click", () => useInventoryItem("mycoPotion"));
+      if (dom.fleeBtn) dom.fleeBtn.addEventListener("click", attemptBattleFlee);
 
       dom.buyPotionBtn.addEventListener("click", () => tryBuyItem("mycoPotion"));
       dom.buyManaBtn.addEventListener("click", () => tryBuyItem("manaDew"));
@@ -9937,6 +10249,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       setupMobileControls();
       refreshTitleScreen();
       dom.choiceTradeBtn.style.display = "none";
+      if (dom.dialogueQaWrap && dom.dialogueQaList) {
+        dom.dialogueQaWrap.hidden = true;
+        dom.dialogueQaList.innerHTML = "";
+      }
+      dom.closeDialogueBtn.textContent = "Close";
       applyHudMode();
       updateAudioUi();
       resizeCanvases();
