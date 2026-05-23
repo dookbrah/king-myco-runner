@@ -982,12 +982,22 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
                 Magic
                 <input id="magicStat" value="1" readonly />
               </label>
+              <label>
+                Armor
+                <input id="armorStat" value="1" readonly />
+              </label>
+              <label>
+                Guard
+                <input id="guardStat" value="1" readonly />
+              </label>
             </div>
 
             <div class="actions">
               <button id="upgradeAttackBtn">+ Attack (25 spores)</button>
               <button id="upgradeDefenseBtn">+ Defense (25 spores)</button>
               <button id="upgradeMagicBtn">+ Magic (30 spores)</button>
+              <button id="upgradeArmorBtn">+ Armor (grind)</button>
+              <button id="upgradeGuardBtn">+ Guard (grind)</button>
             </div>
           </section>
 
@@ -1007,7 +1017,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
           <section id="panelInventory" class="panel">
             <h2>Inventory + Shop</h2>
-            <p class="subtle">Spend spores to prep for battles and puzzle routes.</p>
+            <p class="subtle">Grind battles, puzzles, and bosses to farm shards/runes/dust for real upgrades.</p>
             <div id="inventoryList" class="chips" style="margin-top: 8px"></div>
             <div class="shop-grid">
               <button id="buyPotionBtn">Buy Myco Potion (15 spores)</button>
@@ -1292,6 +1302,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         attackStat: document.getElementById("attackStat"),
         defenseStat: document.getElementById("defenseStat"),
         magicStat: document.getElementById("magicStat"),
+        armorStat: document.getElementById("armorStat"),
+        guardStat: document.getElementById("guardStat"),
         questProgressText: document.getElementById("questProgressText"),
         questJournal: document.getElementById("questJournal"),
         storyBackdrop: document.getElementById("storyBackdrop"),
@@ -1310,6 +1322,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         upgradeAttackBtn: document.getElementById("upgradeAttackBtn"),
         upgradeDefenseBtn: document.getElementById("upgradeDefenseBtn"),
         upgradeMagicBtn: document.getElementById("upgradeMagicBtn"),
+        upgradeArmorBtn: document.getElementById("upgradeArmorBtn"),
+        upgradeGuardBtn: document.getElementById("upgradeGuardBtn"),
         buyPotionBtn: document.getElementById("buyPotionBtn"),
         buyManaBtn: document.getElementById("buyManaBtn"),
         buyBombBtn: document.getElementById("buyBombBtn"),
@@ -1641,6 +1655,43 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           arrivalText: "Portal opened: Verdant Commons",
         },
       ];
+      const PORTAL_GRIND_REQUIREMENTS = {
+        "portal-drake": {
+          minEnemyWins: 10,
+          minPuzzleSolves: 2,
+          minSpellDust: 2,
+        },
+        "portal-crimson": {
+          minEnemyWins: 18,
+          minPuzzleSolves: 4,
+          minArmorShards: 3,
+        },
+        "portal-solana": {
+          minEnemyWins: 30,
+          requiredBosses: ["tri-drake", "evil-crab"],
+          minSpellDust: 8,
+          minBossSigils: 3,
+        },
+        "portal-chain-core": {
+          minEnemyWins: 44,
+          minBossWins: 3,
+          minPuzzleSolves: 8,
+          minArmorTier: 3,
+          minGuardRank: 3,
+          minBossSigils: 5,
+        },
+        "portal-obsidian": {
+          minEnemyWins: 16,
+          minPuzzleSolves: 5,
+          minGuardRunes: 4,
+        },
+      };
+      const GRIND_RESOURCE_LABELS = {
+        armorShards: "Armor Shards",
+        guardRunes: "Guard Runes",
+        spellDust: "Spell Dust",
+        bossSigils: "Boss Sigils",
+      };
 
       const REALM_BARRIERS = [
         { x: 1788, y: 0, w: 24, h: 4200 },
@@ -2833,6 +2884,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           mycoPotion: 2,
           manaDew: 1,
           smokeBomb: 0,
+          armorShards: 0,
+          guardRunes: 0,
+          spellDust: 0,
+          bossSigils: 0,
         },
         progress: {
           clues: new Set(),
@@ -2843,6 +2898,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           cutscenesSeen: new Set(),
           shrineDailyKey: "",
           shrineSolvedToday: new Set(),
+          enemyWins: 0,
+          bossWins: 0,
+          puzzleSolves: 0,
+          trainingMarks: 0,
         },
         hero: {
           x: 280,
@@ -2859,6 +2918,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           spores: 0,
           goldenSpores: 0,
           magicBoostTurns: 0,
+          armorTier: 1,
+          guardRank: 1,
         },
       };
 
@@ -3859,10 +3920,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
         if (state.contactLatch.type === "structure") {
           const structure = STRUCTURES.find((entry) => entry.id === state.contactLatch.id);
-          if (
-            !structure ||
-            dist(state.hero.x, state.hero.y, structure.x + structure.w / 2, structure.y + structure.h / 2) > 66
-          ) {
+          if (!structure || !isHeroTouchingStructure(structure, 28)) {
             state.contactLatch = null;
           }
           return;
@@ -4524,6 +4582,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           cutscenesSeen: Array.from(state.progress.cutscenesSeen),
           shrineDailyKey: state.progress.shrineDailyKey,
           shrineSolvedToday: Array.from(state.progress.shrineSolvedToday),
+          enemyWins: state.progress.enemyWins ?? 0,
+          bossWins: state.progress.bossWins ?? 0,
+          puzzleSolves: state.progress.puzzleSolves ?? 0,
+          trainingMarks: state.progress.trainingMarks ?? 0,
           inventory: state.inventory,
           web3: state.web3,
           aiModel: state.aiModel,
@@ -4587,6 +4649,18 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             }
             for (const id of parsed.shrineSolvedToday ?? []) {
               if (typeof id === "string") state.progress.shrineSolvedToday.add(id);
+            }
+            if (typeof parsed.enemyWins === "number") {
+              state.progress.enemyWins = Math.max(0, Math.round(parsed.enemyWins));
+            }
+            if (typeof parsed.bossWins === "number") {
+              state.progress.bossWins = Math.max(0, Math.round(parsed.bossWins));
+            }
+            if (typeof parsed.puzzleSolves === "number") {
+              state.progress.puzzleSolves = Math.max(0, Math.round(parsed.puzzleSolves));
+            }
+            if (typeof parsed.trainingMarks === "number") {
+              state.progress.trainingMarks = Math.max(0, Math.round(parsed.trainingMarks));
             }
             if (parsed.inventory && typeof parsed.inventory === "object") {
               state.inventory = {
@@ -5041,6 +5115,35 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         h: state.hero.h,
       });
 
+      const getExpandedRect = (entry, margin = 0) => ({
+        x: entry.x - margin,
+        y: entry.y - margin,
+        w: entry.w + margin * 2,
+        h: entry.h + margin * 2,
+      });
+
+      const isHeroTouchingStructure = (structure, margin = 0, heroX = state.hero.x, heroY = state.hero.y) => {
+        if (!structure) return false;
+        const heroRect = getHeroRect(heroX, heroY);
+        return intersectsRect(heroRect, getExpandedRect(structure, margin));
+      };
+
+      const findNearbyStructureByContact = (matcher, margin = 0, heroX = state.hero.x, heroY = state.hero.y) => {
+        const matches = [];
+        for (const structure of STRUCTURES) {
+          if (!matcher(structure)) continue;
+          if (!isHeroTouchingStructure(structure, margin, heroX, heroY)) continue;
+          matches.push(structure);
+        }
+        if (!matches.length) return null;
+        matches.sort(
+          (left, right) =>
+            dist(heroX, heroY, left.x + left.w / 2, left.y + left.h / 2) -
+            dist(heroX, heroY, right.x + right.w / 2, right.y + right.h / 2),
+        );
+        return matches[0];
+      };
+
       const dist = (x1, y1, x2, y2) => Math.hypot(x2 - x1, y2 - y1);
 
       const getRegionForPoint = (x, y) =>
@@ -5231,12 +5334,54 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const hasMagic = (magicId) => learnedMagicIds().includes(magicId);
 
-      const portalLocked = (portal) => (portal.requiredMagic ?? []).some((magicId) => !hasMagic(magicId));
-
       const missingPortalMagic = (portal) =>
         (portal.requiredMagic ?? [])
           .filter((magicId) => !hasMagic(magicId))
           .map((magicId) => MAGIC_SKILLS[magicId]?.name ?? magicId);
+
+      const getPortalGrindRequirement = (portal) => PORTAL_GRIND_REQUIREMENTS[portal.id] ?? null;
+
+      const getMissingPortalGrindRequirements = (portal) => {
+        const requirement = getPortalGrindRequirement(portal);
+        if (!requirement) return [];
+        const issues = [];
+        if ((requirement.minEnemyWins ?? 0) > (state.progress.enemyWins ?? 0)) {
+          issues.push(`Win ${requirement.minEnemyWins} enemy battles (${state.progress.enemyWins ?? 0}/${requirement.minEnemyWins})`);
+        }
+        if ((requirement.minBossWins ?? 0) > (state.progress.bossWins ?? 0)) {
+          issues.push(`Defeat ${requirement.minBossWins} bosses (${state.progress.bossWins ?? 0}/${requirement.minBossWins})`);
+        }
+        if ((requirement.minPuzzleSolves ?? 0) > (state.progress.puzzleSolves ?? 0)) {
+          issues.push(`Solve ${requirement.minPuzzleSolves} puzzles (${state.progress.puzzleSolves ?? 0}/${requirement.minPuzzleSolves})`);
+        }
+        if ((requirement.minArmorTier ?? 0) > (state.hero.armorTier ?? 1)) {
+          issues.push(`Reach Armor Tier ${requirement.minArmorTier} (${state.hero.armorTier ?? 1}/${requirement.minArmorTier})`);
+        }
+        if ((requirement.minGuardRank ?? 0) > (state.hero.guardRank ?? 1)) {
+          issues.push(`Reach Guard Rank ${requirement.minGuardRank} (${state.hero.guardRank ?? 1}/${requirement.minGuardRank})`);
+        }
+        if ((requirement.minArmorShards ?? 0) > (state.inventory.armorShards ?? 0)) {
+          issues.push(`Carry Armor Shards ${state.inventory.armorShards ?? 0}/${requirement.minArmorShards}`);
+        }
+        if ((requirement.minGuardRunes ?? 0) > (state.inventory.guardRunes ?? 0)) {
+          issues.push(`Carry Guard Runes ${state.inventory.guardRunes ?? 0}/${requirement.minGuardRunes}`);
+        }
+        if ((requirement.minSpellDust ?? 0) > (state.inventory.spellDust ?? 0)) {
+          issues.push(`Carry Spell Dust ${state.inventory.spellDust ?? 0}/${requirement.minSpellDust}`);
+        }
+        if ((requirement.minBossSigils ?? 0) > (state.inventory.bossSigils ?? 0)) {
+          issues.push(`Carry Boss Sigils ${state.inventory.bossSigils ?? 0}/${requirement.minBossSigils}`);
+        }
+        for (const bossId of requirement.requiredBosses ?? []) {
+          if (!state.progress.defeatedBosses.has(bossId)) {
+            issues.push(`Defeat ${getEnemyDisplayName(bossId)}`);
+          }
+        }
+        return issues;
+      };
+
+      const portalLocked = (portal) =>
+        missingPortalMagic(portal).length > 0 || getMissingPortalGrindRequirements(portal).length > 0;
 
       const staticObstacles = [
         { x: 1360, y: 420, w: 110, h: 420 },
@@ -5539,6 +5684,24 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const grantSpores = (amount) => {
         state.hero.spores = Math.max(0, state.hero.spores + amount);
+      };
+
+      const grantGrindLoot = (loot, options = {}) => {
+        const {
+          announce = false,
+          source = "Grind reward",
+        } = options;
+        const entries = [];
+        for (const [key, label] of Object.entries(GRIND_RESOURCE_LABELS)) {
+          const delta = Math.max(0, Math.round(Number(loot?.[key] ?? 0)));
+          if (!delta) continue;
+          state.inventory[key] = Math.max(0, Math.round(Number(state.inventory[key] ?? 0)) + delta);
+          entries.push(`+${delta} ${label}`);
+        }
+        if (announce && entries.length) {
+          setStatus(`${source}: ${entries.join(", ")}.`);
+        }
+        return entries;
       };
 
       const openCutscene = (cutsceneId) => {
@@ -5863,7 +6026,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             recordAiSignal("ferocity", 2);
             recordAiSignal("combat", 1);
             applyMorality(-10 - Math.floor(bossCount / 2));
-            state.hero.attack += 1;
+            grantGrindLoot({ armorShards: 1, guardRunes: 1 });
             state.lastAdvice = npc.adviceBad;
             if (Math.random() < 0.45) {
               state.inventory.smokeBomb += 1;
@@ -6235,6 +6398,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
         const feature = getInteriorFeature(structure);
         state.progress.solvedStructures.add(structure.id);
+        state.progress.trainingMarks = (state.progress.trainingMarks ?? 0) + 1;
         const rewards = [];
         let triggerTrial = false;
 
@@ -6257,8 +6421,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           rewards.push("+1 Golden Spore", "Restoration Seed clue");
         } else if (structure.type === "tower") {
           grantSpores(20);
-          state.hero.magic += 1;
-          rewards.push("+20 Spores", "+1 Magic");
+          grantGrindLoot({ spellDust: 2, guardRunes: 1 });
+          rewards.push("+20 Spores", "+2 Spell Dust", "+1 Guard Rune");
         } else if (structure.type === "mushroom-shop") {
           state.inventory.mycoPotion += 1;
           state.inventory.manaDew += 1;
@@ -6293,40 +6457,46 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         } else if (feature === "puzzle-altar") {
           const puzzleId = `puzzle-${structure.id}`;
           addClue(puzzleId, `${structure.name} Rune Pattern`);
-          state.hero.magic += 1;
           grantSpores(18);
-          rewards.push("Puzzle solved +1 Magic", "+18 Spores", "Rune Pattern clue");
+          grantGrindLoot({ spellDust: 3, guardRunes: 1 });
+          state.progress.puzzleSolves = (state.progress.puzzleSolves ?? 0) + 1;
+          rewards.push("Puzzle solved", "+18 Spores", "+3 Spell Dust", "Rune Pattern clue");
         } else if (feature === "lore-riddle") {
           const riddle = INTERIOR_RIDDLES[hashString(structure.id) % INTERIOR_RIDDLES.length];
           const riddleClueId = `${riddle.reward}-${structure.id}`;
           addClue(riddleClueId, `${structure.name} Riddle Insight`);
           grantSpores(14);
+          grantGrindLoot({ spellDust: 1 });
+          state.progress.puzzleSolves = (state.progress.puzzleSolves ?? 0) + 1;
           pushStoryEntry(`Riddle solved in ${structure.name}: "${riddle.prompt}" Answer: ${riddle.answer}.`, "lore");
-          rewards.push("+14 Spores", "Riddle Insight clue", `Answer learned: ${riddle.answer}`);
+          rewards.push("+14 Spores", "+1 Spell Dust", "Riddle Insight clue", `Answer learned: ${riddle.answer}`);
         } else if (feature === "combat-trial") {
           rewards.push("Dungeon trial opened", "Hostile encounter detected");
           triggerTrial = true;
         } else if (feature === "magic-mentor") {
-          state.hero.magic += 1;
           state.hero.magicBoostTurns = Math.max(state.hero.magicBoostTurns, 5);
           const mentorClueId = `mentor-${structure.id}`;
           addClue(mentorClueId, `${structure.name} Arcane Mentor Seal`);
-          rewards.push("+1 Magic", "Magic boost 5 turns", "Arcane mentor seal");
+          grantGrindLoot({ spellDust: 4, guardRunes: 1 });
+          rewards.push("Magic boost 5 turns", "+4 Spell Dust", "+1 Guard Rune", "Arcane mentor seal");
         } else if (feature === "attack-dojo") {
-          state.hero.attack += 1;
           grantSpores(16);
           const strikeClueId = `strike-${structure.id}`;
           addClue(strikeClueId, `${structure.name} Strike Form`);
-          rewards.push("+1 Attack", "+16 Spores", "New strike form learned");
+          grantGrindLoot({ armorShards: 3, guardRunes: 2 });
+          rewards.push("+16 Spores", "+3 Armor Shards", "+2 Guard Runes", "New strike form learned");
         } else if (feature === "maze-chamber") {
           const mazeBonus = 16 + Math.round(randomBetween(2, 10));
           grantSpores(mazeBonus);
           state.inventory.smokeBomb += 1;
-          rewards.push(`Maze clear +${mazeBonus} Spores`, "+1 Smoke Bomb");
+          grantGrindLoot({ guardRunes: 2, spellDust: 1 });
+          state.progress.puzzleSolves = (state.progress.puzzleSolves ?? 0) + 1;
+          rewards.push(`Maze clear +${mazeBonus} Spores`, "+1 Smoke Bomb", "+2 Guard Runes");
         } else if (feature === "power-sanctum") {
           state.hero.magicBoostTurns = Math.max(state.hero.magicBoostTurns, 4);
           state.hero.hp = Math.min(state.hero.maxHp, state.hero.hp + 22);
-          rewards.push("Power node charged", "Magic Boost 4 turns", "+22 HP");
+          grantGrindLoot({ spellDust: 2, armorShards: 1 });
+          rewards.push("Power node charged", "Magic Boost 4 turns", "+22 HP", "+2 Spell Dust");
         } else if (feature === "hidden-vault") {
           grantSpores(22);
           const vaultClueId = `vault-${structure.id}`;
@@ -6396,6 +6566,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
                 recordAiSignal("curiosity", 1);
                 state.progress.solvedStructures.add(nearbyStructure.id);
                 state.progress.shrineSolvedToday.add(nearbyStructure.id);
+                state.progress.puzzleSolves = (state.progress.puzzleSolves ?? 0) + 1;
                 applyMorality(6);
                 grantSpores(shrineChallenge.rewardSpores);
                 if (shrineChallenge.grantsGolden) {
@@ -6420,7 +6591,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
                 state.hero.goldenSpores += 1;
               }
               if (nearbyStructure.type === "tower") {
-                state.hero.magic += 1;
+                grantGrindLoot({ spellDust: 2, guardRunes: 1 });
               }
               if (nearbyStructure.type === "mushroom-shop") {
                 state.inventory.mycoPotion += 1;
@@ -6441,6 +6612,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
                 recordAiSignal("rituals", 1);
                 state.progress.solvedStructures.add(nearbyStructure.id);
                 state.progress.shrineSolvedToday.add(nearbyStructure.id);
+                state.progress.puzzleSolves = (state.progress.puzzleSolves ?? 0) + 1;
                 applyMorality(-6);
                 const darkReward = Math.max(10, shrineChallenge.rewardSpores - 7);
                 grantSpores(darkReward);
@@ -6453,7 +6625,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
               recordAiSignal("combat", 1);
               state.progress.solvedStructures.add(nearbyStructure.id);
               applyMorality(-9);
-              state.hero.attack += 1;
+              grantGrindLoot({ armorShards: 2, guardRunes: 1, spellDust: 1 });
               grantSpores(18);
               state.lastAdvice = "Rushed tactics unlocked riskier shortcuts with stronger enemies.";
               pushStoryEntry(`${nearbyStructure.name} was breached by force, altering local rumor lines.`, "quest");
@@ -6465,10 +6637,15 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const activatePortal = (portal) => {
         if (portalLocked(portal)) {
-          const missing = missingPortalMagic(portal);
-          const requirementText = missing.length
-            ? `Missing magic: ${missing.join(", ")}.`
-            : portal.hint;
+          const missingMagic = missingPortalMagic(portal);
+          const missingGrind = getMissingPortalGrindRequirements(portal);
+          const requirementText = [
+            missingMagic.length ? `Missing magic: ${missingMagic.join(", ")}.` : "",
+            missingGrind.length ? `Progress gates: ${missingGrind.join(" | ")}.` : "",
+            portal.hint,
+          ]
+            .filter(Boolean)
+            .join(" ");
           state.lastAdvice = requirementText;
           setStatus(`${portal.name} remains sealed. ${requirementText}`, true);
           playSfx("error");
@@ -6531,11 +6708,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           return;
         }
 
-        const bumpBurnPit = STRUCTURES.find(
+        const bumpBurnPit = findNearbyStructureByContact(
           (entry) =>
             entry.type === "burn-pit" &&
-            isInCurrentRealm(entry) &&
-            dist(state.hero.x, state.hero.y, entry.x + entry.w / 2, entry.y + entry.h / 2) < 42,
+            isInCurrentRealm(entry),
+          12,
         );
         if (bumpBurnPit) {
           if (state.contactLatch?.type === "structure" && state.contactLatch.id === bumpBurnPit.id) {
@@ -6547,11 +6724,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           return;
         }
 
-        const bumpStructure = STRUCTURES.find(
+        const bumpStructure = findNearbyStructureByContact(
           (entry) =>
             entry.type !== "burn-pit" &&
-            isInCurrentRealm(entry) &&
-            dist(state.hero.x, state.hero.y, entry.x + entry.w / 2, entry.y + entry.h / 2) < 44,
+            isInCurrentRealm(entry),
+          16,
         );
         if (bumpStructure) {
           if (state.contactLatch?.type === "structure" && state.contactLatch.id === bumpStructure.id) {
@@ -6594,8 +6771,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           return;
         }
 
-        const nearbyStructure = STRUCTURES.find(
-          (entry) => isInCurrentRealm(entry) && dist(state.hero.x, state.hero.y, entry.x + entry.w / 2, entry.y + entry.h / 2) < 88,
+        const nearbyStructure = findNearbyStructureByContact(
+          (entry) => isInCurrentRealm(entry),
+          34,
         );
         if (nearbyStructure) {
           if (nearbyStructure.type === "burn-pit") {
@@ -6756,7 +6934,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const laneForEnemy = (enemy) => enemy.lane ?? "tactical";
 
       const createLocalBattle = (enemy) => {
-        const heroHpPool = Math.max(74, state.hero.maxHp + state.hero.defense * 8);
+        const heroHpPool = Math.max(74, state.hero.maxHp + state.hero.defense * 8 + state.hero.armorTier * 10);
         const rotatingBoss = isRotatingBossEnemy(enemy);
         const rotatingConfig = rotatingBoss ? getRotatingBossConfig() : null;
         const bossMultiplier = rotatingConfig?.hpMultiplier ?? 1;
@@ -6794,7 +6972,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           ],
           startedAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-          rewardSpores: enemy.boss ? 78 : 26,
+          rewardSpores: enemy.boss ? 60 : 18,
         };
       };
 
@@ -6869,6 +7047,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
         if (battle.status === "won") {
           recordAiSignal("combat", enemy?.boss ? 3 : 2);
+          state.progress.enemyWins = (state.progress.enemyWins ?? 0) + 1;
+          if (enemy?.boss) {
+            state.progress.bossWins = (state.progress.bossWins ?? 0) + 1;
+          }
           recordSeasonImpact(
             enemy?.boss ? "boss-victory" : "battle-victory",
             state.playerClan,
@@ -6881,19 +7063,29 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           const baseReward = Number(battle.rewardSpores ?? 0);
           const rewardSpores = Math.max(0, Math.round(baseReward * liveEvent.battleRewardMultiplier * (rotatingBossConfig?.rewardMultiplier ?? 1)));
           grantSpores(rewardSpores);
+          const battleLoot = enemy?.boss
+            ? { armorShards: 4, guardRunes: 3, spellDust: 3, bossSigils: rotatingBoss ? 3 : 2 }
+            : enemy?.lane === "survival"
+              ? { armorShards: 2, guardRunes: 1 }
+              : enemy?.lane === "puzzle"
+                ? { spellDust: 2, guardRunes: 1 }
+                : enemy?.lane === "precision"
+                  ? { guardRunes: 2, spellDust: 1 }
+                  : { armorShards: 1, spellDust: 1 };
+          const lootSummary = grantGrindLoot(battleLoot);
           if (enemy?.boss) {
             state.hero.goldenSpores += rotatingBoss ? 2 : 1;
             markBossDefeat(enemy.kind);
             if (rotatingBoss) {
               pushStoryEntry(`Apex Hunt Complete: ${getEnemyDisplayName(enemy.kind)} fell during ${state.season.weekKey}.`, "season");
-              setStatus(`Rotating world boss defeated: ${getEnemyDisplayName(enemy.kind)}. Apex rewards secured.`);
+              setStatus(`Rotating world boss defeated: ${getEnemyDisplayName(enemy.kind)}. Apex rewards secured. ${lootSummary.join(", ")}.`);
             } else {
               pushStoryEntry(`Boss Chronicle: ${getEnemyDisplayName(enemy.kind)} fell beneath your banner.`, "battle");
-              setStatus(`Boss defeated: ${getEnemyDisplayName(enemy.kind)}. Golden spore gained.`);
+              setStatus(`Boss defeated: ${getEnemyDisplayName(enemy.kind)}. Golden spore gained. ${lootSummary.join(", ")}.`);
             }
           } else {
             pushStoryEntry(`Field report: ${getEnemyDisplayName(enemy?.kind ?? "hostile")} was defeated in ${getCurrentRealm().name}.`, "battle");
-            setStatus(`Victory! +${rewardSpores} spores.`);
+            setStatus(`Victory! +${rewardSpores} spores. ${lootSummary.join(", ")}.`);
           }
           tryRollRelicDrop(enemy, rotatingBoss ? "Apex Hunt" : "Battle");
           if (enemy) {
@@ -6977,7 +7169,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (kind === "strike") {
           playerDamage = Math.round((10 + state.hero.attack * 4) * randomRoll());
         } else if (kind === "guard") {
-          battle.player.guard = Math.min(24, battle.player.guard + 12 + state.hero.defense * 2);
+          const guardCap = 24 + state.hero.guardRank * 6 + state.hero.armorTier * 2;
+          battle.player.guard = Math.min(guardCap, battle.player.guard + 10 + state.hero.defense * 1.8 + state.hero.guardRank * 3);
         } else if (kind === "skill") {
           const elementBonus = element === "void" ? 1.15 : element === "nature" ? 1.1 : 1;
           const boost = state.hero.magicBoostTurns > 0 ? 1.28 : 1;
@@ -7025,7 +7218,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           power: enemySkillStyle ? 1.2 : 1,
         });
         const enemyDamageBase = 8 + (battle.encounterLane === "survival" ? 5 : 0) + randomBetween(0, 6);
-        const mitigatedEnemy = Math.max(1, Math.round(enemyDamageBase - state.hero.defense * 1.4 - battle.player.guard * 0.35));
+        const armorMitigation = state.hero.armorTier * 2.2;
+        const guardMitigation = battle.player.guard * (0.3 + state.hero.guardRank * 0.03);
+        const mitigatedEnemy = Math.max(1, Math.round(enemyDamageBase - state.hero.defense * 1.2 - armorMitigation - guardMitigation));
         battle.player.hp = Math.max(0, battle.player.hp - mitigatedEnemy);
         battle.player.guard = Math.max(0, battle.player.guard - 10);
         battle.enemy.guard = Math.min(16, battle.enemy.guard + 4);
@@ -7117,28 +7312,151 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         renderHud();
       };
 
-      const tryUpgrade = (type) => {
+      const getUpgradeCost = (type) => {
         if (type === "attack") {
-          if (state.hero.spores < 25) return setStatus("Need 25 spores for attack upgrade.", true);
-          state.hero.spores -= 25;
-          state.hero.attack += 1;
-          setStatus("Attack upgraded.");
-          playSfx("coin");
-        } else if (type === "defense") {
-          if (state.hero.spores < 25) return setStatus("Need 25 spores for defense upgrade.", true);
-          state.hero.spores -= 25;
-          state.hero.defense += 1;
-          state.hero.maxHp += 5;
-          state.hero.hp = Math.min(state.hero.maxHp, state.hero.hp + 5);
-          setStatus("Defense upgraded.");
-          playSfx("coin");
-        } else if (type === "magic") {
-          if (state.hero.spores < 30) return setStatus("Need 30 spores for magic upgrade.", true);
-          state.hero.spores -= 30;
-          state.hero.magic += 1;
-          setStatus("Magic upgraded.");
-          playSfx("coin");
+          const level = state.hero.attack;
+          return {
+            spores: 24 + level * 14,
+            spellDust: Math.max(1, Math.floor((level + 1) / 2)),
+            guardRunes: Math.floor(level / 3),
+            minEnemyWins: level * 3,
+            minPuzzleSolves: Math.max(1, Math.floor(level / 2)),
+          };
         }
+        if (type === "defense") {
+          const level = state.hero.defense;
+          return {
+            spores: 24 + level * 14,
+            armorShards: 1 + Math.floor(level * 0.7),
+            guardRunes: Math.floor(level / 2),
+            minEnemyWins: level * 2,
+          };
+        }
+        if (type === "magic") {
+          const level = state.hero.magic;
+          return {
+            spores: 30 + level * 16,
+            spellDust: 2 + Math.floor(level * 0.8),
+            bossSigils: level >= 4 ? Math.floor((level - 2) / 2) : 0,
+            goldenSpores: level >= 6 ? 1 : 0,
+            minPuzzleSolves: 2 + level,
+            minBossWins: level >= 5 ? 2 : 0,
+          };
+        }
+        if (type === "armor") {
+          const tier = state.hero.armorTier;
+          return {
+            spores: 34 + tier * 20,
+            armorShards: 2 + tier * 2,
+            guardRunes: 1 + Math.floor(tier / 2),
+            bossSigils: tier >= 3 ? 1 : 0,
+            minEnemyWins: 10 + tier * 6,
+          };
+        }
+        if (type === "guard") {
+          const rank = state.hero.guardRank;
+          return {
+            spores: 32 + rank * 18,
+            guardRunes: 2 + rank * 2,
+            spellDust: 1 + Math.floor(rank / 2),
+            minEnemyWins: 8 + rank * 5,
+            minPuzzleSolves: rank,
+          };
+        }
+        return { spores: 0 };
+      };
+
+      const getUpgradeProgressShortfalls = (cost) => {
+        const issues = [];
+        if ((cost.minEnemyWins ?? 0) > (state.progress.enemyWins ?? 0)) {
+          issues.push(`enemy wins ${state.progress.enemyWins ?? 0}/${cost.minEnemyWins}`);
+        }
+        if ((cost.minBossWins ?? 0) > (state.progress.bossWins ?? 0)) {
+          issues.push(`boss wins ${state.progress.bossWins ?? 0}/${cost.minBossWins}`);
+        }
+        if ((cost.minPuzzleSolves ?? 0) > (state.progress.puzzleSolves ?? 0)) {
+          issues.push(`puzzles ${state.progress.puzzleSolves ?? 0}/${cost.minPuzzleSolves}`);
+        }
+        return issues;
+      };
+
+      const getUpgradeResourceShortfalls = (cost) => {
+        const shortages = [];
+        if ((cost.spores ?? 0) > state.hero.spores) shortages.push(`${cost.spores} Spores`);
+        if ((cost.goldenSpores ?? 0) > state.hero.goldenSpores) shortages.push(`${cost.goldenSpores} Golden Spores`);
+        for (const [resourceKey, label] of Object.entries(GRIND_RESOURCE_LABELS)) {
+          const needed = Math.max(0, Math.round(Number(cost?.[resourceKey] ?? 0)));
+          if (!needed) continue;
+          const owned = Math.max(0, Math.round(Number(state.inventory?.[resourceKey] ?? 0)));
+          if (owned < needed) shortages.push(`${needed} ${label}`);
+        }
+        return shortages;
+      };
+
+      const spendUpgradeCost = (cost) => {
+        state.hero.spores = Math.max(0, state.hero.spores - (cost.spores ?? 0));
+        state.hero.goldenSpores = Math.max(0, state.hero.goldenSpores - (cost.goldenSpores ?? 0));
+        for (const resourceKey of Object.keys(GRIND_RESOURCE_LABELS)) {
+          const needed = Math.max(0, Math.round(Number(cost?.[resourceKey] ?? 0)));
+          if (!needed) continue;
+          state.inventory[resourceKey] = Math.max(0, Math.round(Number(state.inventory[resourceKey] ?? 0)) - needed);
+        }
+      };
+
+      const formatUpgradeCostLabel = (cost) => {
+        const parts = [`${cost.spores ?? 0} spores`];
+        if (cost.goldenSpores) parts.push(`${cost.goldenSpores} golden`);
+        for (const [resourceKey, label] of Object.entries(GRIND_RESOURCE_LABELS)) {
+          const needed = Math.max(0, Math.round(Number(cost?.[resourceKey] ?? 0)));
+          if (needed) parts.push(`${needed} ${label.toLowerCase()}`);
+        }
+        return parts.join(" + ");
+      };
+
+      const tryUpgrade = (type) => {
+        const labels = {
+          attack: "Attack",
+          defense: "Defense",
+          magic: "Magic",
+          armor: "Armor",
+          guard: "Guard",
+        };
+        const cost = getUpgradeCost(type);
+        const progressGates = getUpgradeProgressShortfalls(cost);
+        if (progressGates.length) {
+          setStatus(`Training gate locked: ${progressGates.join(" | ")}.`, true);
+          playSfx("error");
+          return;
+        }
+        const resourceShortages = getUpgradeResourceShortfalls(cost);
+        if (resourceShortages.length) {
+          setStatus(`Need ${resourceShortages.join(", ")} to upgrade ${labels[type] ?? type}.`, true);
+          playSfx("error");
+          return;
+        }
+        spendUpgradeCost(cost);
+        state.progress.trainingMarks = (state.progress.trainingMarks ?? 0) + 1;
+        if (type === "attack") {
+          state.hero.attack += 1;
+        } else if (type === "defense") {
+          state.hero.defense += 1;
+          state.hero.maxHp += 6;
+          state.hero.hp = Math.min(state.hero.maxHp, state.hero.hp + 6);
+        } else if (type === "magic") {
+          state.hero.magic += 1;
+        } else if (type === "armor") {
+          state.hero.armorTier += 1;
+          state.hero.defense += 1;
+          state.hero.maxHp += 10;
+          state.hero.hp = Math.min(state.hero.maxHp, state.hero.hp + 10);
+        } else if (type === "guard") {
+          state.hero.guardRank += 1;
+          if (state.hero.guardRank % 2 === 0) {
+            state.hero.defense += 1;
+          }
+        }
+        setStatus(`${labels[type] ?? type} upgraded through grind training.`);
+        playSfx("coin");
         renderHud();
       };
 
@@ -8356,13 +8674,27 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         dom.attackStat.value = String(state.hero.attack);
         dom.defenseStat.value = String(state.hero.defense);
         dom.magicStat.value = String(state.hero.magic + (state.hero.magicBoostTurns > 0 ? 1 : 0));
+        if (dom.armorStat) dom.armorStat.value = String(state.hero.armorTier ?? 1);
+        if (dom.guardStat) dom.guardStat.value = String(state.hero.guardRank ?? 1);
 
         dom.inventoryList.innerHTML = [
           `<span class="chip">Myco Potion x${state.inventory.mycoPotion}</span>`,
           `<span class="chip">Mana Dew x${state.inventory.manaDew}</span>`,
           `<span class="chip">Smoke Bomb x${state.inventory.smokeBomb}</span>`,
+          `<span class="chip">Armor Shards x${state.inventory.armorShards ?? 0}</span>`,
+          `<span class="chip">Guard Runes x${state.inventory.guardRunes ?? 0}</span>`,
+          `<span class="chip">Spell Dust x${state.inventory.spellDust ?? 0}</span>`,
+          `<span class="chip">Boss Sigils x${state.inventory.bossSigils ?? 0}</span>`,
+          `<span class="chip">Enemy Wins ${state.progress.enemyWins ?? 0}</span>`,
+          `<span class="chip">Boss Wins ${state.progress.bossWins ?? 0}</span>`,
+          `<span class="chip">Puzzle Solves ${state.progress.puzzleSolves ?? 0}</span>`,
           `<span class="chip">Magic Boost Turns: ${state.hero.magicBoostTurns}</span>`,
         ].join("");
+        if (dom.upgradeAttackBtn) dom.upgradeAttackBtn.textContent = `+ Attack (${formatUpgradeCostLabel(getUpgradeCost("attack"))})`;
+        if (dom.upgradeDefenseBtn) dom.upgradeDefenseBtn.textContent = `+ Defense (${formatUpgradeCostLabel(getUpgradeCost("defense"))})`;
+        if (dom.upgradeMagicBtn) dom.upgradeMagicBtn.textContent = `+ Magic (${formatUpgradeCostLabel(getUpgradeCost("magic"))})`;
+        if (dom.upgradeArmorBtn) dom.upgradeArmorBtn.textContent = `+ Armor (${formatUpgradeCostLabel(getUpgradeCost("armor"))})`;
+        if (dom.upgradeGuardBtn) dom.upgradeGuardBtn.textContent = `+ Guard (${formatUpgradeCostLabel(getUpgradeCost("guard"))})`;
 
         const clueLabels = [];
         for (const npc of NPCS) {
@@ -8467,7 +8799,16 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             ],
           },
           {
-            chapter: `Chapter VII - Living Chronicle (${narrativeProfile.profileName})`,
+            chapter: "Chapter VII - Grinder Ascension",
+            hook: "Power now comes from grind loops: battles, puzzles, and boss relic farming.",
+            objectives: [
+              { text: "Win 40 enemy battles to harden your combat loop.", done: (state.progress.enemyWins ?? 0) >= 40 },
+              { text: "Solve 10 puzzle/riddle/maze encounters for spell progression.", done: (state.progress.puzzleSolves ?? 0) >= 10 },
+              { text: "Reach Armor Tier 3 and Guard Rank 3 through upgrades.", done: (state.hero.armorTier ?? 1) >= 3 && (state.hero.guardRank ?? 1) >= 3 },
+            ],
+          },
+          {
+            chapter: `Chapter VIII - Living Chronicle (${narrativeProfile.profileName})`,
             hook: "Your playstyle now writes endless narrative branches that evolve this world around you.",
             objectives: [
               { text: "Unlock 3 adaptive story beats in the Living Chronicle.", done: state.story.entries.length >= 3 },
@@ -8787,6 +9128,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       dom.upgradeAttackBtn.addEventListener("click", () => tryUpgrade("attack"));
       dom.upgradeDefenseBtn.addEventListener("click", () => tryUpgrade("defense"));
       dom.upgradeMagicBtn.addEventListener("click", () => tryUpgrade("magic"));
+      dom.upgradeArmorBtn.addEventListener("click", () => tryUpgrade("armor"));
+      dom.upgradeGuardBtn.addEventListener("click", () => tryUpgrade("guard"));
 
       [dom.apiBase, dom.source, dom.sourceToken].forEach((input) => {
         input.addEventListener("change", saveConfig);
