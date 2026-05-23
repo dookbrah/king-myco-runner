@@ -6455,14 +6455,48 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         renderHud();
       };
 
+      const normalizeInputKey = (rawKey) => {
+        const key = String(rawKey ?? "").toLowerCase();
+        if (key === "up") return "arrowup";
+        if (key === "down") return "arrowdown";
+        if (key === "left") return "arrowleft";
+        if (key === "right") return "arrowright";
+        return key;
+      };
+
+      const MOVEMENT_KEYS = new Set(["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d", "shift"]);
+
       document.addEventListener("keydown", (event) => {
-        const key = event.key.toLowerCase();
+        const key = normalizeInputKey(event.key);
+        const isMoveKey = MOVEMENT_KEYS.has(key);
         if (!state.audio.initialized && key !== "f5") {
           initAudio();
         }
         if (state.intro.active) {
-          if (key === "enter") {
+          if (key === "enter" || isMoveKey) {
             startAdventure();
+          }
+          event.preventDefault();
+          return;
+        }
+        if (state.cutscene.active || state.mode === "cutscene") {
+          if (key === " " || key === "enter" || key === "arrowright") {
+            advanceCutscene();
+          } else if (key === "escape" || key === "arrowleft") {
+            closeCutscene();
+          }
+          event.preventDefault();
+          return;
+        }
+        if (state.activeDialogue) {
+          if (key === "escape" || isMoveKey) {
+            closeDialogue();
+          } else if (key === "1") {
+            handleChoice("myco");
+          } else if (key === "2") {
+            handleChoice("dark");
+          } else if (key === "3") {
+            handleChoice("trade");
           }
           event.preventDefault();
           return;
@@ -6485,22 +6519,19 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           event.preventDefault();
           return;
         }
-        if (["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d", "shift"].includes(key)) {
+        if (isMoveKey) {
           state.keys.add(key);
           event.preventDefault();
+          return;
         }
         if (key === "e") {
           interact();
           event.preventDefault();
         }
-        if (key === " " && state.cutscene.active) {
-          advanceCutscene();
-          event.preventDefault();
-        }
       });
 
       document.addEventListener("keyup", (event) => {
-        state.keys.delete(event.key.toLowerCase());
+        state.keys.delete(normalizeInputKey(event.key));
       });
 
       dom.choiceMycoBtn.addEventListener("click", () => handleChoice("myco"));
