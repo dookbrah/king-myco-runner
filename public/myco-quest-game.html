@@ -6102,7 +6102,16 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         };
       };
 
-      const ENTERABLE_STRUCTURE_TYPES = new Set(["house", "cave", "dungeon", "castle", "tower", "mushroom-shop"]);
+      const ENTERABLE_STRUCTURE_TYPES = new Set(["house", "cave", "dungeon", "castle", "tower", "mushroom-shop", "shop", "hut"]);
+      const normalizeInteriorStructureType = (type) => {
+        if (type === "shop") return "mushroom-shop";
+        if (type === "hut") return "house";
+        return type;
+      };
+      const hasStructureInterior = (type) => {
+        const normalized = normalizeInteriorStructureType(type);
+        return ENTERABLE_STRUCTURE_TYPES.has(normalized);
+      };
       const INTERIOR_FEATURE_POOLS = {
         house: ["trade-bazaar", "quest-sanctum", "lore-riddle", "hidden-vault"],
         cave: ["maze-chamber", "combat-trial", "lore-riddle", "power-sanctum"],
@@ -6149,11 +6158,94 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         tower: { kind: "block-wraith", lane: "puzzle", title: "Signal Phantom" },
         "mushroom-shop": { kind: "thorn-bandit", lane: "speed", title: "Market Ambusher" },
       };
+      const INTERIOR_ROAMING_ENEMY_POOLS = {
+        cave: [
+          { kind: "mire-lurker", lane: "survival", title: "Cavern Lurker", rewardBonus: 8 },
+          { kind: "fang-mildew", lane: "speed", title: "Fang Mildew", rewardBonus: 10 },
+          { kind: "spore-thief", lane: "precision", title: "Spore Thief", rewardBonus: 8 },
+        ],
+        tower: [
+          { kind: "block-wraith", lane: "puzzle", title: "Wraith Sentinel", rewardBonus: 10 },
+          { kind: "ledger-specter", lane: "puzzle", title: "Ledger Specter", rewardBonus: 12 },
+          { kind: "rift-shade", lane: "speed", title: "Rift Shade", rewardBonus: 10 },
+        ],
+        castle: [
+          { kind: "rot-jackal", lane: "speed", title: "Castle Jackal", rewardBonus: 11 },
+          { kind: "thorn-bandit", lane: "precision", title: "Bandit Duelist", rewardBonus: 10 },
+          { kind: "hash-raider", lane: "tactical", title: "Hash Raider", rewardBonus: 12 },
+        ],
+        dungeon: [
+          { kind: "shard-lich", lane: "tactical", title: "Shard Lich", rewardBonus: 12 },
+          { kind: "void-miner", lane: "tactical", title: "Void Miner", rewardBonus: 10 },
+          { kind: "slag-stalker", lane: "speed", title: "Slag Stalker", rewardBonus: 11 },
+        ],
+      };
+      const INTERIOR_ENEMY_COUNT_BY_TYPE = {
+        cave: 2,
+        tower: 2,
+        castle: 3,
+        dungeon: 3,
+      };
+      const INTERIOR_HOST_NPC_POOLS = {
+        house: [
+          {
+            name: "Caretaker Noma",
+            glyph: "🏠",
+            subtitle: "House Steward",
+            intro: "Welcome, traveler. House folk map hidden safe lanes for those who protect the realm.",
+            mycoText: "Your kindness keeps homes standing. Take this route blessing.",
+            darkText: "You forced answers from the household. The map still works, but trust fades.",
+            clueLabel: "Household Route Ledger",
+            tradeItem: "mycoPotion",
+            tradeCost: 14,
+            tradeQty: 1,
+          },
+          {
+            name: "Lorekeeper Bri",
+            glyph: "📜",
+            subtitle: "Story Archivist",
+            intro: "I preserve family chronicles. Heroes who listen closely uncover old crown sigils.",
+            mycoText: "You honored our story. Keep this lore fragment.",
+            darkText: "You took what you wanted. The fragment remains, but so does resentment.",
+            clueLabel: "Family Chronicle Fragment",
+            tradeItem: "manaDew",
+            tradeCost: 20,
+            tradeQty: 1,
+          },
+        ],
+        "mushroom-shop": [
+          {
+            name: "Merchant Spindle",
+            glyph: "🍄",
+            subtitle: "Spore Broker",
+            intro: "My stall carries field kits and rumors. Fair traders unlock better shelves.",
+            mycoText: "Clean deal. I'll mark your account for rare stock.",
+            darkText: "Hard bargain. I'll sell, but only basic inventory.",
+            clueLabel: "Merchant Supply Ledger",
+            tradeItem: "mycoPotion",
+            tradeCost: 12,
+            tradeQty: 2,
+          },
+          {
+            name: "Quartermaster Vell",
+            glyph: "🧪",
+            subtitle: "Potion Mixer",
+            intro: "Need battle prep? I blend spores into potion lots for serious runs.",
+            mycoText: "You pay with honor; here's a stronger mix recipe.",
+            darkText: "You rushed the deal; quality slips when trust is broken.",
+            clueLabel: "Potion Mix Formula",
+            tradeItem: "manaDew",
+            tradeCost: 18,
+            tradeQty: 1,
+          },
+        ],
+      };
 
-      const isEnterableStructure = (structure) => ENTERABLE_STRUCTURE_TYPES.has(structure.type);
+      const isEnterableStructure = (structure) => hasStructureInterior(structure.type);
 
       const getInteriorFeature = (structure) => {
-        const pool = INTERIOR_FEATURE_POOLS[structure.type] ?? ["hidden-vault"];
+        const interiorType = normalizeInteriorStructureType(structure.type);
+        const pool = INTERIOR_FEATURE_POOLS[interiorType] ?? ["hidden-vault"];
         return pool[hashString(structure.id) % pool.length];
       };
 
@@ -6286,14 +6378,110 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         return props;
       };
 
+      const isInteriorPointBlocked = (x, y, radius, obstacles, width, height) => {
+        const margin = 20;
+        const rect = {
+          x: x - radius,
+          y: y - radius,
+          w: radius * 2,
+          h: radius * 2,
+        };
+        if (
+          rect.x < margin ||
+          rect.y < margin ||
+          rect.x + rect.w > width - margin ||
+          rect.y + rect.h > height - margin
+        ) {
+          return true;
+        }
+        for (const obstacle of obstacles) {
+          if (intersectsRect(rect, obstacle)) return true;
+        }
+        return false;
+      };
+
+      const resolveInteriorPoint = (preferredX, preferredY, radius, obstacles, width, height) => {
+        const clampedX = clamp(preferredX, 34 + radius, width - 34 - radius);
+        const clampedY = clamp(preferredY, 34 + radius, height - 34 - radius);
+        if (!isInteriorPointBlocked(clampedX, clampedY, radius, obstacles, width, height)) {
+          return { x: clampedX, y: clampedY };
+        }
+        for (let ring = 1; ring <= 9; ring += 1) {
+          const ringRadius = ring * 26;
+          for (let step = 0; step < 24; step += 1) {
+            const angle = (Math.PI * 2 * step) / 24;
+            const candidateX = clamp(clampedX + Math.cos(angle) * ringRadius, 34 + radius, width - 34 - radius);
+            const candidateY = clamp(clampedY + Math.sin(angle) * ringRadius, 34 + radius, height - 34 - radius);
+            if (!isInteriorPointBlocked(candidateX, candidateY, radius, obstacles, width, height)) {
+              return { x: candidateX, y: candidateY };
+            }
+          }
+        }
+        return { x: width * 0.5, y: height * 0.5 };
+      };
+
+      const buildInteriorHostNpcs = (structure, interiorType, width, height, obstacles, seed) => {
+        const pool = INTERIOR_HOST_NPC_POOLS[interiorType];
+        if (!pool?.length) return [];
+        const count = interiorType === "mushroom-shop" ? 2 : 1;
+        const npcs = [];
+        for (let index = 0; index < count; index += 1) {
+          const profile = pool[(seed + index) % pool.length];
+          const preferredX = width * (count === 1 ? 0.24 : 0.28 + index * 0.42);
+          const preferredY = height * (0.35 + interiorSeedUnit(seed, 240 + index) * 0.34);
+          const point = resolveInteriorPoint(preferredX, preferredY, 18, obstacles, width, height);
+          npcs.push({
+            id: `interior-npc-${structure.id}-${index}`,
+            ...profile,
+            clueId: `interior-npc-clue-${structure.id}-${index}`,
+            x: point.x,
+            y: point.y,
+            radius: 34,
+          });
+        }
+        return npcs;
+      };
+
+      const buildInteriorRoamingEnemies = (structure, interiorType, width, height, obstacles, seed) => {
+        const pool = INTERIOR_ROAMING_ENEMY_POOLS[interiorType];
+        const count = INTERIOR_ENEMY_COUNT_BY_TYPE[interiorType] ?? 0;
+        if (!pool?.length || count <= 0) return [];
+        const enemies = [];
+        for (let index = 0; index < count; index += 1) {
+          const template = pool[(seed + index * 3) % pool.length];
+          const preferredX = width * (0.2 + interiorSeedUnit(seed, 301 + index) * 0.62);
+          const preferredY = height * (0.2 + interiorSeedUnit(seed, 337 + index) * 0.58);
+          const point = resolveInteriorPoint(preferredX, preferredY, 14, obstacles, width, height);
+          const baseAngle = interiorSeedUnit(seed, 379 + index) * Math.PI * 2;
+          const speed = 56 + Math.round(interiorSeedUnit(seed, 421 + index) * 30);
+          enemies.push({
+            id: `interior-enemy-${structure.id}-${index}`,
+            ...template,
+            x: point.x,
+            y: point.y,
+            radius: 14,
+            speed,
+            vx: Math.cos(baseAngle) * speed,
+            vy: Math.sin(baseAngle) * speed,
+            directionShiftAt: Date.now() + 800 + Math.round(interiorSeedUnit(seed, 461 + index) * 1300),
+            active: true,
+          });
+        }
+        return enemies;
+      };
+
       const createInteriorLayout = (structure) => {
+        const interiorType = normalizeInteriorStructureType(structure.type);
         const feature = getInteriorFeature(structure);
         const sigil = getInteriorSigil(structure);
-        const config = INTERIOR_MAP_CONFIG[structure.type] ?? INTERIOR_MAP_CONFIG.house;
+        const config = INTERIOR_MAP_CONFIG[interiorType] ?? INTERIOR_MAP_CONFIG.house;
         const seed = hashString(structure.id);
         const width = config.width + Math.round((interiorSeedUnit(seed, 3) - 0.5) * 120);
         const height = config.height + Math.round((interiorSeedUnit(seed, 7) - 0.5) * 80);
         const spawn = { x: width * 0.5, y: height - 78 };
+        const obstacles = scaleInteriorObstacles(interiorType, width, height);
+        const npcs = buildInteriorHostNpcs(structure, interiorType, width, height, obstacles, seed);
+        const enemies = buildInteriorRoamingEnemies(structure, interiorType, width, height, obstacles, seed);
         const nodes = [
           {
             id: `${structure.id}-feature`,
@@ -6330,12 +6518,15 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         ];
         return {
           id: structure.id,
+          interiorType,
           width,
           height,
           feature,
           sigil,
-          obstacles: scaleInteriorObstacles(structure.type, width, height),
+          obstacles,
           props: buildInteriorProps(structure, width, height),
+          npcs,
+          enemies,
           nodes,
           spawn,
           exploredAt: Date.now(),
@@ -6403,16 +6594,55 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         return nearest;
       };
 
+      const getInteriorNearbyNpc = (layout, maxDistance = 78) => {
+        if (!layout?.npcs?.length) return null;
+        let nearest = null;
+        let bestDistance = maxDistance;
+        for (const npc of layout.npcs) {
+          const distance = dist(state.interior.heroX, state.interior.heroY, npc.x, npc.y);
+          if (distance <= bestDistance) {
+            nearest = npc;
+            bestDistance = distance;
+          }
+        }
+        return nearest;
+      };
+
+      const getInteriorNearbyEnemy = (layout, maxDistance = 82) => {
+        if (!layout?.enemies?.length) return null;
+        let nearest = null;
+        let bestDistance = maxDistance;
+        for (const enemy of layout.enemies) {
+          if (!enemy.active) continue;
+          const distance = dist(state.interior.heroX, state.interior.heroY, enemy.x, enemy.y);
+          if (distance <= bestDistance) {
+            nearest = enemy;
+            bestDistance = distance;
+          }
+        }
+        return nearest;
+      };
+
       const refreshInteriorHint = (structure, force = false) => {
         const layout = state.interior.layout;
         if (!layout || !structure) return;
         const nearbyNode = getInteriorNearbyNode(layout);
-        const nearbyId = nearbyNode?.id ?? "";
+        const nearbyNpc = getInteriorNearbyNpc(layout);
+        const nearbyEnemy = getInteriorNearbyEnemy(layout);
+        const nearbyId = nearbyEnemy
+          ? `enemy:${nearbyEnemy.id}`
+          : nearbyNpc
+            ? `npc:${nearbyNpc.id}`
+            : nearbyNode?.id ?? "";
         if (!force && state.interior.nearbyNodeId === nearbyId) return;
         state.interior.nearbyNodeId = nearbyId;
         const solved = state.progress.solvedStructures.has(structure.id);
         let guide = `${getInteriorFeatureHint(layout.feature)} Explore this interior map and move between interior nodes.`;
-        if (nearbyNode?.kind === "feature") {
+        if (nearbyEnemy) {
+          guide = `Hostile contact nearby: ${nearbyEnemy.title}. Touch the enemy to trigger a battle.`;
+        } else if (nearbyNpc) {
+          guide = `${nearbyNpc.name} nearby (${nearbyNpc.subtitle}). Press Enter or Search to talk/trade.`;
+        } else if (nearbyNode?.kind === "feature") {
           guide = solved
             ? "Feature already cleared here. You can still inspect lore/cache nodes or exit."
             : `Feature node nearby: ${nearbyNode.label}. Press Enter or Search to resolve this interior objective.`;
@@ -6425,6 +6655,121 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
         const lastResult = state.interior.lastResult ? ` Last action: ${state.interior.lastResult}` : "";
         dom.interiorHint.textContent = `${guide} Controls: move with arrows/WASD, Shift to sprint, E to exit.${lastResult}`;
+      };
+
+      const buildInteriorNpcEncounter = (structure, npc, alreadySpoken) => {
+        const roleText = `${npc.subtitle} at ${structure.name}`;
+        const clueLabel = npc.clueLabel ?? `${structure.name} Interior Lead`;
+        const applyInteriorTrade = () => {
+          const cost = npc.tradeCost ?? 0;
+          if (state.hero.spores < cost) {
+            setStatus(`${npc.name}: bring ${cost} spores for this trade.`, true);
+            playSfx("error");
+            return;
+          }
+          state.hero.spores -= cost;
+          const qty = npc.tradeQty ?? 1;
+          if (npc.tradeItem === "mycoPotion") state.inventory.mycoPotion += qty;
+          if (npc.tradeItem === "manaDew") state.inventory.manaDew += qty;
+          if (npc.tradeItem === "smokeBomb") state.inventory.smokeBomb += qty;
+          if (npc.tradeItem === "goldenSpore") state.hero.goldenSpores += qty;
+          recordAiSignal("commerce", 1.5);
+          pushStoryEntry(`${npc.name} completed an interior trade in ${structure.name}.`, "npc");
+          setStatus(`${npc.name} trade complete.`);
+          playSfx("coin");
+        };
+
+        return {
+          title: npc.name,
+          portrait: { glyph: npc.glyph ?? "🧭", subtitle: roleText },
+          body: alreadySpoken
+            ? `${npc.name}: Good to see you back in ${structure.name}. Need another exchange?`
+            : `${npc.intro}\n\nRole: ${roleText}\n\nThis resident tracks your interior discoveries and reacts to your path decisions.`,
+          mycoLabel: "Respectfully Ask",
+          darkLabel: "Demand Answers",
+          tradeLabel: `Trade (${npc.tradeCost ?? 0} spores)`,
+          onMyco: () => {
+            recordAiSignal("compassion", 1.5);
+            recordAiSignal("diplomacy", 1);
+            applyMorality(5);
+            grantSpores(8);
+            addClue(npc.clueId, clueLabel);
+            state.progress.interactedNpcs.add(npc.id);
+            pushStoryEntry(`${npc.name} shared trusted advice inside ${structure.name}.`, "npc");
+            setStatus(npc.mycoText);
+          },
+          onDark: () => {
+            recordAiSignal("ferocity", 1.2);
+            applyMorality(-6);
+            grantGrindLoot({ armorShards: 1 });
+            addClue(npc.clueId, clueLabel);
+            state.progress.interactedNpcs.add(npc.id);
+            pushStoryEntry(`${npc.name} surrendered information under pressure in ${structure.name}.`, "npc");
+            setStatus(npc.darkText);
+          },
+          onTrade: applyInteriorTrade,
+        };
+      };
+
+      const triggerInteriorRoamingBattle = (structure, enemy) => {
+        const encounter = {
+          id: enemy.id,
+          kind: enemy.kind,
+          x: state.hero.x,
+          y: state.hero.y,
+          lane: enemy.lane,
+          boss: false,
+          region: state.currentRealmId,
+        };
+        closeInterior();
+        state.pendingBattle = false;
+        state.encounterEnemyId = encounter.id;
+        state.mode = "battle";
+        state.battleMode = "local";
+        setBattlePopupActive(true);
+        resetBattleFx();
+        state.battle = createLocalBattle(encounter);
+        state.battle.enemy.name = `${enemy.title} // ${structure.name}`;
+        state.battle.rewardSpores += enemy.rewardBonus ?? 8;
+        state.battle.rewardXp += 4;
+        appendBattleLog(`${state.battle.enemy.name} ambushed you inside the interior.`);
+        dom.battleSummary.textContent = `Interior enemy encounter in ${structure.name}: ${state.battle.enemy.name}`;
+        pushStoryEntry(`Interior battle ignited in ${structure.name} against ${enemy.title}.`, "battle");
+        setStatus(`Interior enemy engaged: ${enemy.title}`);
+        playSfx("battle");
+      };
+
+      const updateInteriorEnemies = (dt, layout, structure) => {
+        if (!layout?.enemies?.length) return false;
+        const now = Date.now();
+        for (const enemy of layout.enemies) {
+          if (!enemy.active) continue;
+          if (enemy.directionShiftAt <= now) {
+            const angle = randomBetween(0, Math.PI * 2);
+            enemy.vx = Math.cos(angle) * enemy.speed;
+            enemy.vy = Math.sin(angle) * enemy.speed;
+            enemy.directionShiftAt = now + randomBetween(900, 2200);
+          }
+          const nextX = enemy.x + enemy.vx * dt;
+          const nextY = enemy.y + enemy.vy * dt;
+          if (isInteriorPointBlocked(nextX, enemy.y, enemy.radius, layout.obstacles, layout.width, layout.height)) {
+            enemy.vx *= -1;
+          } else {
+            enemy.x = nextX;
+          }
+          if (isInteriorPointBlocked(enemy.x, nextY, enemy.radius, layout.obstacles, layout.width, layout.height)) {
+            enemy.vy *= -1;
+          } else {
+            enemy.y = nextY;
+          }
+          const touchDistance = enemy.radius + 18;
+          if (dist(state.interior.heroX, state.interior.heroY, enemy.x, enemy.y) <= touchDistance) {
+            enemy.active = false;
+            triggerInteriorRoamingBattle(structure, enemy);
+            return true;
+          }
+        }
+        return false;
       };
 
       const openInterior = (structure) => {
@@ -6443,7 +6788,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         updateInteriorCamera(layout);
         dom.interiorScreen.classList.add("active");
         dom.interiorTitle.textContent = structure.name;
-        dom.interiorSubtitle.textContent = `${structure.type.replace(/-/g, " ").toUpperCase()} INTERIOR MAP // ${getCurrentRealm().name} // ${INTERIOR_FEATURE_LABELS[layout.feature]} // ${layout.sigil}`;
+        dom.interiorSubtitle.textContent = `${layout.interiorType.replace(/-/g, " ").toUpperCase()} INTERIOR MAP // ${getCurrentRealm().name} // ${INTERIOR_FEATURE_LABELS[layout.feature]} // ${layout.sigil}`;
         refreshInteriorHint(structure, true);
         drawInteriorScene(structure);
       };
@@ -6470,6 +6815,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const layout = state.interior.layout;
         if (!structure || !layout) return;
         moveInteriorHero(dt, layout);
+        if (updateInteriorEnemies(dt, layout, structure)) {
+          return;
+        }
         updateInteriorCamera(layout);
         refreshInteriorHint(structure);
       };
@@ -6483,7 +6831,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         interiorCtx.fillRect(0, 0, width, height);
         if (!structure || !layout) return;
 
-        const [base, accent, glow] = INTERIOR_THEME_PALETTES[structure.type] ?? ["#1f2937", "#4b5563", "#e2e8f0"];
+        const [base, accent, glow] = INTERIOR_THEME_PALETTES[layout.interiorType] ?? ["#1f2937", "#4b5563", "#e2e8f0"];
         const roomGradient = interiorCtx.createLinearGradient(0, 0, width, height);
         roomGradient.addColorStop(0, base);
         roomGradient.addColorStop(1, "#020617");
@@ -6550,7 +6898,36 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           }
         }
 
+        for (const enemy of layout.enemies ?? []) {
+          if (!enemy.active) continue;
+          const ex = enemy.x - cameraX;
+          const ey = enemy.y - cameraY;
+          if (ex < -40 || ey < -40 || ex > width + 40 || ey > height + 40) continue;
+          const hue = hashString(enemy.kind) % 360;
+          interiorCtx.fillStyle = "rgba(2, 6, 23, 0.46)";
+          interiorCtx.beginPath();
+          interiorCtx.ellipse(ex, ey + enemy.radius + 6, enemy.radius + 5, 6, 0, 0, Math.PI * 2);
+          interiorCtx.fill();
+          interiorCtx.fillStyle = `hsla(${hue}, 72%, 58%, 0.82)`;
+          interiorCtx.beginPath();
+          interiorCtx.arc(ex, ey, enemy.radius + 4, 0, Math.PI * 2);
+          interiorCtx.fill();
+          interiorCtx.fillStyle = "rgba(2, 6, 23, 0.85)";
+          interiorCtx.fillRect(ex - 5, ey - 3, 10, 8);
+          interiorCtx.fillStyle = "#86efac";
+          interiorCtx.fillRect(ex - 4, ey - 1, 2, 2);
+          interiorCtx.fillRect(ex + 2, ey - 1, 2, 2);
+        }
+
+        for (const npc of layout.npcs ?? []) {
+          const nx = npc.x - cameraX;
+          const ny = npc.y - cameraY;
+          if (nx < -48 || ny < -48 || nx > width + 48 || ny > height + 48) continue;
+          drawNpc(interiorCtx, npc, nx, ny);
+        }
+
         const nearbyNode = getInteriorNearbyNode(layout);
+        const nearbyNpc = getInteriorNearbyNpc(layout);
         for (const node of layout.nodes) {
           const nodeX = node.x - cameraX;
           const nodeY = node.y - cameraY;
@@ -6587,6 +6964,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (nearbyNode) {
           interiorCtx.fillStyle = "#facc15";
           interiorCtx.fillText(`Nearby node: ${nearbyNode.label}`, 20, 80);
+        } else if (nearbyNpc) {
+          interiorCtx.fillStyle = "#a7f3d0";
+          interiorCtx.fillText(`Nearby resident: ${nearbyNpc.name}`, 20, 80);
         }
 
         const solved = state.progress.solvedStructures.has(structure.id);
@@ -6616,12 +6996,22 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           interiorCtx.fillStyle = INTERIOR_NODE_COLORS[node.kind] ?? "#f8fafc";
           interiorCtx.fillRect(miniX + node.x * sx - 1, miniY + node.y * sy - 1, 3, 3);
         }
+        for (const npc of layout.npcs ?? []) {
+          interiorCtx.fillStyle = "#86efac";
+          interiorCtx.fillRect(miniX + npc.x * sx - 1, miniY + npc.y * sy - 1, 3, 3);
+        }
+        for (const enemy of layout.enemies ?? []) {
+          if (!enemy.active) continue;
+          interiorCtx.fillStyle = "#f87171";
+          interiorCtx.fillRect(miniX + enemy.x * sx - 1, miniY + enemy.y * sy - 1, 3, 3);
+        }
         interiorCtx.fillStyle = "#22d3ee";
         interiorCtx.fillRect(miniX + state.interior.heroX * sx - 2, miniY + state.interior.heroY * sy - 2, 4, 4);
       };
 
       const triggerInteriorTrialBattle = (structure) => {
-        const trial = INTERIOR_TRIAL_ENEMIES[structure.type] ?? INTERIOR_TRIAL_ENEMIES.dungeon;
+        const interiorType = normalizeInteriorStructureType(structure.type);
+        const trial = INTERIOR_TRIAL_ENEMIES[interiorType] ?? INTERIOR_TRIAL_ENEMIES.dungeon;
         const trialEnemy = {
           id: `interior-trial-${structure.id}-${Date.now()}`,
           kind: trial.kind,
@@ -6656,9 +7046,24 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const structure = STRUCTURES.find((entry) => entry.id === state.interior.structureId);
         const layout = state.interior.layout;
         if (!structure || !layout) return;
+        const nearbyNpc = getInteriorNearbyNpc(layout);
+        if (nearbyNpc) {
+          const alreadySpoken = state.progress.interactedNpcs.has(nearbyNpc.id);
+          openDialogue(buildInteriorNpcEncounter(structure, nearbyNpc, alreadySpoken));
+          state.interior.lastResult = `Conversation opened with ${nearbyNpc.name}.`;
+          refreshInteriorHint(structure, true);
+          return;
+        }
+        const nearbyEnemy = getInteriorNearbyEnemy(layout, 58);
+        if (nearbyEnemy) {
+          state.interior.lastResult = `${nearbyEnemy.title} is too close. Move or engage in battle.`;
+          refreshInteriorHint(structure, true);
+          playSfx("error");
+          return;
+        }
         const nearbyNode = getInteriorNearbyNode(layout);
         if (!nearbyNode) {
-          state.interior.lastResult = "No interior node in range. Move closer to a marker.";
+          state.interior.lastResult = "No interior node in range. Move toward a node marker or resident.";
           refreshInteriorHint(structure, true);
           playSfx("error");
           return;
