@@ -371,6 +371,11 @@
         margin-bottom: 8px;
         color: #e2e8f0;
       }
+      #dialogueBody {
+        white-space: pre-wrap;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: 0.01em;
+      }
       .dialogue-qa {
         margin: 8px 0 10px;
         border: 1px solid #304e83;
@@ -1190,6 +1195,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
                 <option value="void">Void</option>
               </select>
               <button id="strikeBtn">Strike</button>
+              <button id="actBtn">Act</button>
+              <button id="mercyBtn">Mercy</button>
               <button id="guardBtn">Guard</button>
               <button id="skillBtn" class="primary">Skill</button>
               <button id="itemBtn">Use Potion</button>
@@ -1206,6 +1213,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
               Interact: E<br />
               Sprint: Hold Shift<br />
               Enemy Overworld Threats: rocks, flames, and spell barrages<br />
+              ACT Route: Q in battle<br />
+              MERCY Route: R in battle<br />
               Flee Battle: F or Flee button<br />
               Cutscene Next: Space<br />
               Enter houses/caves/castles/dungeons to open interior screens. Step onto unlocked portals to load linked region pages.
@@ -1252,6 +1261,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         <button class="touch-btn" data-action="interact">Interact</button>
         <button class="touch-btn" data-action="item">Potion</button>
         <button class="touch-btn" data-action="strike">Attack</button>
+        <button class="touch-btn" data-action="act">Act</button>
+        <button class="touch-btn" data-action="mercy">Mercy</button>
         <button class="touch-btn" data-action="guard">Guard</button>
         <button class="touch-btn" data-action="skill">Skill</button>
         <button class="touch-btn" data-action="flee">Flee</button>
@@ -1417,6 +1428,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         battleLog: document.getElementById("battleLog"),
         elementSelect: document.getElementById("elementSelect"),
         strikeBtn: document.getElementById("strikeBtn"),
+        actBtn: document.getElementById("actBtn"),
+        mercyBtn: document.getElementById("mercyBtn"),
         guardBtn: document.getElementById("guardBtn"),
         skillBtn: document.getElementById("skillBtn"),
         itemBtn: document.getElementById("itemBtn"),
@@ -4118,6 +4131,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const BATTLE_BASS_SEQUENCE = [82.41, 98.0, 110.0, 123.47, 98.0, 87.31, 73.42, 98.0];
       const PLAYER_MOVE_VARIANTS = {
         strike: ["Crownstaff Rush", "Myco Blade Arc", "Spore Fang Combo", "Nexus Lunge"],
+        act: ["Soul Check", "Kindness Pulse", "Talk It Down", "Pacify Pattern"],
+        mercy: ["Offer Mercy", "Spare Route", "Peace Signal", "Lower the Flame"],
         guard: ["Mycelium Aegis", "Royal Guard Stance", "Spore Wall", "Warden Brace"],
         skill: {
           fire: ["Ember Bloom", "Pyro Spore Volley", "Crimson Halo"],
@@ -4356,6 +4371,22 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
                 playTurn("strike");
               } else {
                 performOverworldAttack();
+              }
+              return;
+            }
+            if (action === "act") {
+              if (state.mode === "battle" && state.battle?.status === "active") {
+                playTurn("act");
+              } else {
+                setStatus("ACT is available during enemy encounters.", true);
+              }
+              return;
+            }
+            if (action === "mercy") {
+              if (state.mode === "battle" && state.battle?.status === "active") {
+                playTurn("mercy");
+              } else {
+                setStatus("MERCY is available during enemy encounters.", true);
               }
               return;
             }
@@ -4870,6 +4901,116 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           return pickFromList(ENEMY_MOVE_VARIANTS.beast, kind, battle?.turnNumber ?? 0);
         }
         return pickFromList(ENEMY_MOVE_VARIANTS.fallback, kind, battle?.turnNumber ?? 0);
+      };
+
+      const UNDERTALE_NPC_SIDE_COMMENTS = [
+        "(The room goes quiet for a second.)",
+        "(You can hear spores crackle underfoot.)",
+        "(A tiny silence hangs between both of you.)",
+        "(Somewhere, an old bell rings once.)",
+        "(The air tastes like static and memory.)",
+      ];
+      const UNDERTALE_ENCOUNTER_OPENERS = [
+        "A hostile presence blocks your path.",
+        "A strange enemy steps into your lane.",
+        "Something in front of you refuses to move.",
+        "A battle starts before either side blinks.",
+        "The route twists into a confrontation.",
+      ];
+      const UNDERTALE_ENEMY_MOODS = {
+        survival: [
+          "The enemy watches for one mistake.",
+          "It circles like it already knows your rhythm.",
+          "Its stance says: no free hits tonight.",
+        ],
+        speed: [
+          "It bounces in place, impatient and twitchy.",
+          "Its feet never stop moving.",
+          "It grins like this is a race.",
+        ],
+        tactical: [
+          "It studies your hands and waits.",
+          "Its eyes track every choice you make.",
+          "It looks like it came here with a plan.",
+        ],
+        precision: [
+          "Its aim is unnervingly steady.",
+          "It lines up every strike before committing.",
+          "One clean opening is all it wants.",
+        ],
+        puzzle: [
+          "It tilts its head like it's solving you.",
+          "Its movement feels like a riddle.",
+          "It attacks in patterns, not panic.",
+        ],
+      };
+      const UNDERTALE_ACT_VARIANTS = {
+        survival: ["You steady your breathing and mirror its stance.", "You lower your weapon and hold your ground."],
+        speed: ["You crack a joke about sprinting in armor.", "You challenge it to slow down for one turn."],
+        tactical: ["You praise its discipline and ask for a clean duel.", "You reveal your route map and offer terms."],
+        precision: ["You compliment its aim and avoid sudden moves.", "You point your staff away to show restraint."],
+        puzzle: ["You answer with a pattern instead of force.", "You trace a rune that matches its rhythm."],
+        default: ["You try talking before escalating.", "You choose words over damage this turn."],
+      };
+
+      const formatUndertaleScript = (lines) =>
+        lines
+          .filter((entry) => typeof entry === "string" && entry.trim())
+          .map((entry) => `* ${entry.trim()}`)
+          .join("\n");
+
+      const toUndertaleDialogueBody = (speakerName, bodyText, contextTag = "") => {
+        const bodyLines = String(bodyText ?? "")
+          .split(/\n+/)
+          .map((line) => line.trim())
+          .filter(Boolean);
+        const sideComment = pickFromList(
+          UNDERTALE_NPC_SIDE_COMMENTS,
+          `${speakerName}:${contextTag}`,
+          state.story.entries.length,
+        );
+        return formatUndertaleScript([
+          `${speakerName} faces you.`,
+          ...bodyLines,
+          sideComment,
+        ]);
+      };
+
+      const getUndertaleMoodLine = (battle) => {
+        const lane = battle?.encounterLane ?? "tactical";
+        const pool = UNDERTALE_ENEMY_MOODS[lane] ?? UNDERTALE_ENEMY_MOODS.tactical;
+        return pickFromList(pool, getEnemyBattleKind(battle), battle?.turnNumber ?? 0);
+      };
+
+      const ensureUndertaleBattleState = (battle) => {
+        if (!battle || typeof battle !== "object") return null;
+        if (!battle.undertale || typeof battle.undertale !== "object") {
+          battle.undertale = {
+            actProgress: 0,
+            mercyReady: false,
+            pacified: false,
+            mood: getUndertaleMoodLine(battle),
+            turnPrompt: pickFromList(
+              UNDERTALE_ENCOUNTER_OPENERS,
+              getEnemyBattleKind(battle),
+              battle.turnNumber ?? 1,
+            ),
+          };
+        }
+        if (typeof battle.undertale.actProgress !== "number") battle.undertale.actProgress = 0;
+        if (typeof battle.undertale.mercyReady !== "boolean") battle.undertale.mercyReady = false;
+        if (typeof battle.undertale.pacified !== "boolean") battle.undertale.pacified = false;
+        if (typeof battle.undertale.mood !== "string" || !battle.undertale.mood) {
+          battle.undertale.mood = getUndertaleMoodLine(battle);
+        }
+        if (typeof battle.undertale.turnPrompt !== "string" || !battle.undertale.turnPrompt) {
+          battle.undertale.turnPrompt = pickFromList(
+            UNDERTALE_ENCOUNTER_OPENERS,
+            getEnemyBattleKind(battle),
+            battle.turnNumber ?? 1,
+          );
+        }
+        return battle.undertale;
       };
 
       const saveConfig = () => {
@@ -6591,7 +6732,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const persona = getNpcPersonality(npc);
         const backstory = NPC_BACKSTORIES[npc.id];
         const reminderText = getNpcReminderText(npc, qaContext);
-        const body = reminderText
+        const narrativeBody = reminderText
           ? `${npc.name} // Objective Reminder\n${reminderText}\n\nPriority Task: ${npc.clueLabel ?? "Advance your current objective"}.\n\n${npc.name} will keep this reminder active until the objective is resolved.`
           : buildUniqueNpcDialogueBody({
             npc,
@@ -6604,6 +6745,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             backstory,
             alreadySpoken,
           });
+        const body = toUndertaleDialogueBody(npc.name, narrativeBody, `npc:${npc.id}:${encounterCount}`);
 
         const applyTrade = (trustful) => {
           const cost = npc.tradeCost ?? 0;
@@ -7228,7 +7370,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           onAsk: () => askNpcQuestionDialogue(npc, [entry], qaContext),
         }));
         const reminderText = getInteriorNpcReminderText(structure);
-        const body = reminderText
+        const narrativeBody = reminderText
           ? `${npc.name} // Objective Reminder\n${reminderText}\n\nRole: ${roleText}\n\nComplete the objective, then return for a fresh tactical read.`
           : buildUniqueInteriorNpcDialogueBody({
             npc,
@@ -7237,6 +7379,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             encounterCount,
             alreadySpoken,
           });
+        const body = toUndertaleDialogueBody(npc.name, narrativeBody, `interior:${structure.id}:${npc.id}:${encounterCount}`);
         const applyInteriorTrade = () => {
           const cost = npc.tradeCost ?? 0;
           if (state.hero.spores < cost) {
@@ -8520,7 +8663,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const bossMultiplier = rotatingConfig?.hpMultiplier ?? 1;
         const enemyBase = enemy.boss ? Math.round(96 * bossMultiplier) : 56;
         const enemyHp = enemyBase + (enemy.boss ? state.hero.magic * 6 : state.hero.attack * 3);
-        return {
+        const battle = {
           battleId: `local-${Date.now()}`,
           playerId: requestBase().externalId,
           regionId: enemy.region,
@@ -8549,11 +8692,14 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           battleLog: [
             `Encounter started with ${getEnemyDisplayName(enemy.kind)}.`,
             rotatingBoss ? `Weekly apex target: ${rotatingConfig?.title ?? "Rotating boss"} is active.` : `Live event: ${state.liveEvent.title}.`,
+            `* ${pickFromList(UNDERTALE_ENCOUNTER_OPENERS, enemy.kind, state.story.entries.length)}`,
           ],
           startedAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           rewardSpores: enemy.boss ? 60 : 18,
         };
+        ensureUndertaleBattleState(battle);
+        return battle;
       };
 
       const engageEnemy = async (enemy) => {
@@ -8567,10 +8713,15 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         resetOverworldProjectiles();
         resetBattleFx();
         showBossIntro(enemy);
+        const encounterPrompt = pickFromList(
+          UNDERTALE_ENCOUNTER_OPENERS,
+          enemy.kind,
+          `${state.story.entries.length}:${state.progress.enemyWins}`,
+        );
         setStatus(
           rotating
-            ? `Apex encounter: rotating world boss ${getEnemyDisplayName(enemy.kind)} engaged.`
-            : `Enemy contact: ${getEnemyDisplayName(enemy.kind)}. Initiating turn battle...`,
+            ? `* ${encounterPrompt} Apex encounter: rotating world boss ${getEnemyDisplayName(enemy.kind)} engaged.`
+            : `* ${encounterPrompt} ${getEnemyDisplayName(enemy.kind)} engaged.`,
         );
         pushStoryEntry(
           rotating
@@ -8587,12 +8738,17 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             preferredLane: laneForEnemy(enemy),
           });
           state.battle = receipt.battle;
+          ensureUndertaleBattleState(state.battle);
           state.battleMode = "api";
+          state.battle.battleLog = Array.isArray(state.battle.battleLog) ? state.battle.battleLog : [];
+          state.battle.battleLog.push(`* ${state.battle.undertale.turnPrompt}`);
+          state.battle.battleLog.push(`* ${state.battle.undertale.mood}`);
           dom.battleSummary.textContent = `API battle active in lane ${receipt.battle.encounterLane}.`;
           appendBattleLog("Battle provider: API");
         } catch (error) {
           console.warn("api battle start failed", error);
           state.battle = createLocalBattle(enemy);
+          ensureUndertaleBattleState(state.battle);
           state.battleMode = "local";
           dom.battleSummary.textContent = `API unavailable, switched to local battle sim (${state.battle.encounterLane}).`;
           appendBattleLog("Battle provider: local fallback");
@@ -8773,12 +8929,26 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           playBattleActionSfx("death", "player");
           playSfx("death");
         } else if (battle.status === "fled") {
-          recordAiSignal("exploration", 0.8);
-          state.progress.battleFlees = (state.progress.battleFlees ?? 0) + 1;
-          recordSeasonImpact("battle-flee", state.playerClan, -3, "Retreated from encounter");
+          const pacified = Boolean(battle.undertale?.pacified);
+          if (pacified) {
+            recordAiSignal("compassion", 1.5);
+            recordAiSignal("diplomacy", 1.2);
+            applyMorality(6);
+            state.progress.enemiesSpared = (state.progress.enemiesSpared ?? 0) + 1;
+            recordSeasonImpact("battle-victory", state.playerClan, 8, "Mercy route completed");
+          } else {
+            recordAiSignal("exploration", 0.8);
+            state.progress.battleFlees = (state.progress.battleFlees ?? 0) + 1;
+            recordSeasonImpact("battle-flee", state.playerClan, -3, "Retreated from encounter");
+          }
           const escapedName = battle.enemy?.name ?? getEnemyDisplayName(enemy?.kind ?? "hostile");
-          pushStoryEntry(`You fled from ${escapedName} in ${getCurrentRealm().name}.`, "battle");
-          if (enemy && enemy.active) {
+          pushStoryEntry(
+            pacified
+              ? `You spared ${escapedName} through a mercy route in ${getCurrentRealm().name}.`
+              : `You fled from ${escapedName} in ${getCurrentRealm().name}.`,
+            "battle",
+          );
+          if (enemy && enemy.active && !pacified) {
             const angle = Math.atan2(state.hero.y - enemy.y, state.hero.x - enemy.x);
             const retreatX = state.hero.x + Math.cos(angle || 0) * 96;
             const retreatY = state.hero.y + Math.sin(angle || 0) * 96;
@@ -8786,10 +8956,19 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
               state.hero.x = retreatX;
               state.hero.y = retreatY;
             }
+          } else if (enemy && pacified) {
+            enemy.active = false;
+            enemy.respawnAt = Date.now() + 34000;
+            resetEnemyOverworldCombatState(enemy, false);
           }
           state.contactLockUntil = Date.now() + 2200;
-          setStatus(`You fled from ${escapedName}.`, true);
-          playSfx("error");
+          if (pacified) {
+            setStatus(`MERCY route: ${escapedName} was spared and left the field.`);
+            playSfx("talk");
+          } else {
+            setStatus(`You fled from ${escapedName}.`, true);
+            playSfx("error");
+          }
         }
         window.setTimeout(() => {
           state.mode = "explore";
@@ -8807,15 +8986,16 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const resolveLocalTurn = (kind, element) => {
         if (!state.battle || state.battle.status !== "active") return;
         const battle = state.battle;
+        const undertale = ensureUndertaleBattleState(battle);
         const playerMoveName = pickPlayerMoveName(kind, element);
         battle.lastAction = kind === "skill" ? { kind, element, moveName: playerMoveName } : { kind, moveName: playerMoveName };
         triggerBattleActionFx({
           source: "player",
-          target: kind === "guard" ? "player" : "enemy",
+          target: kind === "guard" || kind === "mercy" ? "player" : "enemy",
           kind,
           moveName: playerMoveName,
-          element: kind === "skill" ? element : "nature",
-          power: kind === "skill" ? 1.25 : kind === "guard" ? 0.75 : 1,
+          element: kind === "skill" ? element : kind === "mercy" ? "void" : "nature",
+          power: kind === "skill" ? 1.25 : kind === "guard" ? 0.75 : kind === "act" ? 0.9 : 1,
         });
         const randomRoll = () => randomBetween(0.84, 1.24);
         let playerDamage = 0;
@@ -8828,6 +9008,38 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           const elementBonus = element === "void" ? 1.15 : element === "nature" ? 1.1 : 1;
           const boost = state.hero.magicBoostTurns > 0 ? 1.28 : 1;
           playerDamage = Math.round((12 + state.hero.magic * 5) * elementBonus * boost * randomRoll());
+        } else if (kind === "act") {
+          const lane = battle.encounterLane ?? "tactical";
+          const actLine = pickFromList(
+            UNDERTALE_ACT_VARIANTS[lane] ?? UNDERTALE_ACT_VARIANTS.default,
+            `${getEnemyBattleKind(battle)}:${lane}`,
+            battle.turnNumber,
+          );
+          const actGain = (battle.enemy?.boss ? 1 : 2) + (state.hero.magic >= 4 ? 1 : 0) + (state.hero.morality >= 0 ? 1 : 0);
+          const mercyThreshold = battle.enemy?.boss ? 8 : 6;
+          undertale.actProgress = Math.min(12, undertale.actProgress + actGain);
+          undertale.mood = getUndertaleMoodLine(battle);
+          undertale.mercyReady = undertale.actProgress >= mercyThreshold || battle.enemy.hp <= Math.round(battle.enemy.maxHp * 0.22);
+          battle.enemy.guard = Math.max(0, battle.enemy.guard - (5 + state.hero.magic));
+          battle.battleLog.push(`* ${actLine}`);
+          battle.battleLog.push(`* ${battle.enemy.name} ${undertale.mood.toLowerCase()}`);
+          if (undertale.mercyReady) {
+            battle.battleLog.push(`* ${battle.enemy.name} can be spared.`);
+          }
+        } else if (kind === "mercy") {
+          const mercyThreshold = battle.enemy?.boss ? 0.12 : 0.24;
+          const hpReady = battle.enemy.hp <= Math.round(battle.enemy.maxHp * mercyThreshold);
+          const mercyReady = undertale.mercyReady || hpReady;
+          if (mercyReady && !battle.enemy?.boss) {
+            undertale.pacified = true;
+            battle.status = "fled";
+            battle.updatedAt = new Date().toISOString();
+            battle.battleLog.push(`* You offered MERCY.`);
+            battle.battleLog.push(`* ${battle.enemy.name} accepted and left peacefully.`);
+            return;
+          }
+          battle.battleLog.push(`* You offered MERCY.`);
+          battle.battleLog.push(`* ${battle.enemy.name} is not ready to stand down.`);
         }
 
         if (playerDamage > 0) {
@@ -8837,7 +9049,13 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           battle.battleLog.push(`King Myco used ${playerMoveName} for ${mitigated} damage.`);
           triggerBattleHitFx("enemy", mitigated, kind === "skill" && mitigated >= 20);
         } else {
-          battle.battleLog.push(`King Myco used ${playerMoveName} and fortified guard.`);
+          if (kind === "guard") {
+            battle.battleLog.push(`King Myco used ${playerMoveName} and fortified guard.`);
+          } else if (kind === "act") {
+            battle.battleLog.push(`King Myco used ${playerMoveName}.`);
+          } else if (kind === "mercy") {
+            battle.battleLog.push(`King Myco held fire and tried a mercy route.`);
+          }
         }
 
         if (battle.enemy.hp <= 0) {
@@ -8888,6 +9106,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           state.hero.magicBoostTurns -= 1;
         }
 
+        if (battle.turnNumber % 2 === 0) {
+          undertale.mood = getUndertaleMoodLine(battle);
+          battle.battleLog.push(`* ${battle.enemy.name} ${undertale.mood.toLowerCase()}`);
+        }
+
         battle.turnNumber += 1;
         battle.updatedAt = new Date().toISOString();
       };
@@ -8899,18 +9122,27 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
         if (kind === "guard") {
           recordAiSignal("diplomacy", 0.2);
+        } else if (kind === "act") {
+          recordAiSignal("diplomacy", 0.8);
+          recordAiSignal("compassion", 0.7);
+          recordAiSignal("curiosity", 0.4);
+        } else if (kind === "mercy") {
+          recordAiSignal("compassion", 1);
+          recordAiSignal("diplomacy", 0.6);
         } else if (kind === "skill") {
           recordAiSignal("rituals", 0.5);
           recordAiSignal("combat", 0.5);
         } else {
           recordAiSignal("ferocity", 0.3);
         }
+        ensureUndertaleBattleState(state.battle);
         const element = dom.elementSelect.value;
         const playerMoveName = pickPlayerMoveName(kind, element);
         state.battle.lastAction = kind === "skill" ? { kind, element, moveName: playerMoveName } : { kind, moveName: playerMoveName };
         const beforePlayerHp = state.battle.player?.hp;
         const beforeEnemyHp = state.battle.enemy?.hp;
-        if (state.battleMode === "api") {
+        const useApiTurn = state.battleMode === "api" && kind !== "act" && kind !== "mercy";
+        if (useApiTurn) {
           triggerBattleActionFx({
             source: "player",
             target: kind === "guard" ? "player" : "enemy",
@@ -8955,6 +9187,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             return;
           }
         } else {
+          if (state.battleMode === "api" && (kind === "act" || kind === "mercy")) {
+            state.battleMode = "local";
+            appendBattleLog("Undertale action resolved locally for social-route compatibility.");
+          }
           resolveLocalTurn(kind, element);
           appendBattleLog(`Local turn ${state.battle.turnNumber}: ${kind}`);
         }
@@ -10401,7 +10637,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (battle.status === "active") {
           battleCtx.fillStyle = "rgba(191, 219, 254, 0.9)";
           battleCtx.font = "12px sans-serif";
-          battleCtx.fillText("Select strike, guard, skill, or flee to shape tactical outcomes.", 14, battleCanvas.height - 34);
+          battleCtx.fillText("Select strike/skill for damage, ACT for social routes, MERCY to spare, or flee.", 14, battleCanvas.height - 34);
         }
       };
 
@@ -10678,17 +10914,22 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         setBattlePopupActive(battleOverlayActive);
         const battleActive = state.mode === "battle" && state.battle && state.battle.status === "active";
         dom.strikeBtn.disabled = !battleActive;
+        if (dom.actBtn) dom.actBtn.disabled = !battleActive;
+        if (dom.mercyBtn) dom.mercyBtn.disabled = !battleActive;
         dom.guardBtn.disabled = !battleActive;
         dom.skillBtn.disabled = !battleActive;
         dom.itemBtn.disabled = !battleActive || state.inventory.mycoPotion <= 0;
         if (dom.fleeBtn) dom.fleeBtn.disabled = !battleActive;
 
         if (state.battle) {
+          const undertale = ensureUndertaleBattleState(state.battle);
           const lastAction = state.battle.lastAction
             ? `${state.battle.lastAction.moveName ?? state.battle.lastAction.kind}${state.battle.lastAction.element ? ` (${state.battle.lastAction.element})` : ""}`
             : "none";
           const enemyMove = state.battleFx.lastMoveName.enemy || "awaiting counter";
-          dom.battleSummary.textContent = `Battle source: ${state.battleMode}. Last Myco move: ${lastAction}. Enemy move: ${enemyMove}. Lane: ${state.battle.encounterLane}.`;
+          const mercyThreshold = state.battle.enemy?.boss ? 8 : 6;
+          const mercyTag = undertale.mercyReady ? "MERCY READY" : `ACT ${undertale.actProgress}/${mercyThreshold}`;
+          dom.battleSummary.textContent = `Battle source: ${state.battleMode}. Last Myco move: ${lastAction}. Enemy move: ${enemyMove}. Lane: ${state.battle.encounterLane}. ${mercyTag}. * ${undertale.mood}`;
           if (state.battle.battleLog?.length) {
             dom.battleLog.textContent = state.battle.battleLog.slice(-14).join("\n");
           }
@@ -10816,6 +11057,16 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             event.preventDefault();
             return;
           }
+          if (key === "q") {
+            void playTurn("act");
+            event.preventDefault();
+            return;
+          }
+          if (key === "r") {
+            void playTurn("mercy");
+            event.preventDefault();
+            return;
+          }
         }
         if (key === " ") {
           performOverworldAttack();
@@ -10883,6 +11134,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       });
 
       dom.strikeBtn.addEventListener("click", () => playTurn("strike"));
+      if (dom.actBtn) dom.actBtn.addEventListener("click", () => playTurn("act"));
+      if (dom.mercyBtn) dom.mercyBtn.addEventListener("click", () => playTurn("mercy"));
       dom.guardBtn.addEventListener("click", () => playTurn("guard"));
       dom.skillBtn.addEventListener("click", () => playTurn("skill"));
       dom.itemBtn.addEventListener("click", () => useInventoryItem("mycoPotion"));
