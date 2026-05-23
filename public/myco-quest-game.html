@@ -1202,9 +1202,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             <h3>Controls</h3>
             <p class="subtle">
               Move: WASD / Arrow keys<br />
-              Overworld Attack: Space<br />
+              Overworld Attack: Space (cast green/purple/red/yellow flames)<br />
               Interact: E<br />
               Sprint: Hold Shift<br />
+              Enemy Overworld Threats: rocks, flames, and spell barrages<br />
               Flee Battle: F or Flee button<br />
               Cutscene Next: Space<br />
               Enter houses/caves/castles/dungeons to open interior screens. Step onto unlocked portals to load linked region pages.
@@ -1250,7 +1251,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       <div class="mobile-actions">
         <button class="touch-btn" data-action="interact">Interact</button>
         <button class="touch-btn" data-action="item">Potion</button>
-        <button class="touch-btn" data-action="strike">Strike</button>
+        <button class="touch-btn" data-action="strike">Attack</button>
         <button class="touch-btn" data-action="guard">Guard</button>
         <button class="touch-btn" data-action="skill">Skill</button>
         <button class="touch-btn" data-action="flee">Flee</button>
@@ -2956,6 +2957,18 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           portalPulseX: 0,
           portalPulseY: 0,
         },
+        overworldCombat: {
+          maxHearts: 3,
+          hp: 96,
+          maxHp: 96,
+          heroAimX: 0,
+          heroAimY: -1,
+          heroProjectiles: [],
+          enemyProjectiles: [],
+          impacts: [],
+          lastHeroShotAt: 0,
+          invulnerableUntil: 0,
+        },
         web3: {
           wallet: "",
           chainRank: "Unranked",
@@ -3112,6 +3125,14 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           guardRank: 1,
         },
       };
+
+      const OVERWORLD_HEARTS_MAX = 3;
+      const OVERWORLD_HERO_SHOT_COOLDOWN_MS = 260;
+      const OVERWORLD_HERO_SHOT_SPEED = 520;
+      const OVERWORLD_ENEMY_SHOT_SPEED = 238;
+      const OVERWORLD_HERO_SHOT_RANGE = 560;
+      const OVERWORLD_ENEMY_SHOT_RANGE = 340;
+      const OVERWORLD_FLAME_COLORS = ["#22c55e", "#a855f7", "#ef4444", "#facc15"];
 
       const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
       const escapeHtml = (value) =>
@@ -4331,7 +4352,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
               return;
             }
             if (action === "strike") {
-              playTurn("strike");
+              if (state.mode === "battle" && state.battle?.status === "active") {
+                playTurn("strike");
+              } else {
+                performOverworldAttack();
+              }
               return;
             }
             if (action === "guard") {
@@ -4926,12 +4951,21 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           season: state.season,
           worldMutation: state.worldMutation,
           liveEvent: state.liveEvent,
+          overworldCombat: {
+            hp: state.overworldCombat.hp,
+            maxHp: state.overworldCombat.maxHp,
+            heroAimX: state.overworldCombat.heroAimX,
+            heroAimY: state.overworldCombat.heroAimY,
+          },
           enemyStates: state.enemies.map((enemy) => ({
             id: enemy.id,
             active: enemy.active,
             respawnAt: enemy.respawnAt ?? null,
             x: enemy.x,
             y: enemy.y,
+            overworldHp: enemy.overworldHp ?? null,
+            overworldMaxHp: enemy.overworldMaxHp ?? null,
+            lastVolleyAt: enemy.lastVolleyAt ?? null,
           })),
         };
         localStorage.setItem(STORAGE_STATE_KEY, JSON.stringify(payload));
@@ -5075,6 +5109,13 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
                 ...parsed.liveEvent,
               };
             }
+            if (parsed.overworldCombat && typeof parsed.overworldCombat === "object") {
+              const parsedCombat = parsed.overworldCombat;
+              if (typeof parsedCombat.heroAimX === "number") state.overworldCombat.heroAimX = parsedCombat.heroAimX;
+              if (typeof parsedCombat.heroAimY === "number") state.overworldCombat.heroAimY = parsedCombat.heroAimY;
+              if (typeof parsedCombat.maxHp === "number") state.overworldCombat.maxHp = parsedCombat.maxHp;
+              if (typeof parsedCombat.hp === "number") state.overworldCombat.hp = parsedCombat.hp;
+            }
             ensureSeasonState();
             if (!state.worldMutation.key) {
               refreshWorldMutation(true);
@@ -5093,7 +5134,22 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
                 enemy.x = enemyState.x;
                 enemy.y = enemyState.y;
               }
+              if (typeof enemyState.overworldMaxHp === "number") {
+                enemy.overworldMaxHp = Math.max(1, Math.round(enemyState.overworldMaxHp));
+              }
+              if (typeof enemyState.overworldHp === "number") {
+                enemy.overworldHp = Math.max(0, Math.round(enemyState.overworldHp));
+              }
+              if (typeof enemyState.lastVolleyAt === "number") {
+                enemy.lastVolleyAt = enemyState.lastVolleyAt;
+              }
+              resetEnemyOverworldCombatState(enemy, true);
             }
+            syncOverworldCombatStats(true);
+            state.overworldCombat.heroProjectiles = [];
+            state.overworldCombat.enemyProjectiles = [];
+            state.overworldCombat.impacts = [];
+            state.overworldCombat.invulnerableUntil = 0;
           }
         } catch (error) {
           console.warn("game load failed", error);
@@ -5332,6 +5388,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const openBurnPit = (pit) => {
         state.keys.clear();
+        resetOverworldProjectiles();
         state.burnPit.active = true;
         state.burnPit.structureId = pit.id;
         state.mode = "burn-pit";
@@ -5437,17 +5494,95 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         saveGame();
       };
 
+      const getOverworldHeroMaxHp = () => {
+        const hpDelta = Math.max(0, state.hero.maxHp - BASE_MAX_HP);
+        return (
+          96 +
+          Math.round(hpDelta * 0.4) +
+          state.hero.defense * 8 +
+          (state.hero.armorTier ?? 1) * 10 +
+          (state.hero.guardRank ?? 1) * 6
+        );
+      };
+
+      const syncOverworldCombatStats = (preserveRatio = true) => {
+        const previousMax = state.overworldCombat.maxHp;
+        const previousHp = state.overworldCombat.hp;
+        const nextMax = getOverworldHeroMaxHp();
+        state.overworldCombat.maxHearts = OVERWORLD_HEARTS_MAX;
+        state.overworldCombat.maxHp = nextMax;
+        if (
+          preserveRatio &&
+          Number.isFinite(previousMax) &&
+          previousMax > 0 &&
+          Number.isFinite(previousHp)
+        ) {
+          const ratio = clamp(previousHp / previousMax, 0.05, 1);
+          state.overworldCombat.hp = clamp(Math.round(nextMax * ratio), 1, nextMax);
+        } else {
+          state.overworldCombat.hp = nextMax;
+        }
+      };
+
+      const getOverworldEnemyBaseHp = (enemy) => {
+        const laneScale = {
+          survival: 56,
+          tactical: 50,
+          precision: 46,
+          speed: 42,
+          puzzle: 44,
+        };
+        const regionScale = {
+          "myco-kingdom": 1,
+          "rougarou-fen": 1.08,
+          "tri-drake-peaks": 1.12,
+          "crimson-tide": 1.14,
+          "solana-chainlands": 1.2,
+          "verdant-commons": 1.06,
+          "obsidian-wilds": 1.17,
+        };
+        const base = enemy.boss ? 182 : (laneScale[enemy.lane] ?? 46);
+        return Math.round(base * (regionScale[enemy.region] ?? 1));
+      };
+
+      const resetEnemyOverworldCombatState = (enemy, preserveRatio = false) => {
+        const nextMax = getOverworldEnemyBaseHp(enemy);
+        if (
+          preserveRatio &&
+          Number.isFinite(enemy.overworldMaxHp) &&
+          enemy.overworldMaxHp > 0 &&
+          Number.isFinite(enemy.overworldHp)
+        ) {
+          const ratio = clamp(enemy.overworldHp / enemy.overworldMaxHp, 0, 1);
+          enemy.overworldHp = clamp(Math.round(nextMax * ratio), 1, nextMax);
+        } else {
+          enemy.overworldHp = nextMax;
+        }
+        enemy.overworldMaxHp = nextMax;
+        if (!Number.isFinite(enemy.lastVolleyAt)) {
+          enemy.lastVolleyAt = Date.now() + randomBetween(350, 1400);
+        }
+      };
+
       const createEnemyState = () =>
-        BASE_ENEMIES.map((enemy) => ({
-          ...enemy,
-          active: true,
-          wanderDirX: randomBetween(-1, 1),
-          wanderDirY: randomBetween(-1, 1),
-          directionShiftAt: Date.now() + randomBetween(1200, 3400),
-          respawnAt: null,
-        }));
+        BASE_ENEMIES.map((enemy) => {
+          const next = {
+            ...enemy,
+            active: true,
+            wanderDirX: randomBetween(-1, 1),
+            wanderDirY: randomBetween(-1, 1),
+            directionShiftAt: Date.now() + randomBetween(1200, 3400),
+            respawnAt: null,
+            overworldHp: 1,
+            overworldMaxHp: 1,
+            lastVolleyAt: Date.now() + randomBetween(350, 1400),
+          };
+          resetEnemyOverworldCombatState(next, false);
+          return next;
+        });
 
       state.enemies = createEnemyState();
+      syncOverworldCombatStats(false);
 
       const intersectsRect = (a, b) =>
         a.x < b.x + b.w &&
@@ -6262,6 +6397,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           state.inventory.mycoPotion -= 1;
           const heal = 28 + state.hero.magic * 2;
           state.hero.hp = Math.min(state.hero.maxHp, state.hero.hp + heal);
+          const overworldHeal = Math.round(heal * 0.92 + state.hero.defense * 3 + (state.hero.armorTier ?? 1) * 2);
+          state.overworldCombat.hp = Math.min(state.overworldCombat.maxHp, state.overworldCombat.hp + overworldHeal);
           if (state.battle?.player) {
             state.battle.player.hp = Math.min(state.battle.player.maxHp, state.battle.player.hp + heal);
             state.battle.battleLog.push(`King Myco used a potion for +${heal} HP.`);
@@ -6275,7 +6412,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             });
             triggerBattleHealFx("player", heal);
           }
-          setStatus(`Myco Potion used (+${heal} HP).`);
+          setStatus(`Myco Potion used (+${heal} HP, +${overworldHeal} overworld vitality). Hearts: ${getOverworldHeartDisplay()}.`);
           playSfx("item");
           return;
         }
@@ -7209,6 +7346,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const openInterior = (structure) => {
         state.keys.clear();
+        resetOverworldProjectiles();
         const layout = createInteriorLayout(structure);
         state.interior.active = true;
         state.interior.structureId = structure.id;
@@ -7943,21 +8081,300 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         return nearest;
       };
 
-      const performOverworldAttack = async () => {
+      const getOverworldHeartDisplay = () => {
+        const heartMax = Math.max(1, state.overworldCombat.maxHearts ?? OVERWORLD_HEARTS_MAX);
+        const maxHp = Math.max(1, state.overworldCombat.maxHp ?? 1);
+        const hp = clamp(state.overworldCombat.hp ?? maxHp, 0, maxHp);
+        const filled = clamp(Math.ceil((hp / maxHp) * heartMax), 0, heartMax);
+        return "❤".repeat(filled) + "♡".repeat(Math.max(0, heartMax - filled));
+      };
+
+      const spawnOverworldImpact = (x, y, color, radius = 10) => {
+        state.overworldCombat.impacts.push({
+          x,
+          y,
+          color,
+          radius,
+          createdAt: Date.now(),
+          expiresAt: Date.now() + 260,
+        });
+      };
+
+      const isOverworldProjectileBlocked = (x, y, radius = 5) => {
+        const realm = getCurrentRealm();
+        const rect = { x: x - radius, y: y - radius, w: radius * 2, h: radius * 2 };
+        if (
+          rect.x < realm.x ||
+          rect.y < realm.y ||
+          rect.x + rect.w > realm.x + realm.w ||
+          rect.y + rect.h > realm.y + realm.h
+        ) {
+          return true;
+        }
+        if (STRUCTURES.some((entry) => entry.solid && isInCurrentRealm(entry) && intersectsRect(rect, entry))) {
+          return true;
+        }
+        if (REALM_BARRIERS.some((entry) => isInCurrentRealm(entry) && intersectsRect(rect, entry))) {
+          return true;
+        }
+        return false;
+      };
+
+      const getHeroShotDirection = () => {
+        const lockTarget = getNearestOverworldEnemy(420);
+        if (lockTarget) {
+          const dx = lockTarget.x - state.hero.x;
+          const dy = lockTarget.y - state.hero.y;
+          const mag = Math.hypot(dx, dy) || 1;
+          return { x: dx / mag, y: dy / mag, lockTarget };
+        }
+        const aimX = state.overworldCombat.heroAimX ?? 0;
+        const aimY = state.overworldCombat.heroAimY ?? -1;
+        const mag = Math.hypot(aimX, aimY) || 1;
+        return { x: aimX / mag, y: aimY / mag, lockTarget: null };
+      };
+
+      const getEnemyProjectileProfile = (enemy) => {
+        if (enemy.lane === "survival" || enemy.kind.includes("crab") || enemy.kind.includes("boar")) {
+          return {
+            kind: "rock",
+            color: "#94a3b8",
+            radius: enemy.boss ? 8 : 6,
+            damage: enemy.boss ? 30 : 18,
+          };
+        }
+        if (enemy.lane === "puzzle" || enemy.kind.includes("wraith") || enemy.kind.includes("specter")) {
+          return {
+            kind: "spell",
+            color: Math.random() < 0.5 ? "#a855f7" : "#22c55e",
+            radius: enemy.boss ? 9 : 7,
+            damage: enemy.boss ? 32 : 20,
+          };
+        }
+        return {
+          kind: "flame",
+          color: OVERWORLD_FLAME_COLORS[Math.floor(Math.random() * OVERWORLD_FLAME_COLORS.length)],
+          radius: enemy.boss ? 8 : 6,
+          damage: enemy.boss ? 28 : 17,
+        };
+      };
+
+      const resetOverworldProjectiles = () => {
+        state.overworldCombat.heroProjectiles = [];
+        state.overworldCombat.enemyProjectiles = [];
+        state.overworldCombat.impacts = [];
+      };
+
+      const onOverworldHeartsDepleted = () => {
+        const realm = getCurrentRealm();
+        const safe = resolveSafeHeroSpawn(
+          realm,
+          {
+            x: realm.x + realm.w * 0.5,
+            y: realm.y + realm.h * 0.5,
+          },
+          62,
+        );
+        state.hero.x = safe.x;
+        state.hero.y = safe.y;
+        state.contactLockUntil = Date.now() + 900;
+        state.overworldCombat.hp = Math.max(1, Math.round(state.overworldCombat.maxHp * 0.58));
+        state.hero.hp = Math.max(1, Math.round(state.hero.maxHp * 0.45));
+        state.overworldCombat.invulnerableUntil = Date.now() + 1400;
+        resetOverworldProjectiles();
+        setStatus("Overworld hearts depleted. King Myco staggered and recovered at a safe lane.");
+        playSfx("error");
+      };
+
+      const applyOverworldHeroDamage = (rawDamage, sourceLabel = "hostile attack") => {
+        const now = Date.now();
+        if (now < state.overworldCombat.invulnerableUntil) return;
+        const mitigation = clamp(
+          0.12 +
+            state.hero.defense * 0.032 +
+            (state.hero.armorTier ?? 1) * 0.048 +
+            (state.hero.guardRank ?? 1) * 0.02,
+          0.12,
+          0.72,
+        );
+        const finalDamage = Math.max(6, Math.round(rawDamage * (1 - mitigation)));
+        state.overworldCombat.hp = Math.max(0, state.overworldCombat.hp - finalDamage);
+        state.hero.hp = Math.max(1, state.hero.hp - Math.max(1, Math.round(finalDamage * 0.2)));
+        state.overworldCombat.invulnerableUntil = now + 780;
+        spawnOverworldImpact(state.hero.x, state.hero.y - 6, "#f87171", 14);
+        if (state.overworldCombat.hp <= 0) {
+          onOverworldHeartsDepleted();
+          return;
+        }
+        setStatus(`${sourceLabel} hit you for ${finalDamage} overworld HP. Hearts: ${getOverworldHeartDisplay()}.`, true);
+        playSfx("hit");
+      };
+
+      const handleOverworldEnemyDefeat = (enemy) => {
+        if (!enemy || enemy.boss) return;
+        enemy.active = false;
+        enemy.respawnAt = Date.now() + 28000;
+        resetEnemyOverworldCombatState(enemy, false);
+        const reward = 7 + state.hero.attack * 2 + Math.max(0, (state.hero.armorTier ?? 1) - 1);
+        grantSpores(reward);
+        if (Math.random() < 0.18) {
+          grantGrindLoot({ armorShards: 1 });
+        }
+        recordAiSignal("combat", 0.6);
+        pushStoryEntry(`Overworld takedown: ${getEnemyDisplayName(enemy.kind)} dropped from field pressure.`, "battle");
+        setStatus(`Overworld takedown: ${getEnemyDisplayName(enemy.kind)} defeated (+${reward} spores).`);
+        playSfx("coin");
+      };
+
+      const updateOverworldCombat = (dt) => {
+        if (state.mode !== "explore" || state.intro.active) return;
+        const now = Date.now();
+        const heroRect = getHeroRect();
+        for (let index = state.overworldCombat.impacts.length - 1; index >= 0; index -= 1) {
+          if (state.overworldCombat.impacts[index].expiresAt <= now) {
+            state.overworldCombat.impacts.splice(index, 1);
+          }
+        }
+
+        for (const enemy of state.enemies) {
+          if (enemy.region !== state.currentRealmId || !enemy.active) continue;
+          if (!Number.isFinite(enemy.overworldHp) || !Number.isFinite(enemy.overworldMaxHp)) {
+            resetEnemyOverworldCombatState(enemy, false);
+          }
+          const range = enemy.boss ? OVERWORLD_ENEMY_SHOT_RANGE + 80 : OVERWORLD_ENEMY_SHOT_RANGE;
+          const targetDistance = dist(enemy.x, enemy.y, state.hero.x, state.hero.y);
+          if (targetDistance > range) continue;
+          if (!Number.isFinite(enemy.lastVolleyAt) || now < enemy.lastVolleyAt) continue;
+          const profile = getEnemyProjectileProfile(enemy);
+          const baseCooldown = enemy.boss ? 900 : 1560;
+          const lanePenalty = enemy.lane === "speed" ? -180 : enemy.lane === "puzzle" ? 140 : 0;
+          enemy.lastVolleyAt = now + Math.max(500, baseCooldown + lanePenalty + randomBetween(-120, 180));
+          const shotCount = enemy.boss ? 2 : 1;
+          for (let shot = 0; shot < shotCount; shot += 1) {
+            const dx = state.hero.x - enemy.x;
+            const dy = state.hero.y - enemy.y;
+            const mag = Math.hypot(dx, dy) || 1;
+            const spread = (shot - (shotCount - 1) / 2) * 0.14;
+            const dirX = (dx / mag) * Math.cos(spread) - (dy / mag) * Math.sin(spread);
+            const dirY = (dx / mag) * Math.sin(spread) + (dy / mag) * Math.cos(spread);
+            const speed = OVERWORLD_ENEMY_SHOT_SPEED + (enemy.boss ? 45 : 0) + randomBetween(-20, 20);
+            state.overworldCombat.enemyProjectiles.push({
+              id: `enemy-shot-${enemy.id}-${now}-${shot}`,
+              x: enemy.x + dirX * 18,
+              y: enemy.y + dirY * 18,
+              vx: dirX * speed,
+              vy: dirY * speed,
+              radius: profile.radius,
+              damage: profile.damage + (enemy.boss ? 6 : 0),
+              color: profile.color,
+              kind: profile.kind,
+              expiresAt: now + 2200,
+            });
+          }
+        }
+
+        for (let index = state.overworldCombat.heroProjectiles.length - 1; index >= 0; index -= 1) {
+          const projectile = state.overworldCombat.heroProjectiles[index];
+          projectile.x += projectile.vx * dt;
+          projectile.y += projectile.vy * dt;
+          if (projectile.expiresAt <= now || isOverworldProjectileBlocked(projectile.x, projectile.y, projectile.radius)) {
+            spawnOverworldImpact(projectile.x, projectile.y, projectile.color, projectile.radius + 4);
+            state.overworldCombat.heroProjectiles.splice(index, 1);
+            continue;
+          }
+          let consumed = false;
+          for (const enemy of state.enemies) {
+            if (enemy.region !== state.currentRealmId || !enemy.active) continue;
+            const hitRange = projectile.radius + (enemy.boss ? 20 : 17);
+            if (dist(projectile.x, projectile.y, enemy.x, enemy.y) > hitRange) continue;
+            enemy.overworldHp = Math.max(0, (enemy.overworldHp ?? enemy.overworldMaxHp ?? 1) - projectile.damage);
+            spawnOverworldImpact(projectile.x, projectile.y, projectile.color, projectile.radius + 6);
+            if (enemy.boss) {
+              enemy.overworldHp = Math.max(1, enemy.overworldHp);
+              if (enemy.overworldHp <= Math.round((enemy.overworldMaxHp ?? 1) * 0.28)) {
+                setStatus(`${getEnemyDisplayName(enemy.kind)} is staggered. Make contact to force a full battle.`);
+              }
+            } else if (enemy.overworldHp <= 0) {
+              handleOverworldEnemyDefeat(enemy);
+            }
+            state.overworldCombat.heroProjectiles.splice(index, 1);
+            consumed = true;
+            break;
+          }
+          if (consumed) continue;
+        }
+
+        for (let index = state.overworldCombat.enemyProjectiles.length - 1; index >= 0; index -= 1) {
+          const projectile = state.overworldCombat.enemyProjectiles[index];
+          projectile.x += projectile.vx * dt;
+          projectile.y += projectile.vy * dt;
+          if (projectile.expiresAt <= now || isOverworldProjectileBlocked(projectile.x, projectile.y, projectile.radius)) {
+            spawnOverworldImpact(projectile.x, projectile.y, projectile.color, projectile.radius + 4);
+            state.overworldCombat.enemyProjectiles.splice(index, 1);
+            continue;
+          }
+          const inHeroRange = dist(projectile.x, projectile.y, state.hero.x, state.hero.y) <= projectile.radius + Math.max(heroRect.w, heroRect.h) * 0.35;
+          if (!inHeroRange) continue;
+          applyOverworldHeroDamage(projectile.damage, `${projectile.kind} barrage`);
+          state.overworldCombat.enemyProjectiles.splice(index, 1);
+        }
+
+        if (state.overworldCombat.hp < state.overworldCombat.maxHp && now > state.overworldCombat.invulnerableUntil + 1200) {
+          const regenPerSecond =
+            2.6 +
+            state.hero.defense * 0.36 +
+            (state.hero.armorTier ?? 1) * 0.42 +
+            (state.hero.guardRank ?? 1) * 0.24;
+          state.overworldCombat.hp = Math.min(state.overworldCombat.maxHp, state.overworldCombat.hp + regenPerSecond * dt);
+        }
+      };
+
+      const performOverworldAttack = () => {
         if (state.intro.active || state.mode === "intro") return;
         if (state.activeDialogue || state.cutscene.active || state.mode === "cutscene") return;
         if (state.mode === "battle" || state.pendingBattle) return;
         if (state.mode === "interior" || state.interior.active) return;
         if (state.mode === "burn-pit" || state.burnPit.active) return;
-        const target = getNearestOverworldEnemy();
-        if (!target) {
-          setStatus("No enemy in space-attack range.");
+        const now = Date.now();
+        if (now - state.overworldCombat.lastHeroShotAt < OVERWORLD_HERO_SHOT_COOLDOWN_MS) {
           return;
         }
-        recordAiSignal("combat", 0.6);
-        setStatus(`Space attack launched at ${getEnemyDisplayName(target.kind)}.`);
+        const direction = getHeroShotDirection();
+        const flameColor = OVERWORLD_FLAME_COLORS[Math.floor(Math.random() * OVERWORLD_FLAME_COLORS.length)];
+        const flameLabelByColor = {
+          "#22c55e": "green",
+          "#a855f7": "purple",
+          "#ef4444": "red",
+          "#facc15": "yellow",
+        };
+        const flameLabel = flameLabelByColor[flameColor] ?? "arcane";
+        const projectilePower =
+          20 +
+          state.hero.attack * 9 +
+          state.hero.magic * 4 +
+          (state.hero.armorTier ?? 1) * 3 +
+          (state.hero.guardRank ?? 1) * 2;
+        const speed = OVERWORLD_HERO_SHOT_SPEED + state.hero.attack * 14;
+        state.overworldCombat.heroProjectiles.push({
+          id: `hero-shot-${now}`,
+          x: state.hero.x + direction.x * 18,
+          y: state.hero.y + direction.y * 18,
+          vx: direction.x * speed,
+          vy: direction.y * speed,
+          radius: 7,
+          damage: projectilePower,
+          color: flameColor,
+          kind: "hero-flame",
+          expiresAt: now + Math.round((OVERWORLD_HERO_SHOT_RANGE / speed) * 1000),
+        });
+        state.overworldCombat.lastHeroShotAt = now;
+        recordAiSignal("combat", 0.65);
+        if (direction.lockTarget) {
+          setStatus(`Space cast: ${flameLabel} flame launched at ${getEnemyDisplayName(direction.lockTarget.kind)}.`);
+        } else {
+          setStatus(`Space cast: ${flameLabel} flame launched.`);
+        }
         playSfx("strike");
-        await engageEnemy(target);
       };
 
       const updateDirective = () => {
@@ -8012,6 +8429,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             if (enemy.respawnAt && now >= enemy.respawnAt && (!enemy.boss || isRotatingBossEnemy(enemy))) {
               enemy.active = true;
               enemy.respawnAt = null;
+              resetEnemyOverworldCombatState(enemy, false);
+              enemy.lastVolleyAt = now + randomBetween(500, 1400);
             }
             continue;
           }
@@ -8145,6 +8564,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         state.mode = "battle";
         state.encounterEnemyId = enemy.id;
         setBattlePopupActive(true);
+        resetOverworldProjectiles();
         resetBattleFx();
         showBossIntro(enemy);
         setStatus(
@@ -8254,6 +8674,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             enemy.respawnAt = enemy.boss
               ? (rotatingBossConfig?.respawnMs ? Date.now() + rotatingBossConfig.respawnMs : Date.now() + 999999999)
               : Date.now() + 45000;
+            resetEnemyOverworldCombatState(enemy, false);
           }
           if (enemy?.kind === "dark-mycelius") {
             postBattleAction = () =>
@@ -8296,6 +8717,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
                   if (enemy && !enemy.boss) {
                     enemy.active = false;
                     enemy.respawnAt = Math.max(Date.now() + 34000, enemy.respawnAt ?? 0);
+                    resetEnemyOverworldCombatState(enemy, false);
                   }
                   pushStoryEntry(`You spared ${defeatedName} after battle.`, "morality");
                   setStatus(`${defeatedName} was spared. Morality increased.`);
@@ -8313,6 +8735,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
                 if (enemy && !enemy.boss) {
                   enemy.active = false;
                   enemy.respawnAt = Math.max(Date.now() + 76000, enemy.respawnAt ?? 0);
+                  resetEnemyOverworldCombatState(enemy, false);
                 }
                 pushStoryEntry(`You executed ${defeatedName} after battle.`, "morality");
                 setStatus(`${defeatedName} was executed. +${executionBonus} spores, morality decreased.`, true);
@@ -8732,6 +9155,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             state.hero.defense += 1;
           }
         }
+        syncOverworldCombatStats(true);
+        for (const enemy of state.enemies) {
+          resetEnemyOverworldCombatState(enemy, true);
+        }
         setStatus(`${labels[type] ?? type} upgraded through grind training.`);
         playSfx("coin");
         renderHud();
@@ -8764,6 +9191,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (!isBlocked(state.hero.x, nextY)) {
           state.hero.y = nextY;
         }
+        state.overworldCombat.heroAimX = xAxis / mag;
+        state.overworldCombat.heroAimY = yAxis / mag;
       };
 
       const update = async (dt) => {
@@ -8787,6 +9216,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (state.mode === "battle") return;
         moveHero(dt);
         updateEnemies(dt);
+        updateOverworldCombat(dt);
         updatePickups();
         clearContactLatchIfFar();
         checkActiveContacts();
@@ -9484,7 +9914,55 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           drawEnemy(worldCtx, enemy, enemy.x - state.camera.x, enemy.y - state.camera.y);
         }
 
-        drawPixelCharacter(worldCtx, state.hero.x - state.camera.x, state.hero.y - state.camera.y);
+        for (const projectile of state.overworldCombat.enemyProjectiles) {
+          if (!visible(projectile.x - 12, projectile.y - 12, 24, 24)) continue;
+          const sx = projectile.x - state.camera.x;
+          const sy = projectile.y - state.camera.y;
+          worldCtx.fillStyle = `${projectile.color}55`;
+          worldCtx.beginPath();
+          worldCtx.arc(sx, sy, projectile.radius + 4, 0, Math.PI * 2);
+          worldCtx.fill();
+          worldCtx.fillStyle = projectile.color;
+          worldCtx.beginPath();
+          worldCtx.arc(sx, sy, projectile.radius, 0, Math.PI * 2);
+          worldCtx.fill();
+        }
+
+        for (const projectile of state.overworldCombat.heroProjectiles) {
+          if (!visible(projectile.x - 14, projectile.y - 14, 28, 28)) continue;
+          const sx = projectile.x - state.camera.x;
+          const sy = projectile.y - state.camera.y;
+          worldCtx.fillStyle = `${projectile.color}44`;
+          worldCtx.beginPath();
+          worldCtx.arc(sx, sy, projectile.radius + 6, 0, Math.PI * 2);
+          worldCtx.fill();
+          worldCtx.fillStyle = projectile.color;
+          worldCtx.beginPath();
+          worldCtx.arc(sx, sy, projectile.radius + 1.5, 0, Math.PI * 2);
+          worldCtx.fill();
+          worldCtx.fillStyle = "#f8fafc";
+          worldCtx.beginPath();
+          worldCtx.arc(sx, sy, Math.max(1.5, projectile.radius * 0.35), 0, Math.PI * 2);
+          worldCtx.fill();
+        }
+
+        for (const impact of state.overworldCombat.impacts) {
+          if (!visible(impact.x - 24, impact.y - 24, 48, 48)) continue;
+          const progress = clamp((Date.now() - impact.createdAt) / Math.max(1, impact.expiresAt - impact.createdAt), 0, 1);
+          const sx = impact.x - state.camera.x;
+          const sy = impact.y - state.camera.y;
+          const ringRadius = impact.radius + progress * 10;
+          worldCtx.strokeStyle = `${impact.color}${Math.floor((1 - progress) * 255).toString(16).padStart(2, "0")}`;
+          worldCtx.lineWidth = 2;
+          worldCtx.beginPath();
+          worldCtx.arc(sx, sy, ringRadius, 0, Math.PI * 2);
+          worldCtx.stroke();
+        }
+
+        const invulnerableBlink = Date.now() < state.overworldCombat.invulnerableUntil && Math.floor(Date.now() / 90) % 2 === 0;
+        if (!invulnerableBlink) {
+          drawPixelCharacter(worldCtx, state.hero.x - state.camera.x, state.hero.y - state.camera.y);
+        }
         drawParallaxLayer("front", 1.08, 0.8);
 
         const miniW = 210;
@@ -9945,7 +10423,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
         const hpRatio = state.hero.maxHp > 0 ? state.hero.hp / state.hero.maxHp : 0;
         dom.hpFill.style.width = `${Math.floor(clamp(hpRatio, 0, 1) * 100)}%`;
-        dom.hpText.textContent = `${state.hero.hp} / ${state.hero.maxHp}`;
+        const overworldHpRatio = state.overworldCombat.maxHp > 0 ? state.overworldCombat.hp / state.overworldCombat.maxHp : 0;
+        dom.hpText.textContent = `${state.hero.hp} / ${state.hero.maxHp} // OW ${Math.round(state.overworldCombat.hp)}/${Math.round(state.overworldCombat.maxHp)} (${getOverworldHeartDisplay()})`;
 
         const moralityPercent = Math.floor(((state.hero.morality + 100) / 200) * 100);
         dom.moralityFill.style.width = `${moralityPercent}%`;
@@ -9979,6 +10458,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           `<span class="chip">NPC Robberies ${state.progress.npcRobberies ?? 0}</span>`,
           `<span class="chip">Battle Flees ${state.progress.battleFlees ?? 0}</span>`,
           `<span class="chip">Magic Boost Turns: ${state.hero.magicBoostTurns}</span>`,
+          `<span class="chip">Overworld Hearts ${getOverworldHeartDisplay()}</span>`,
+          `<span class="chip">Overworld Vitality ${Math.round(overworldHpRatio * 100)}%</span>`,
         ].join("");
         if (dom.upgradeAttackBtn) dom.upgradeAttackBtn.textContent = `+ Attack (${formatUpgradeCostLabel(getUpgradeCost("attack"))})`;
         if (dom.upgradeDefenseBtn) dom.upgradeDefenseBtn.textContent = `+ Defense (${formatUpgradeCostLabel(getUpgradeCost("defense"))})`;
@@ -10337,7 +10818,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           }
         }
         if (key === " ") {
-          void performOverworldAttack();
+          performOverworldAttack();
           event.preventDefault();
           return;
         }
@@ -10517,6 +10998,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       state.ui.titleCardSkipped = false;
       saveConfig();
       loadGame();
+      syncOverworldCombatStats(true);
       ensureSeasonState();
       refreshWorldMutation(true);
       refreshLiveEvent(true);
