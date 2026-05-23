@@ -2855,6 +2855,13 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         interior: {
           active: false,
           structureId: null,
+          layout: null,
+          heroX: 0,
+          heroY: 0,
+          cameraX: 0,
+          cameraY: 0,
+          nearbyNodeId: "",
+          lastResult: "",
         },
         cutscene: {
           active: false,
@@ -6095,7 +6102,16 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         };
       };
 
-      const ENTERABLE_STRUCTURE_TYPES = new Set(["house", "cave", "dungeon", "castle", "tower", "mushroom-shop"]);
+      const ENTERABLE_STRUCTURE_TYPES = new Set(["house", "cave", "dungeon", "castle", "tower", "mushroom-shop", "shop", "hut"]);
+      const normalizeInteriorStructureType = (type) => {
+        if (type === "shop") return "mushroom-shop";
+        if (type === "hut") return "house";
+        return type;
+      };
+      const hasStructureInterior = (type) => {
+        const normalized = normalizeInteriorStructureType(type);
+        return ENTERABLE_STRUCTURE_TYPES.has(normalized);
+      };
       const INTERIOR_FEATURE_POOLS = {
         house: ["trade-bazaar", "quest-sanctum", "lore-riddle", "hidden-vault"],
         cave: ["maze-chamber", "combat-trial", "lore-riddle", "power-sanctum"],
@@ -6142,11 +6158,94 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         tower: { kind: "block-wraith", lane: "puzzle", title: "Signal Phantom" },
         "mushroom-shop": { kind: "thorn-bandit", lane: "speed", title: "Market Ambusher" },
       };
+      const INTERIOR_ROAMING_ENEMY_POOLS = {
+        cave: [
+          { kind: "mire-lurker", lane: "survival", title: "Cavern Lurker", rewardBonus: 8 },
+          { kind: "fang-mildew", lane: "speed", title: "Fang Mildew", rewardBonus: 10 },
+          { kind: "spore-thief", lane: "precision", title: "Spore Thief", rewardBonus: 8 },
+        ],
+        tower: [
+          { kind: "block-wraith", lane: "puzzle", title: "Wraith Sentinel", rewardBonus: 10 },
+          { kind: "ledger-specter", lane: "puzzle", title: "Ledger Specter", rewardBonus: 12 },
+          { kind: "rift-shade", lane: "speed", title: "Rift Shade", rewardBonus: 10 },
+        ],
+        castle: [
+          { kind: "rot-jackal", lane: "speed", title: "Castle Jackal", rewardBonus: 11 },
+          { kind: "thorn-bandit", lane: "precision", title: "Bandit Duelist", rewardBonus: 10 },
+          { kind: "hash-raider", lane: "tactical", title: "Hash Raider", rewardBonus: 12 },
+        ],
+        dungeon: [
+          { kind: "shard-lich", lane: "tactical", title: "Shard Lich", rewardBonus: 12 },
+          { kind: "void-miner", lane: "tactical", title: "Void Miner", rewardBonus: 10 },
+          { kind: "slag-stalker", lane: "speed", title: "Slag Stalker", rewardBonus: 11 },
+        ],
+      };
+      const INTERIOR_ENEMY_COUNT_BY_TYPE = {
+        cave: 2,
+        tower: 2,
+        castle: 3,
+        dungeon: 3,
+      };
+      const INTERIOR_HOST_NPC_POOLS = {
+        house: [
+          {
+            name: "Caretaker Noma",
+            glyph: "🏠",
+            subtitle: "House Steward",
+            intro: "Welcome, traveler. House folk map hidden safe lanes for those who protect the realm.",
+            mycoText: "Your kindness keeps homes standing. Take this route blessing.",
+            darkText: "You forced answers from the household. The map still works, but trust fades.",
+            clueLabel: "Household Route Ledger",
+            tradeItem: "mycoPotion",
+            tradeCost: 14,
+            tradeQty: 1,
+          },
+          {
+            name: "Lorekeeper Bri",
+            glyph: "📜",
+            subtitle: "Story Archivist",
+            intro: "I preserve family chronicles. Heroes who listen closely uncover old crown sigils.",
+            mycoText: "You honored our story. Keep this lore fragment.",
+            darkText: "You took what you wanted. The fragment remains, but so does resentment.",
+            clueLabel: "Family Chronicle Fragment",
+            tradeItem: "manaDew",
+            tradeCost: 20,
+            tradeQty: 1,
+          },
+        ],
+        "mushroom-shop": [
+          {
+            name: "Merchant Spindle",
+            glyph: "🍄",
+            subtitle: "Spore Broker",
+            intro: "My stall carries field kits and rumors. Fair traders unlock better shelves.",
+            mycoText: "Clean deal. I'll mark your account for rare stock.",
+            darkText: "Hard bargain. I'll sell, but only basic inventory.",
+            clueLabel: "Merchant Supply Ledger",
+            tradeItem: "mycoPotion",
+            tradeCost: 12,
+            tradeQty: 2,
+          },
+          {
+            name: "Quartermaster Vell",
+            glyph: "🧪",
+            subtitle: "Potion Mixer",
+            intro: "Need battle prep? I blend spores into potion lots for serious runs.",
+            mycoText: "You pay with honor; here's a stronger mix recipe.",
+            darkText: "You rushed the deal; quality slips when trust is broken.",
+            clueLabel: "Potion Mix Formula",
+            tradeItem: "manaDew",
+            tradeCost: 18,
+            tradeQty: 1,
+          },
+        ],
+      };
 
-      const isEnterableStructure = (structure) => ENTERABLE_STRUCTURE_TYPES.has(structure.type);
+      const isEnterableStructure = (structure) => hasStructureInterior(structure.type);
 
       const getInteriorFeature = (structure) => {
-        const pool = INTERIOR_FEATURE_POOLS[structure.type] ?? ["hidden-vault"];
+        const interiorType = normalizeInteriorStructureType(structure.type);
+        const pool = INTERIOR_FEATURE_POOLS[interiorType] ?? ["hidden-vault"];
         return pool[hashString(structure.id) % pool.length];
       };
 
@@ -6166,17 +6265,531 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         return "A secret vault may hold rare clues or golden spores.";
       };
 
-      const openInterior = (structure) => {
-        state.keys.clear();
-        state.interior.active = true;
-        state.interior.structureId = structure.id;
-        state.mode = "interior";
+      const INTERIOR_MAP_CONFIG = {
+        house: { width: 1180, height: 760 },
+        cave: { width: 1260, height: 820 },
+        dungeon: { width: 1320, height: 860 },
+        castle: { width: 1340, height: 900 },
+        tower: { width: 1080, height: 980 },
+        "mushroom-shop": { width: 1220, height: 800 },
+      };
+      const INTERIOR_THEME_PALETTES = {
+        house: ["#78350f", "#f59e0b", "#fef3c7"],
+        cave: ["#334155", "#0f172a", "#a5b4fc"],
+        dungeon: ["#27272a", "#6d28d9", "#ddd6fe"],
+        castle: ["#1e293b", "#2563eb", "#bfdbfe"],
+        tower: ["#1f2937", "#475569", "#cbd5e1"],
+        "mushroom-shop": ["#7c2d12", "#ef4444", "#fee2e2"],
+      };
+      const INTERIOR_OBSTACLE_PATTERNS = {
+        house: [
+          { x: 0.14, y: 0.2, w: 0.22, h: 0.09 },
+          { x: 0.64, y: 0.24, w: 0.22, h: 0.1 },
+          { x: 0.22, y: 0.56, w: 0.16, h: 0.22 },
+          { x: 0.6, y: 0.58, w: 0.18, h: 0.2 },
+        ],
+        cave: [
+          { x: 0.1, y: 0.28, w: 0.22, h: 0.12 },
+          { x: 0.42, y: 0.48, w: 0.2, h: 0.13 },
+          { x: 0.7, y: 0.3, w: 0.18, h: 0.12 },
+          { x: 0.18, y: 0.66, w: 0.18, h: 0.15 },
+          { x: 0.62, y: 0.68, w: 0.22, h: 0.14 },
+        ],
+        dungeon: [
+          { x: 0.08, y: 0.2, w: 0.24, h: 0.12 },
+          { x: 0.4, y: 0.21, w: 0.2, h: 0.1 },
+          { x: 0.68, y: 0.22, w: 0.24, h: 0.11 },
+          { x: 0.18, y: 0.5, w: 0.18, h: 0.26 },
+          { x: 0.46, y: 0.56, w: 0.12, h: 0.2 },
+          { x: 0.68, y: 0.52, w: 0.16, h: 0.24 },
+        ],
+        castle: [
+          { x: 0.11, y: 0.22, w: 0.19, h: 0.11 },
+          { x: 0.37, y: 0.2, w: 0.26, h: 0.09 },
+          { x: 0.72, y: 0.23, w: 0.17, h: 0.11 },
+          { x: 0.2, y: 0.52, w: 0.14, h: 0.27 },
+          { x: 0.44, y: 0.55, w: 0.12, h: 0.22 },
+          { x: 0.67, y: 0.5, w: 0.17, h: 0.3 },
+        ],
+        tower: [
+          { x: 0.18, y: 0.24, w: 0.64, h: 0.07 },
+          { x: 0.18, y: 0.44, w: 0.52, h: 0.07 },
+          { x: 0.3, y: 0.64, w: 0.52, h: 0.07 },
+          { x: 0.2, y: 0.81, w: 0.28, h: 0.07 },
+        ],
+        "mushroom-shop": [
+          { x: 0.14, y: 0.2, w: 0.18, h: 0.11 },
+          { x: 0.4, y: 0.24, w: 0.2, h: 0.09 },
+          { x: 0.7, y: 0.2, w: 0.18, h: 0.11 },
+          { x: 0.19, y: 0.54, w: 0.14, h: 0.24 },
+          { x: 0.42, y: 0.56, w: 0.14, h: 0.22 },
+          { x: 0.66, y: 0.55, w: 0.14, h: 0.23 },
+        ],
+      };
+      const INTERIOR_NODE_COLORS = {
+        feature: "#f8fafc",
+        cache: "#fcd34d",
+        lore: "#93c5fd",
+        exit: "#34d399",
+      };
+
+      const interiorSeedUnit = (seed, salt = 0) => {
+        const raw = Math.sin(seed * 12.9898 + salt * 78.233) * 43758.5453;
+        return raw - Math.floor(raw);
+      };
+
+      const getInteriorHeroRect = (x, y) => ({
+        x: x - 11,
+        y: y - 14,
+        w: 22,
+        h: 28,
+      });
+
+      const scaleInteriorObstacles = (structureType, width, height) => {
+        const patterns = INTERIOR_OBSTACLE_PATTERNS[structureType] ?? INTERIOR_OBSTACLE_PATTERNS.house;
+        return patterns.map((entry) => ({
+          x: Math.round(entry.x * width),
+          y: Math.round(entry.y * height),
+          w: Math.round(entry.w * width),
+          h: Math.round(entry.h * height),
+        }));
+      };
+
+      const buildInteriorProps = (structure, width, height) => {
+        const seed = hashString(structure.id);
+        const props = [];
+        const count = 22 + (seed % 10);
+        for (let index = 0; index < count; index += 1) {
+          const t = interiorSeedUnit(seed, index + 1);
+          const u = interiorSeedUnit(seed, index + 37);
+          const kindRoll = interiorSeedUnit(seed, index + 73);
+          const kind = kindRoll < 0.34
+            ? "mushroom"
+            : kindRoll < 0.68
+              ? "crystal"
+              : "banner";
+          props.push({
+            kind,
+            x: Math.round(46 + t * (width - 92)),
+            y: Math.round(50 + u * (height - 110)),
+            size: 9 + Math.round(interiorSeedUnit(seed, index + 109) * 9),
+          });
+        }
+        return props;
+      };
+
+      const isInteriorPointBlocked = (x, y, radius, obstacles, width, height) => {
+        const margin = 20;
+        const rect = {
+          x: x - radius,
+          y: y - radius,
+          w: radius * 2,
+          h: radius * 2,
+        };
+        if (
+          rect.x < margin ||
+          rect.y < margin ||
+          rect.x + rect.w > width - margin ||
+          rect.y + rect.h > height - margin
+        ) {
+          return true;
+        }
+        for (const obstacle of obstacles) {
+          if (intersectsRect(rect, obstacle)) return true;
+        }
+        return false;
+      };
+
+      const resolveInteriorPoint = (preferredX, preferredY, radius, obstacles, width, height) => {
+        const clampedX = clamp(preferredX, 34 + radius, width - 34 - radius);
+        const clampedY = clamp(preferredY, 34 + radius, height - 34 - radius);
+        if (!isInteriorPointBlocked(clampedX, clampedY, radius, obstacles, width, height)) {
+          return { x: clampedX, y: clampedY };
+        }
+        for (let ring = 1; ring <= 9; ring += 1) {
+          const ringRadius = ring * 26;
+          for (let step = 0; step < 24; step += 1) {
+            const angle = (Math.PI * 2 * step) / 24;
+            const candidateX = clamp(clampedX + Math.cos(angle) * ringRadius, 34 + radius, width - 34 - radius);
+            const candidateY = clamp(clampedY + Math.sin(angle) * ringRadius, 34 + radius, height - 34 - radius);
+            if (!isInteriorPointBlocked(candidateX, candidateY, radius, obstacles, width, height)) {
+              return { x: candidateX, y: candidateY };
+            }
+          }
+        }
+        return { x: width * 0.5, y: height * 0.5 };
+      };
+
+      const buildInteriorHostNpcs = (structure, interiorType, width, height, obstacles, seed) => {
+        const pool = INTERIOR_HOST_NPC_POOLS[interiorType];
+        if (!pool?.length) return [];
+        const count = interiorType === "mushroom-shop" ? 2 : 1;
+        const npcs = [];
+        for (let index = 0; index < count; index += 1) {
+          const profile = pool[(seed + index) % pool.length];
+          const preferredX = width * (count === 1 ? 0.24 : 0.28 + index * 0.42);
+          const preferredY = height * (0.35 + interiorSeedUnit(seed, 240 + index) * 0.34);
+          const point = resolveInteriorPoint(preferredX, preferredY, 18, obstacles, width, height);
+          npcs.push({
+            id: `interior-npc-${structure.id}-${index}`,
+            ...profile,
+            clueId: `interior-npc-clue-${structure.id}-${index}`,
+            x: point.x,
+            y: point.y,
+            radius: 34,
+          });
+        }
+        return npcs;
+      };
+
+      const buildInteriorRoamingEnemies = (structure, interiorType, width, height, obstacles, seed) => {
+        const pool = INTERIOR_ROAMING_ENEMY_POOLS[interiorType];
+        const count = INTERIOR_ENEMY_COUNT_BY_TYPE[interiorType] ?? 0;
+        if (!pool?.length || count <= 0) return [];
+        const enemies = [];
+        for (let index = 0; index < count; index += 1) {
+          const template = pool[(seed + index * 3) % pool.length];
+          const preferredX = width * (0.2 + interiorSeedUnit(seed, 301 + index) * 0.62);
+          const preferredY = height * (0.2 + interiorSeedUnit(seed, 337 + index) * 0.58);
+          const point = resolveInteriorPoint(preferredX, preferredY, 14, obstacles, width, height);
+          const baseAngle = interiorSeedUnit(seed, 379 + index) * Math.PI * 2;
+          const speed = 56 + Math.round(interiorSeedUnit(seed, 421 + index) * 30);
+          enemies.push({
+            id: `interior-enemy-${structure.id}-${index}`,
+            ...template,
+            x: point.x,
+            y: point.y,
+            radius: 14,
+            speed,
+            vx: Math.cos(baseAngle) * speed,
+            vy: Math.sin(baseAngle) * speed,
+            directionShiftAt: Date.now() + 800 + Math.round(interiorSeedUnit(seed, 461 + index) * 1300),
+            active: true,
+          });
+        }
+        return enemies;
+      };
+
+      const createInteriorLayout = (structure) => {
+        const interiorType = normalizeInteriorStructureType(structure.type);
         const feature = getInteriorFeature(structure);
         const sigil = getInteriorSigil(structure);
+        const config = INTERIOR_MAP_CONFIG[interiorType] ?? INTERIOR_MAP_CONFIG.house;
+        const seed = hashString(structure.id);
+        const width = config.width + Math.round((interiorSeedUnit(seed, 3) - 0.5) * 120);
+        const height = config.height + Math.round((interiorSeedUnit(seed, 7) - 0.5) * 80);
+        const spawn = { x: width * 0.5, y: height - 78 };
+        const obstacles = scaleInteriorObstacles(interiorType, width, height);
+        const npcs = buildInteriorHostNpcs(structure, interiorType, width, height, obstacles, seed);
+        const enemies = buildInteriorRoamingEnemies(structure, interiorType, width, height, obstacles, seed);
+        const nodes = [
+          {
+            id: `${structure.id}-feature`,
+            kind: "feature",
+            x: clamp(width * 0.5 + (interiorSeedUnit(seed, 11) - 0.5) * 130, 120, width - 120),
+            y: clamp(height * 0.26 + interiorSeedUnit(seed, 13) * 60, 110, height - 250),
+            radius: 42,
+            label: INTERIOR_FEATURE_LABELS[feature],
+          },
+          {
+            id: `${structure.id}-lore`,
+            kind: "lore",
+            x: clamp(width * 0.22 + interiorSeedUnit(seed, 17) * 70, 90, width - 90),
+            y: clamp(height * 0.54 + interiorSeedUnit(seed, 19) * 80, 120, height - 120),
+            radius: 34,
+            label: "Lore Node",
+          },
+          {
+            id: `${structure.id}-cache`,
+            kind: "cache",
+            x: clamp(width * 0.78 - interiorSeedUnit(seed, 23) * 90, 90, width - 90),
+            y: clamp(height * 0.56 + interiorSeedUnit(seed, 29) * 70, 120, height - 120),
+            radius: 34,
+            label: "Supply Cache",
+          },
+          {
+            id: `${structure.id}-exit`,
+            kind: "exit",
+            x: width * 0.5,
+            y: height - 56,
+            radius: 36,
+            label: "Exit Gate",
+          },
+        ];
+        return {
+          id: structure.id,
+          interiorType,
+          width,
+          height,
+          feature,
+          sigil,
+          obstacles,
+          props: buildInteriorProps(structure, width, height),
+          npcs,
+          enemies,
+          nodes,
+          spawn,
+          exploredAt: Date.now(),
+          nodeStates: {},
+        };
+      };
+
+      const isInteriorBlocked = (layout, x, y) => {
+        const heroRect = getInteriorHeroRect(x, y);
+        const margin = 18;
+        if (
+          heroRect.x < margin ||
+          heroRect.y < margin ||
+          heroRect.x + heroRect.w > layout.width - margin ||
+          heroRect.y + heroRect.h > layout.height - margin
+        ) {
+          return true;
+        }
+        for (const obstacle of layout.obstacles) {
+          if (intersectsRect(heroRect, obstacle)) return true;
+        }
+        return false;
+      };
+
+      const moveInteriorHero = (dt, layout) => {
+        let xAxis = 0;
+        let yAxis = 0;
+        if (state.keys.has("arrowup") || state.keys.has("w")) yAxis -= 1;
+        if (state.keys.has("arrowdown") || state.keys.has("s")) yAxis += 1;
+        if (state.keys.has("arrowleft") || state.keys.has("a")) xAxis -= 1;
+        if (state.keys.has("arrowright") || state.keys.has("d")) xAxis += 1;
+        if (xAxis === 0 && yAxis === 0) return;
+        const mag = Math.hypot(xAxis, yAxis) || 1;
+        const sprint = state.keys.has("shift");
+        const speed = state.hero.speed * (sprint ? 1.15 : 0.92);
+        const vx = (xAxis / mag) * speed * dt;
+        const vy = (yAxis / mag) * speed * dt;
+        const nextX = state.interior.heroX + vx;
+        if (!isInteriorBlocked(layout, nextX, state.interior.heroY)) {
+          state.interior.heroX = nextX;
+        }
+        const nextY = state.interior.heroY + vy;
+        if (!isInteriorBlocked(layout, state.interior.heroX, nextY)) {
+          state.interior.heroY = nextY;
+        }
+      };
+
+      const updateInteriorCamera = (layout) => {
+        const maxX = Math.max(0, layout.width - interiorCanvas.width);
+        const maxY = Math.max(0, layout.height - interiorCanvas.height);
+        state.interior.cameraX = clamp(state.interior.heroX - interiorCanvas.width / 2, 0, maxX);
+        state.interior.cameraY = clamp(state.interior.heroY - interiorCanvas.height / 2, 0, maxY);
+      };
+
+      const getInteriorNearbyNode = (layout, maxDistance = 72) => {
+        let nearest = null;
+        let bestDistance = maxDistance;
+        for (const node of layout.nodes) {
+          const distance = dist(state.interior.heroX, state.interior.heroY, node.x, node.y);
+          if (distance <= bestDistance) {
+            nearest = node;
+            bestDistance = distance;
+          }
+        }
+        return nearest;
+      };
+
+      const getInteriorNearbyNpc = (layout, maxDistance = 78) => {
+        if (!layout?.npcs?.length) return null;
+        let nearest = null;
+        let bestDistance = maxDistance;
+        for (const npc of layout.npcs) {
+          const distance = dist(state.interior.heroX, state.interior.heroY, npc.x, npc.y);
+          if (distance <= bestDistance) {
+            nearest = npc;
+            bestDistance = distance;
+          }
+        }
+        return nearest;
+      };
+
+      const getInteriorNearbyEnemy = (layout, maxDistance = 82) => {
+        if (!layout?.enemies?.length) return null;
+        let nearest = null;
+        let bestDistance = maxDistance;
+        for (const enemy of layout.enemies) {
+          if (!enemy.active) continue;
+          const distance = dist(state.interior.heroX, state.interior.heroY, enemy.x, enemy.y);
+          if (distance <= bestDistance) {
+            nearest = enemy;
+            bestDistance = distance;
+          }
+        }
+        return nearest;
+      };
+
+      const refreshInteriorHint = (structure, force = false) => {
+        const layout = state.interior.layout;
+        if (!layout || !structure) return;
+        const nearbyNode = getInteriorNearbyNode(layout);
+        const nearbyNpc = getInteriorNearbyNpc(layout);
+        const nearbyEnemy = getInteriorNearbyEnemy(layout);
+        const nearbyId = nearbyEnemy
+          ? `enemy:${nearbyEnemy.id}`
+          : nearbyNpc
+            ? `npc:${nearbyNpc.id}`
+            : nearbyNode?.id ?? "";
+        if (!force && state.interior.nearbyNodeId === nearbyId) return;
+        state.interior.nearbyNodeId = nearbyId;
+        const solved = state.progress.solvedStructures.has(structure.id);
+        let guide = `${getInteriorFeatureHint(layout.feature)} Explore this interior map and move between interior nodes.`;
+        if (nearbyEnemy) {
+          guide = `Hostile contact nearby: ${nearbyEnemy.title}. Touch the enemy to trigger a battle.`;
+        } else if (nearbyNpc) {
+          guide = `${nearbyNpc.name} nearby (${nearbyNpc.subtitle}). Press Enter or Search to talk/trade.`;
+        } else if (nearbyNode?.kind === "feature") {
+          guide = solved
+            ? "Feature already cleared here. You can still inspect lore/cache nodes or exit."
+            : `Feature node nearby: ${nearbyNode.label}. Press Enter or Search to resolve this interior objective.`;
+        } else if (nearbyNode?.kind === "cache") {
+          guide = "Supply cache nearby. Press Enter or Search to inspect it.";
+        } else if (nearbyNode?.kind === "lore") {
+          guide = "Lore node nearby. Press Enter or Search to reveal story text.";
+        } else if (nearbyNode?.kind === "exit") {
+          guide = "Exit gate nearby. Press Enter or Search to leave this interior map.";
+        }
+        const lastResult = state.interior.lastResult ? ` Last action: ${state.interior.lastResult}` : "";
+        dom.interiorHint.textContent = `${guide} Controls: move with arrows/WASD, Shift to sprint, E to exit.${lastResult}`;
+      };
+
+      const buildInteriorNpcEncounter = (structure, npc, alreadySpoken) => {
+        const roleText = `${npc.subtitle} at ${structure.name}`;
+        const clueLabel = npc.clueLabel ?? `${structure.name} Interior Lead`;
+        const applyInteriorTrade = () => {
+          const cost = npc.tradeCost ?? 0;
+          if (state.hero.spores < cost) {
+            setStatus(`${npc.name}: bring ${cost} spores for this trade.`, true);
+            playSfx("error");
+            return;
+          }
+          state.hero.spores -= cost;
+          const qty = npc.tradeQty ?? 1;
+          if (npc.tradeItem === "mycoPotion") state.inventory.mycoPotion += qty;
+          if (npc.tradeItem === "manaDew") state.inventory.manaDew += qty;
+          if (npc.tradeItem === "smokeBomb") state.inventory.smokeBomb += qty;
+          if (npc.tradeItem === "goldenSpore") state.hero.goldenSpores += qty;
+          recordAiSignal("commerce", 1.5);
+          pushStoryEntry(`${npc.name} completed an interior trade in ${structure.name}.`, "npc");
+          setStatus(`${npc.name} trade complete.`);
+          playSfx("coin");
+        };
+
+        return {
+          title: npc.name,
+          portrait: { glyph: npc.glyph ?? "🧭", subtitle: roleText },
+          body: alreadySpoken
+            ? `${npc.name}: Good to see you back in ${structure.name}. Need another exchange?`
+            : `${npc.intro}\n\nRole: ${roleText}\n\nThis resident tracks your interior discoveries and reacts to your path decisions.`,
+          mycoLabel: "Respectfully Ask",
+          darkLabel: "Demand Answers",
+          tradeLabel: `Trade (${npc.tradeCost ?? 0} spores)`,
+          onMyco: () => {
+            recordAiSignal("compassion", 1.5);
+            recordAiSignal("diplomacy", 1);
+            applyMorality(5);
+            grantSpores(8);
+            addClue(npc.clueId, clueLabel);
+            state.progress.interactedNpcs.add(npc.id);
+            pushStoryEntry(`${npc.name} shared trusted advice inside ${structure.name}.`, "npc");
+            setStatus(npc.mycoText);
+          },
+          onDark: () => {
+            recordAiSignal("ferocity", 1.2);
+            applyMorality(-6);
+            grantGrindLoot({ armorShards: 1 });
+            addClue(npc.clueId, clueLabel);
+            state.progress.interactedNpcs.add(npc.id);
+            pushStoryEntry(`${npc.name} surrendered information under pressure in ${structure.name}.`, "npc");
+            setStatus(npc.darkText);
+          },
+          onTrade: applyInteriorTrade,
+        };
+      };
+
+      const triggerInteriorRoamingBattle = (structure, enemy) => {
+        const encounter = {
+          id: enemy.id,
+          kind: enemy.kind,
+          x: state.hero.x,
+          y: state.hero.y,
+          lane: enemy.lane,
+          boss: false,
+          region: state.currentRealmId,
+        };
+        closeInterior();
+        state.pendingBattle = false;
+        state.encounterEnemyId = encounter.id;
+        state.mode = "battle";
+        state.battleMode = "local";
+        setBattlePopupActive(true);
+        resetBattleFx();
+        state.battle = createLocalBattle(encounter);
+        state.battle.enemy.name = `${enemy.title} // ${structure.name}`;
+        state.battle.rewardSpores += enemy.rewardBonus ?? 8;
+        state.battle.rewardXp += 4;
+        appendBattleLog(`${state.battle.enemy.name} ambushed you inside the interior.`);
+        dom.battleSummary.textContent = `Interior enemy encounter in ${structure.name}: ${state.battle.enemy.name}`;
+        pushStoryEntry(`Interior battle ignited in ${structure.name} against ${enemy.title}.`, "battle");
+        setStatus(`Interior enemy engaged: ${enemy.title}`);
+        playSfx("battle");
+      };
+
+      const updateInteriorEnemies = (dt, layout, structure) => {
+        if (!layout?.enemies?.length) return false;
+        const now = Date.now();
+        for (const enemy of layout.enemies) {
+          if (!enemy.active) continue;
+          if (enemy.directionShiftAt <= now) {
+            const angle = randomBetween(0, Math.PI * 2);
+            enemy.vx = Math.cos(angle) * enemy.speed;
+            enemy.vy = Math.sin(angle) * enemy.speed;
+            enemy.directionShiftAt = now + randomBetween(900, 2200);
+          }
+          const nextX = enemy.x + enemy.vx * dt;
+          const nextY = enemy.y + enemy.vy * dt;
+          if (isInteriorPointBlocked(nextX, enemy.y, enemy.radius, layout.obstacles, layout.width, layout.height)) {
+            enemy.vx *= -1;
+          } else {
+            enemy.x = nextX;
+          }
+          if (isInteriorPointBlocked(enemy.x, nextY, enemy.radius, layout.obstacles, layout.width, layout.height)) {
+            enemy.vy *= -1;
+          } else {
+            enemy.y = nextY;
+          }
+          const touchDistance = enemy.radius + 18;
+          if (dist(state.interior.heroX, state.interior.heroY, enemy.x, enemy.y) <= touchDistance) {
+            enemy.active = false;
+            triggerInteriorRoamingBattle(structure, enemy);
+            return true;
+          }
+        }
+        return false;
+      };
+
+      const openInterior = (structure) => {
+        state.keys.clear();
+        const layout = createInteriorLayout(structure);
+        state.interior.active = true;
+        state.interior.structureId = structure.id;
+        state.interior.layout = layout;
+        state.interior.heroX = layout.spawn.x;
+        state.interior.heroY = layout.spawn.y;
+        state.interior.cameraX = 0;
+        state.interior.cameraY = 0;
+        state.interior.nearbyNodeId = "";
+        state.interior.lastResult = "";
+        state.mode = "interior";
+        updateInteriorCamera(layout);
         dom.interiorScreen.classList.add("active");
         dom.interiorTitle.textContent = structure.name;
-        dom.interiorSubtitle.textContent = `${structure.type.replace(/-/g, " ").toUpperCase()} INTERIOR // ${getCurrentRealm().name} // ${INTERIOR_FEATURE_LABELS[feature]} // ${sigil}`;
-        dom.interiorHint.textContent = `${getInteriorFeatureHint(feature)} Search to trigger this room event. Press E or Exit to leave.`;
+        dom.interiorSubtitle.textContent = `${layout.interiorType.replace(/-/g, " ").toUpperCase()} INTERIOR MAP // ${getCurrentRealm().name} // ${INTERIOR_FEATURE_LABELS[layout.feature]} // ${layout.sigil}`;
+        refreshInteriorHint(structure, true);
         drawInteriorScene(structure);
       };
 
@@ -6184,232 +6797,221 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (!state.interior.active) return;
         state.interior.active = false;
         state.interior.structureId = null;
+        state.interior.layout = null;
+        state.interior.heroX = 0;
+        state.interior.heroY = 0;
+        state.interior.cameraX = 0;
+        state.interior.cameraY = 0;
+        state.interior.nearbyNodeId = "";
+        state.interior.lastResult = "";
         dom.interiorScreen.classList.remove("active");
         state.mode = "explore";
         state.keys.clear();
         state.contactLockUntil = Date.now() + 600;
       };
 
+      const updateInterior = (dt) => {
+        const structure = STRUCTURES.find((entry) => entry.id === state.interior.structureId);
+        const layout = state.interior.layout;
+        if (!structure || !layout) return;
+        moveInteriorHero(dt, layout);
+        if (updateInteriorEnemies(dt, layout, structure)) {
+          return;
+        }
+        updateInteriorCamera(layout);
+        refreshInteriorHint(structure);
+      };
+
       const drawInteriorScene = (structureInput = null) => {
         const structure = structureInput ?? STRUCTURES.find((entry) => entry.id === state.interior.structureId);
+        const layout = state.interior.layout;
         const width = interiorCanvas.width;
         const height = interiorCanvas.height;
         interiorCtx.fillStyle = "#050913";
         interiorCtx.fillRect(0, 0, width, height);
-        if (!structure) return;
+        if (!structure || !layout) return;
 
-        const palette = {
-          house: ["#78350f", "#f59e0b", "#fef3c7"],
-          cave: ["#334155", "#0f172a", "#a5b4fc"],
-          dungeon: ["#27272a", "#6d28d9", "#ddd6fe"],
-          castle: ["#1e293b", "#2563eb", "#bfdbfe"],
-          tower: ["#1f2937", "#475569", "#cbd5e1"],
-          "mushroom-shop": ["#7c2d12", "#ef4444", "#fee2e2"],
-        };
-        const feature = getInteriorFeature(structure);
-        const [base, accent, glow] = palette[structure.type] ?? ["#1f2937", "#4b5563", "#e2e8f0"];
+        const [base, accent, glow] = INTERIOR_THEME_PALETTES[layout.interiorType] ?? ["#1f2937", "#4b5563", "#e2e8f0"];
         const roomGradient = interiorCtx.createLinearGradient(0, 0, width, height);
         roomGradient.addColorStop(0, base);
         roomGradient.addColorStop(1, "#020617");
         interiorCtx.fillStyle = roomGradient;
         interiorCtx.fillRect(0, 0, width, height);
 
-        interiorCtx.fillStyle = "rgba(148, 163, 184, 0.13)";
-        for (let y = 0; y < height; y += 30) {
-          for (let x = 0; x < width; x += 30) {
-            if (((x * 7 + y * 11) / 30) % 6 < 2) {
-              interiorCtx.fillRect(x + 2, y + 2, 14, 14);
+        const cameraX = state.interior.cameraX ?? 0;
+        const cameraY = state.interior.cameraY ?? 0;
+
+        interiorCtx.fillStyle = "rgba(148, 163, 184, 0.11)";
+        const floorStep = 40;
+        const startTileX = Math.floor(cameraX / floorStep) * floorStep;
+        const startTileY = Math.floor(cameraY / floorStep) * floorStep;
+        for (let y = startTileY; y <= cameraY + height + floorStep; y += floorStep) {
+          for (let x = startTileX; x <= cameraX + width + floorStep; x += floorStep) {
+            if (((x * 5 + y * 7) / floorStep) % 5 < 2) {
+              interiorCtx.fillRect(x - cameraX + 3, y - cameraY + 3, 14, 14);
             }
           }
         }
 
-        interiorCtx.fillStyle = accent;
-        interiorCtx.fillRect(40, height - 70, width - 80, 24);
-        interiorCtx.fillStyle = glow;
-        interiorCtx.fillRect(58, height - 64, width - 116, 12);
+        const mapX = -cameraX;
+        const mapY = -cameraY;
+        interiorCtx.fillStyle = "rgba(2, 6, 23, 0.56)";
+        interiorCtx.fillRect(mapX, mapY, layout.width, layout.height);
 
-        interiorCtx.fillStyle = accent;
-        interiorCtx.fillRect(width * 0.5 - 36, height * 0.38, 72, 72);
-        interiorCtx.fillStyle = glow;
-        interiorCtx.fillRect(width * 0.5 - 20, height * 0.38 + 16, 40, 40);
+        interiorCtx.fillStyle = "rgba(15, 23, 42, 0.85)";
+        interiorCtx.fillRect(mapX, mapY, layout.width, 18);
+        interiorCtx.fillRect(mapX, mapY + layout.height - 18, layout.width, 18);
+        interiorCtx.fillRect(mapX, mapY, 18, layout.height);
+        interiorCtx.fillRect(mapX + layout.width - 18, mapY, 18, layout.height);
 
-        if (structure.type === "house") {
-          interiorCtx.fillStyle = "#7c2d12";
-          interiorCtx.fillRect(90, height - 150, 120, 64);
-          interiorCtx.fillStyle = "#f59e0b";
-          interiorCtx.fillRect(98, height - 142, 104, 10);
-          interiorCtx.fillStyle = "#fef3c7";
-          interiorCtx.fillRect(110, height - 126, 16, 14);
-          interiorCtx.fillRect(172, height - 126, 16, 14);
-        } else if (structure.type === "cave") {
-          interiorCtx.fillStyle = "#0f172a";
-          interiorCtx.fillRect(width - 250, height - 170, 170, 92);
-          interiorCtx.fillStyle = "#334155";
-          interiorCtx.fillRect(width - 238, height - 162, 146, 12);
-          interiorCtx.fillStyle = "#64748b";
-          interiorCtx.fillRect(width - 210, height - 132, 18, 14);
-          interiorCtx.fillRect(width - 142, height - 132, 18, 14);
-        } else if (structure.type === "dungeon") {
-          interiorCtx.fillStyle = "#111827";
-          interiorCtx.fillRect(72, height - 174, 190, 96);
-          interiorCtx.fillStyle = "#6d28d9";
-          interiorCtx.fillRect(84, height - 166, 166, 10);
-          interiorCtx.fillStyle = "#c4b5fd";
-          interiorCtx.fillRect(114, height - 130, 18, 18);
-          interiorCtx.fillRect(200, height - 130, 18, 18);
-        } else if (structure.type === "castle") {
-          interiorCtx.fillStyle = "#1e293b";
-          interiorCtx.fillRect(width - 280, height - 190, 220, 112);
-          interiorCtx.fillStyle = "#334155";
-          interiorCtx.fillRect(width - 266, height - 178, 192, 84);
-          interiorCtx.fillStyle = "#60a5fa";
-          interiorCtx.fillRect(width - 178, height - 130, 36, 36);
-          interiorCtx.fillStyle = "#bfdbfe";
-          interiorCtx.fillRect(width - 170, height - 120, 20, 14);
-        } else if (structure.type === "tower") {
-          interiorCtx.fillStyle = "#0f172a";
-          interiorCtx.fillRect(width - 230, height - 260, 120, 182);
-          interiorCtx.fillStyle = "#334155";
-          interiorCtx.fillRect(width - 216, height - 248, 92, 156);
-          interiorCtx.fillStyle = "#94a3b8";
-          interiorCtx.fillRect(width - 194, height - 220, 12, 12);
-          interiorCtx.fillRect(width - 162, height - 190, 12, 12);
-          interiorCtx.fillRect(width - 194, height - 160, 12, 12);
-        } else if (structure.type === "mushroom-shop") {
-          interiorCtx.fillStyle = "#7c2d12";
-          interiorCtx.fillRect(80, height - 178, 220, 98);
-          interiorCtx.fillStyle = "#ef4444";
-          interiorCtx.fillRect(66, height - 190, 248, 20);
-          interiorCtx.fillStyle = "#fecaca";
-          interiorCtx.fillRect(112, height - 146, 18, 14);
-          interiorCtx.fillRect(160, height - 146, 18, 14);
-          interiorCtx.fillRect(208, height - 146, 18, 14);
+        interiorCtx.fillStyle = "rgba(2, 6, 23, 0.76)";
+        for (const obstacle of layout.obstacles) {
+          interiorCtx.fillRect(obstacle.x - cameraX, obstacle.y - cameraY, obstacle.w, obstacle.h);
+          interiorCtx.strokeStyle = `${accent}99`;
+          interiorCtx.lineWidth = 2;
+          interiorCtx.strokeRect(obstacle.x - cameraX + 1, obstacle.y - cameraY + 1, obstacle.w - 2, obstacle.h - 2);
         }
 
-        if (feature === "store-cache") {
-          interiorCtx.fillStyle = "rgba(251, 191, 36, 0.3)";
-          interiorCtx.fillRect(width - 320, 120, 220, 84);
-          interiorCtx.fillStyle = "#fcd34d";
-          interiorCtx.fillRect(width - 304, 132, 34, 24);
-          interiorCtx.fillRect(width - 260, 138, 28, 18);
-          interiorCtx.fillRect(width - 220, 130, 30, 22);
-          interiorCtx.fillRect(width - 176, 136, 26, 18);
-        } else if (feature === "trade-bazaar") {
-          interiorCtx.fillStyle = "rgba(14, 165, 233, 0.22)";
-          interiorCtx.fillRect(width - 328, 108, 238, 108);
-          interiorCtx.fillStyle = "#7dd3fc";
-          interiorCtx.fillRect(width - 314, 126, 48, 22);
-          interiorCtx.fillRect(width - 246, 126, 48, 22);
-          interiorCtx.fillRect(width - 178, 126, 48, 22);
-          interiorCtx.fillStyle = "#0f172a";
-          interiorCtx.fillRect(width - 300, 160, 170, 10);
-          interiorCtx.fillStyle = "#e0f2fe";
-          interiorCtx.fillRect(width - 264, 146, 16, 10);
-          interiorCtx.fillRect(width - 230, 146, 16, 10);
-        } else if (feature === "puzzle-altar") {
-          interiorCtx.fillStyle = "rgba(196, 181, 253, 0.28)";
-          interiorCtx.fillRect(width - 330, 110, 240, 96);
-          interiorCtx.fillStyle = "#c4b5fd";
-          for (let i = 0; i < 6; i += 1) {
-            interiorCtx.fillRect(width - 312 + i * 36, 136 + ((i % 2) ? 10 : 0), 24, 24);
+        for (const prop of layout.props) {
+          const px = prop.x - cameraX;
+          const py = prop.y - cameraY;
+          if (px < -30 || py < -30 || px > width + 30 || py > height + 30) continue;
+          if (prop.kind === "mushroom") {
+            interiorCtx.fillStyle = `${accent}bb`;
+            interiorCtx.fillRect(px - prop.size, py - prop.size, prop.size * 2, 5);
+            interiorCtx.fillStyle = `${glow}dd`;
+            interiorCtx.fillRect(px - 3, py - 3, 6, prop.size);
+          } else if (prop.kind === "crystal") {
+            interiorCtx.fillStyle = `${glow}cc`;
+            interiorCtx.beginPath();
+            interiorCtx.moveTo(px, py - prop.size);
+            interiorCtx.lineTo(px + prop.size * 0.6, py);
+            interiorCtx.lineTo(px, py + prop.size);
+            interiorCtx.lineTo(px - prop.size * 0.6, py);
+            interiorCtx.closePath();
+            interiorCtx.fill();
+          } else {
+            interiorCtx.fillStyle = `${accent}aa`;
+            interiorCtx.fillRect(px - 3, py - prop.size, 6, prop.size + 5);
+            interiorCtx.fillStyle = `${glow}cc`;
+            interiorCtx.fillRect(px + 3, py - prop.size, prop.size * 0.8, prop.size * 0.55);
           }
-          interiorCtx.fillStyle = "#ede9fe";
-          interiorCtx.fillRect(width - 222, 120, 22, 10);
-        } else if (feature === "lore-riddle") {
-          interiorCtx.fillStyle = "rgba(96, 165, 250, 0.2)";
-          interiorCtx.fillRect(width - 320, 108, 226, 106);
-          interiorCtx.strokeStyle = "#93c5fd";
-          interiorCtx.lineWidth = 2;
-          interiorCtx.strokeRect(width - 302, 122, 188, 74);
-          interiorCtx.fillStyle = "#1d4ed8";
-          interiorCtx.fillRect(width - 286, 138, 154, 42);
-          interiorCtx.fillStyle = "#dbeafe";
-          interiorCtx.fillRect(width - 274, 148, 48, 6);
-          interiorCtx.fillRect(width - 220, 148, 70, 6);
-          interiorCtx.fillRect(width - 274, 160, 90, 6);
-        } else if (feature === "combat-trial") {
-          interiorCtx.fillStyle = "rgba(248, 113, 113, 0.18)";
-          interiorCtx.beginPath();
-          interiorCtx.arc(width - 212, 156, 58, 0, Math.PI * 2);
-          interiorCtx.fill();
-          interiorCtx.strokeStyle = "#f87171";
-          interiorCtx.lineWidth = 3;
-          interiorCtx.beginPath();
-          interiorCtx.arc(width - 212, 156, 44, 0, Math.PI * 2);
-          interiorCtx.stroke();
-          interiorCtx.fillStyle = "#fecaca";
-          interiorCtx.fillRect(width - 218, 144, 12, 24);
-          interiorCtx.fillRect(width - 238, 154, 52, 4);
-        } else if (feature === "magic-mentor") {
-          interiorCtx.fillStyle = "rgba(192, 132, 252, 0.22)";
-          interiorCtx.beginPath();
-          interiorCtx.arc(width - 206, 156, 48, 0, Math.PI * 2);
-          interiorCtx.fill();
-          interiorCtx.strokeStyle = "#c084fc";
-          interiorCtx.lineWidth = 3;
-          interiorCtx.beginPath();
-          interiorCtx.arc(width - 206, 156, 30, 0, Math.PI * 2);
-          interiorCtx.stroke();
-          interiorCtx.fillStyle = "#f5d0fe";
-          interiorCtx.fillRect(width - 214, 146, 16, 20);
-          interiorCtx.fillRect(width - 192, 150, 8, 12);
-        } else if (feature === "attack-dojo") {
-          interiorCtx.fillStyle = "rgba(251, 146, 60, 0.22)";
-          interiorCtx.fillRect(width - 314, 112, 208, 98);
-          interiorCtx.fillStyle = "#fdba74";
-          interiorCtx.fillRect(width - 286, 130, 18, 56);
-          interiorCtx.fillRect(width - 248, 130, 18, 56);
-          interiorCtx.fillRect(width - 210, 130, 18, 56);
-          interiorCtx.fillRect(width - 172, 130, 18, 56);
-          interiorCtx.fillStyle = "#7c2d12";
-          interiorCtx.fillRect(width - 298, 160, 160, 6);
-        } else if (feature === "maze-chamber") {
-          interiorCtx.fillStyle = "rgba(56, 189, 248, 0.2)";
-          interiorCtx.fillRect(width - 336, 110, 244, 102);
-          interiorCtx.fillStyle = "#0f172a";
-          interiorCtx.fillRect(width - 322, 122, 214, 10);
-          interiorCtx.fillRect(width - 322, 148, 110, 8);
-          interiorCtx.fillRect(width - 246, 170, 138, 8);
-          interiorCtx.fillRect(width - 322, 190, 166, 8);
-        } else if (feature === "power-sanctum") {
-          interiorCtx.fillStyle = "rgba(74, 222, 128, 0.2)";
-          interiorCtx.beginPath();
-          interiorCtx.arc(width - 206, 156, 46, 0, Math.PI * 2);
-          interiorCtx.fill();
-          interiorCtx.strokeStyle = "#4ade80";
-          interiorCtx.lineWidth = 3;
-          interiorCtx.beginPath();
-          interiorCtx.arc(width - 206, 156, 28, 0, Math.PI * 2);
-          interiorCtx.stroke();
-          interiorCtx.fillStyle = "#86efac";
-          interiorCtx.fillRect(width - 212, 148, 12, 16);
-        } else if (feature === "hidden-vault") {
-          interiorCtx.fillStyle = "rgba(148, 163, 184, 0.2)";
-          interiorCtx.fillRect(width - 310, 112, 200, 94);
-          interiorCtx.fillStyle = "#0f172a";
-          interiorCtx.fillRect(width - 222, 140, 26, 40);
-          interiorCtx.fillStyle = "#fbbf24";
-          interiorCtx.fillRect(width - 210, 158, 6, 6);
-          interiorCtx.strokeStyle = "#94a3b8";
-          interiorCtx.lineWidth = 2;
-          interiorCtx.strokeRect(width - 298, 124, 176, 70);
         }
+
+        for (const enemy of layout.enemies ?? []) {
+          if (!enemy.active) continue;
+          const ex = enemy.x - cameraX;
+          const ey = enemy.y - cameraY;
+          if (ex < -40 || ey < -40 || ex > width + 40 || ey > height + 40) continue;
+          const hue = hashString(enemy.kind) % 360;
+          interiorCtx.fillStyle = "rgba(2, 6, 23, 0.46)";
+          interiorCtx.beginPath();
+          interiorCtx.ellipse(ex, ey + enemy.radius + 6, enemy.radius + 5, 6, 0, 0, Math.PI * 2);
+          interiorCtx.fill();
+          interiorCtx.fillStyle = `hsla(${hue}, 72%, 58%, 0.82)`;
+          interiorCtx.beginPath();
+          interiorCtx.arc(ex, ey, enemy.radius + 4, 0, Math.PI * 2);
+          interiorCtx.fill();
+          interiorCtx.fillStyle = "rgba(2, 6, 23, 0.85)";
+          interiorCtx.fillRect(ex - 5, ey - 3, 10, 8);
+          interiorCtx.fillStyle = "#86efac";
+          interiorCtx.fillRect(ex - 4, ey - 1, 2, 2);
+          interiorCtx.fillRect(ex + 2, ey - 1, 2, 2);
+        }
+
+        for (const npc of layout.npcs ?? []) {
+          const nx = npc.x - cameraX;
+          const ny = npc.y - cameraY;
+          if (nx < -48 || ny < -48 || nx > width + 48 || ny > height + 48) continue;
+          drawNpc(interiorCtx, npc, nx, ny);
+        }
+
+        const nearbyNode = getInteriorNearbyNode(layout);
+        const nearbyNpc = getInteriorNearbyNpc(layout);
+        for (const node of layout.nodes) {
+          const nodeX = node.x - cameraX;
+          const nodeY = node.y - cameraY;
+          const color = INTERIOR_NODE_COLORS[node.kind] ?? "#f8fafc";
+          const isNearby = nearbyNode?.id === node.id;
+          interiorCtx.fillStyle = `${color}${isNearby ? "ee" : "88"}`;
+          interiorCtx.beginPath();
+          interiorCtx.arc(nodeX, nodeY, isNearby ? node.radius * 0.62 : node.radius * 0.52, 0, Math.PI * 2);
+          interiorCtx.fill();
+          interiorCtx.strokeStyle = `${color}cc`;
+          interiorCtx.lineWidth = isNearby ? 3 : 2;
+          interiorCtx.beginPath();
+          interiorCtx.arc(nodeX, nodeY, node.radius, 0, Math.PI * 2);
+          interiorCtx.stroke();
+          interiorCtx.fillStyle = "#020617";
+          interiorCtx.font = "700 12px sans-serif";
+          const glyph = node.kind === "feature" ? "!" : node.kind === "cache" ? "$" : node.kind === "lore" ? "?" : "X";
+          interiorCtx.fillText(glyph, nodeX - 4, nodeY + 4);
+        }
+
+        drawPixelCharacter(
+          interiorCtx,
+          state.interior.heroX - cameraX,
+          state.interior.heroY - cameraY,
+        );
 
         interiorCtx.fillStyle = "#f8fafc";
         interiorCtx.font = "700 16px sans-serif";
-        interiorCtx.fillText(structure.name, 26, 34);
-        interiorCtx.font = "13px sans-serif";
-        interiorCtx.fillText("Interior Node Active", 26, 54);
+        interiorCtx.fillText(structure.name, 20, 30);
+        interiorCtx.font = "12px sans-serif";
+        interiorCtx.fillText(`Explorable interior map // ${layout.width}x${layout.height}`, 20, 48);
         interiorCtx.fillStyle = "#93c5fd";
-        interiorCtx.fillText(`Feature: ${INTERIOR_FEATURE_LABELS[feature]} // ${getInteriorSigil(structure)}`, 26, 72);
+        interiorCtx.fillText(`Feature: ${INTERIOR_FEATURE_LABELS[layout.feature]} // ${layout.sigil}`, 20, 64);
+        if (nearbyNode) {
+          interiorCtx.fillStyle = "#facc15";
+          interiorCtx.fillText(`Nearby node: ${nearbyNode.label}`, 20, 80);
+        } else if (nearbyNpc) {
+          interiorCtx.fillStyle = "#a7f3d0";
+          interiorCtx.fillText(`Nearby resident: ${nearbyNpc.name}`, 20, 80);
+        }
 
         const solved = state.progress.solvedStructures.has(structure.id);
         interiorCtx.fillStyle = solved ? "#4ade80" : "#facc15";
-        interiorCtx.fillText(solved ? "Search complete: rewards already claimed" : "Search available: relic chest unopened", 26, 92);
+        interiorCtx.fillText(solved ? "Core feature clear: complete." : "Core feature unresolved: explore and trigger node.", 20, 96);
+
+        const miniW = 158;
+        const miniH = 98;
+        const miniX = width - miniW - 14;
+        const miniY = 12;
+        interiorCtx.fillStyle = "rgba(2, 6, 23, 0.76)";
+        interiorCtx.fillRect(miniX, miniY, miniW, miniH);
+        interiorCtx.strokeStyle = `${glow}bb`;
+        interiorCtx.strokeRect(miniX + 0.5, miniY + 0.5, miniW - 1, miniH - 1);
+        const sx = miniW / layout.width;
+        const sy = miniH / layout.height;
+        interiorCtx.fillStyle = "rgba(148, 163, 184, 0.38)";
+        for (const obstacle of layout.obstacles) {
+          interiorCtx.fillRect(
+            miniX + obstacle.x * sx,
+            miniY + obstacle.y * sy,
+            Math.max(2, obstacle.w * sx),
+            Math.max(2, obstacle.h * sy),
+          );
+        }
+        for (const node of layout.nodes) {
+          interiorCtx.fillStyle = INTERIOR_NODE_COLORS[node.kind] ?? "#f8fafc";
+          interiorCtx.fillRect(miniX + node.x * sx - 1, miniY + node.y * sy - 1, 3, 3);
+        }
+        for (const npc of layout.npcs ?? []) {
+          interiorCtx.fillStyle = "#86efac";
+          interiorCtx.fillRect(miniX + npc.x * sx - 1, miniY + npc.y * sy - 1, 3, 3);
+        }
+        for (const enemy of layout.enemies ?? []) {
+          if (!enemy.active) continue;
+          interiorCtx.fillStyle = "#f87171";
+          interiorCtx.fillRect(miniX + enemy.x * sx - 1, miniY + enemy.y * sy - 1, 3, 3);
+        }
+        interiorCtx.fillStyle = "#22d3ee";
+        interiorCtx.fillRect(miniX + state.interior.heroX * sx - 2, miniY + state.interior.heroY * sy - 2, 4, 4);
       };
 
       const triggerInteriorTrialBattle = (structure) => {
-        const trial = INTERIOR_TRIAL_ENEMIES[structure.type] ?? INTERIOR_TRIAL_ENEMIES.dungeon;
+        const interiorType = normalizeInteriorStructureType(structure.type);
+        const trial = INTERIOR_TRIAL_ENEMIES[interiorType] ?? INTERIOR_TRIAL_ENEMIES.dungeon;
         const trialEnemy = {
           id: `interior-trial-${structure.id}-${Date.now()}`,
           kind: trial.kind,
@@ -6442,13 +7044,88 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const searchInterior = () => {
         const structure = STRUCTURES.find((entry) => entry.id === state.interior.structureId);
-        if (!structure) return;
-        if (state.progress.solvedStructures.has(structure.id)) {
-          dom.interiorHint.textContent = "This interior has already been cleared. Try another region structure.";
+        const layout = state.interior.layout;
+        if (!structure || !layout) return;
+        const nearbyNpc = getInteriorNearbyNpc(layout);
+        if (nearbyNpc) {
+          const alreadySpoken = state.progress.interactedNpcs.has(nearbyNpc.id);
+          openDialogue(buildInteriorNpcEncounter(structure, nearbyNpc, alreadySpoken));
+          state.interior.lastResult = `Conversation opened with ${nearbyNpc.name}.`;
+          refreshInteriorHint(structure, true);
+          return;
+        }
+        const nearbyEnemy = getInteriorNearbyEnemy(layout, 58);
+        if (nearbyEnemy) {
+          state.interior.lastResult = `${nearbyEnemy.title} is too close. Move or engage in battle.`;
+          refreshInteriorHint(structure, true);
           playSfx("error");
           return;
         }
-        const feature = getInteriorFeature(structure);
+        const nearbyNode = getInteriorNearbyNode(layout);
+        if (!nearbyNode) {
+          state.interior.lastResult = "No interior node in range. Move toward a node marker or resident.";
+          refreshInteriorHint(structure, true);
+          playSfx("error");
+          return;
+        }
+        if (nearbyNode.kind === "exit") {
+          closeInterior();
+          return;
+        }
+        if (nearbyNode.kind === "lore") {
+          const loreClueId = `interior-lore-${structure.id}`;
+          const firstLore = !state.progress.clues.has(loreClueId);
+          addClue(loreClueId, `${structure.name} Lore Node`);
+          pushStoryEntry(`Lore recovered inside ${structure.name}. The interior network keeps evolving.`, "lore");
+          if (firstLore) {
+            grantSpores(6);
+          }
+          layout.nodeStates[nearbyNode.id] = true;
+          state.interior.lastResult = firstLore
+            ? "Lore node decoded. +6 spores and chronicle insight added."
+            : "Lore node re-read. Chronicle memory reinforced.";
+          refreshInteriorHint(structure, true);
+          drawInteriorScene(structure);
+          playSfx("clue");
+          return;
+        }
+        if (nearbyNode.kind === "cache") {
+          const alreadyLooted = Boolean(layout.nodeStates[nearbyNode.id]);
+          if (alreadyLooted) {
+            state.interior.lastResult = "Supply cache is empty. Explore deeper nodes.";
+            refreshInteriorHint(structure, true);
+            playSfx("error");
+            return;
+          }
+          const cacheClueId = `interior-cache-${structure.id}`;
+          const firstCache = !state.progress.clues.has(cacheClueId);
+          const bonusSpores = 8 + Math.round(randomBetween(2, 8));
+          grantSpores(bonusSpores);
+          if (Math.random() < 0.4) state.inventory.mycoPotion += 1;
+          if (Math.random() < 0.25) state.inventory.manaDew += 1;
+          if (firstCache) {
+            addClue(cacheClueId, `${structure.name} Cache Ledger`);
+          }
+          layout.nodeStates[nearbyNode.id] = true;
+          state.interior.lastResult = `Supply cache recovered: +${bonusSpores} spores${firstCache ? ", cache ledger clue" : ""}.`;
+          refreshInteriorHint(structure, true);
+          drawInteriorScene(structure);
+          playSfx("pickup");
+          return;
+        }
+        if (nearbyNode.kind !== "feature") {
+          state.interior.lastResult = "Unknown node type. Keep exploring.";
+          refreshInteriorHint(structure, true);
+          return;
+        }
+
+        if (state.progress.solvedStructures.has(structure.id)) {
+          state.interior.lastResult = "Core feature already cleared in this location.";
+          refreshInteriorHint(structure, true);
+          playSfx("error");
+          return;
+        }
+        const feature = layout.feature;
         state.progress.solvedStructures.add(structure.id);
         state.progress.trainingMarks = (state.progress.trainingMarks ?? 0) + 1;
         const rewards = [];
@@ -6562,7 +7239,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
         const seasonGain = 10 + rewards.length * 3 + (feature === "combat-trial" ? 16 : 0);
         recordSeasonImpact("interior-clear", state.playerClan, seasonGain, `${structure.name} // ${INTERIOR_FEATURE_LABELS[feature]}`);
-        dom.interiorHint.textContent = `${INTERIOR_FEATURE_LABELS[feature]} cleared: ${rewards.join(", ")}.`;
+        state.interior.lastResult = `${INTERIOR_FEATURE_LABELS[feature]} cleared: ${rewards.join(", ")}.`;
+        refreshInteriorHint(structure, true);
         playSfx("pickup");
         drawInteriorScene(structure);
         evaluateOnchainMilestones();
@@ -7554,7 +8232,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         updateLivingStory();
         if (state.activeDialogue) return;
         if (state.cutscene.active || state.mode === "cutscene") return;
-        if (state.mode === "interior" || state.interior.active) return;
+        if (state.mode === "interior" || state.interior.active) {
+          updateInterior(dt);
+          return;
+        }
         if (state.mode === "burn-pit" || state.burnPit.active) return;
         if (state.mode === "battle") return;
         moveHero(dt);
@@ -9080,7 +9761,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           return;
         }
         if (state.mode === "interior" || state.interior.active) {
-          if (key === "e" || key === "escape") {
+          if (isMoveKey) {
+            state.keys.add(key);
+          } else if (key === "e" || key === "escape") {
             closeInterior();
           } else if (key === "enter" || key === " ") {
             searchInterior();
