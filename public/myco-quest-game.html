@@ -357,6 +357,34 @@
         margin-top: 6px;
         grid-template-columns: minmax(84px, 1fr) repeat(3, auto);
       }
+      .undertale-choice-panel {
+        margin-top: 6px;
+        border: 2px solid #f8fafc;
+        border-radius: 2px;
+        background: #05070a;
+        padding: 8px 10px;
+      }
+      .undertale-choice-panel p {
+        margin: 0 0 6px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 12px;
+        color: #f8fafc;
+      }
+      .undertale-choice-panel ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 2px;
+      }
+      .undertale-choice-panel li {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 12px;
+        color: #cbd5e1;
+      }
+      .undertale-choice-panel li.active {
+        color: #facc15;
+      }
       .undertale-speech-box {
         margin-top: 8px;
         min-height: 72px;
@@ -1298,6 +1326,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             <div id="encounterSpeechBox" class="undertale-speech-box">
               <p id="encounterSpeechText">* Waiting for the next encounter...</p>
             </div>
+            <div id="battleChoicePanel" class="undertale-choice-panel">
+              <p id="battleChoiceHint">* Choose a command.</p>
+              <ul id="battleChoiceList"></ul>
+            </div>
             <div class="battle-controls-layout">
               <div>
                 <div class="battle-controls undertale-command-strip">
@@ -1336,7 +1368,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
               Interact: E<br />
               Sprint: Hold Shift<br />
               Enemy Overworld Threats: rocks, flames, and spell barrages<br />
-              Battle Select: Left/Right arrows (or A/D) + Enter (Undertale command row)<br />
+              Battle Select: Left/Right arrows (or A/D), Enter to open, Up/Down to choose option, Enter confirm<br />
               Quick ACT/MERCY: Q / R in battle<br />
               Defend/Spell/Flee: G / X / F in battle<br />
               Cutscene Next: Space<br />
@@ -1554,6 +1586,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         enemyMoodPanel: document.getElementById("enemyMoodPanel"),
         enemyMoodText: document.getElementById("enemyMoodText"),
         enemyMercyText: document.getElementById("enemyMercyText"),
+        battleChoicePanel: document.getElementById("battleChoicePanel"),
+        battleChoiceHint: document.getElementById("battleChoiceHint"),
+        battleChoiceList: document.getElementById("battleChoiceList"),
         battleLog: document.getElementById("battleLog"),
         elementSelect: document.getElementById("elementSelect"),
         undertaleCommandButtons: Array.from(document.querySelectorAll("[data-undertale-command]")),
@@ -3120,6 +3155,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           speechRevealIndex: 0,
           speechNextAt: 0,
           commandIndex: 0,
+          submenuCommand: "",
+          submenuOptions: [],
+          submenuIndex: 0,
         },
         dialogueUi: {
           source: "",
@@ -4550,14 +4588,23 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
               return;
             }
             if (action === "guard") {
+              closeBattleSubmenu();
+              refreshUndertaleCommandButtons();
+              refreshBattleChoiceMenu();
               playTurn("guard");
               return;
             }
             if (action === "skill") {
+              closeBattleSubmenu();
+              refreshUndertaleCommandButtons();
+              refreshBattleChoiceMenu();
               playTurn("skill");
               return;
             }
             if (action === "flee") {
+              closeBattleSubmenu();
+              refreshUndertaleCommandButtons();
+              refreshBattleChoiceMenu();
               attemptBattleFlee();
               return;
             }
@@ -5417,10 +5464,123 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         state.battleUi.commandIndex = wrapped;
       };
 
+      const isBattleSubmenuOpen = () =>
+        Boolean(state.battleUi.submenuCommand) &&
+        Array.isArray(state.battleUi.submenuOptions) &&
+        state.battleUi.submenuOptions.length > 0;
+
+      const setBattleSubmenuIndex = (nextIndex = 0) => {
+        const options = Array.isArray(state.battleUi.submenuOptions) ? state.battleUi.submenuOptions : [];
+        if (!options.length) {
+          state.battleUi.submenuIndex = 0;
+          return;
+        }
+        const wrapped = ((Math.round(nextIndex) % options.length) + options.length) % options.length;
+        state.battleUi.submenuIndex = wrapped;
+      };
+
+      const closeBattleSubmenu = () => {
+        state.battleUi.submenuCommand = "";
+        state.battleUi.submenuOptions = [];
+        state.battleUi.submenuIndex = 0;
+      };
+
+      const buildBattleSubmenuOptions = (commandId) => {
+        const battle = state.battle;
+        if (!battle || battle.status !== "active") return [];
+        if (commandId === "fight") {
+          return [
+            { id: "strike", label: "Strike", actionKind: "turn", turnKind: "strike" },
+            { id: "spell", label: "Spell", actionKind: "turn", turnKind: "skill" },
+            { id: "defend", label: "Defend", actionKind: "turn", turnKind: "guard" },
+            { id: "back", label: "Back", actionKind: "back" },
+          ];
+        }
+        if (commandId === "act") {
+          const lane = battle.encounterLane ?? "tactical";
+          const actLines = UNDERTALE_ACT_VARIANTS[lane] ?? UNDERTALE_ACT_VARIANTS.default;
+          const actLabels = ["Reason", "Joke", "Observe"];
+          const options = actLabels.map((label, index) => ({
+            id: `act-${index}`,
+            label,
+            actionKind: "turn",
+            turnKind: "act",
+            meta: {
+              actLineOverride: actLines[index % actLines.length],
+              actLabel: label,
+            },
+          }));
+          options.push({ id: "back", label: "Back", actionKind: "back" });
+          return options;
+        }
+        if (commandId === "item") {
+          const catalog = [
+            { itemType: "mycoPotion", label: "Myco Potion" },
+            { itemType: "manaDew", label: "Mana Dew" },
+            { itemType: "smokeBomb", label: "Smoke Bomb" },
+          ];
+          const options = catalog
+            .filter((entry) => (state.inventory[entry.itemType] ?? 0) > 0)
+            .map((entry) => ({
+              id: `item-${entry.itemType}`,
+              label: `${entry.label} x${state.inventory[entry.itemType] ?? 0}`,
+              actionKind: "item",
+              itemType: entry.itemType,
+            }));
+          if (!options.length) {
+            options.push({
+              id: "item-none",
+              label: "No usable items",
+              actionKind: "none",
+              disabled: true,
+            });
+          }
+          options.push({ id: "back", label: "Back", actionKind: "back" });
+          return options;
+        }
+        if (commandId === "mercy") {
+          const undertale = ensureUndertaleBattleState(battle);
+          return [
+            {
+              id: "spare",
+              label: undertale?.mercyReady ? "Spare (Ready)" : "Spare",
+              actionKind: "turn",
+              turnKind: "mercy",
+            },
+            { id: "flee", label: "Flee", actionKind: "flee" },
+            { id: "back", label: "Back", actionKind: "back" },
+          ];
+        }
+        return [];
+      };
+
+      const openBattleSubmenu = (commandId) => {
+        if (!state.battle || state.battle.status !== "active") return;
+        state.battleUi.submenuCommand = commandId;
+        state.battleUi.submenuOptions = buildBattleSubmenuOptions(commandId);
+        state.battleUi.submenuIndex = 0;
+      };
+
       const shiftBattleCommandSelection = (delta = 1) => {
+        if (isBattleSubmenuOpen()) return;
         setBattleCommandIndex((state.battleUi.commandIndex ?? 0) + delta);
         playSfx("talk");
         refreshUndertaleCommandButtons();
+        refreshBattleChoiceMenu();
+      };
+
+      const shiftBattleSubmenuSelection = (delta = 1) => {
+        if (!isBattleSubmenuOpen()) return;
+        const options = state.battleUi.submenuOptions;
+        if (!options.length) return;
+        let nextIndex = state.battleUi.submenuIndex ?? 0;
+        for (let steps = 0; steps < options.length; steps += 1) {
+          nextIndex = ((nextIndex + delta) % options.length + options.length) % options.length;
+          if (!options[nextIndex]?.disabled) break;
+        }
+        setBattleSubmenuIndex(nextIndex);
+        playSfx("talk");
+        refreshBattleChoiceMenu();
       };
 
       const refreshUndertaleCommandButtons = () => {
@@ -5431,6 +5591,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           const selected = commandId === selectedId;
           button.classList.toggle("active", selected);
           button.setAttribute("aria-selected", selected ? "true" : "false");
+          button.setAttribute("aria-expanded", state.battleUi.submenuCommand === commandId ? "true" : "false");
         });
       };
 
@@ -5440,21 +5601,80 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           return;
         }
         const commandId = UNDERTALE_COMMAND_ORDER[state.battleUi.commandIndex ?? 0] ?? "fight";
-        if (commandId === "fight") {
-          playTurn("strike");
+        openBattleSubmenu(commandId);
+        playSfx("talk");
+        refreshUndertaleCommandButtons();
+        refreshBattleChoiceMenu();
+      };
+
+      const executeBattleSubmenuSelection = () => {
+        if (!isBattleSubmenuOpen()) {
+          executeSelectedBattleCommand();
           return;
         }
-        if (commandId === "act") {
-          playTurn("act");
+        const options = state.battleUi.submenuOptions;
+        const selected = options[state.battleUi.submenuIndex ?? 0];
+        if (!selected || selected.disabled || selected.actionKind === "none") {
+          playSfx("error");
           return;
         }
-        if (commandId === "item") {
-          useInventoryItem("mycoPotion");
+        if (selected.actionKind === "back") {
+          closeBattleSubmenu();
+          playSfx("talk");
+          refreshUndertaleCommandButtons();
+          refreshBattleChoiceMenu();
           return;
         }
-        if (commandId === "mercy") {
-          playTurn("mercy");
+        if (selected.actionKind === "turn") {
+          closeBattleSubmenu();
+          refreshUndertaleCommandButtons();
+          refreshBattleChoiceMenu();
+          playTurn(selected.turnKind, selected.meta ?? {});
+          return;
         }
+        if (selected.actionKind === "item") {
+          closeBattleSubmenu();
+          refreshUndertaleCommandButtons();
+          refreshBattleChoiceMenu();
+          useInventoryItem(selected.itemType);
+          return;
+        }
+        if (selected.actionKind === "flee") {
+          closeBattleSubmenu();
+          refreshUndertaleCommandButtons();
+          refreshBattleChoiceMenu();
+          attemptBattleFlee();
+        }
+      };
+
+      const refreshBattleChoiceMenu = () => {
+        if (!dom.battleChoicePanel || !dom.battleChoiceHint || !dom.battleChoiceList) return;
+        const battleActive = state.mode === "battle" && state.battle && state.battle.status === "active";
+        if (!battleActive) {
+          dom.battleChoiceHint.textContent = "* Choose a command.";
+          dom.battleChoiceList.innerHTML = "";
+          dom.battleChoicePanel.style.opacity = "0.72";
+          return;
+        }
+        dom.battleChoicePanel.style.opacity = "1";
+        if (!isBattleSubmenuOpen()) {
+          const selectedId = UNDERTALE_COMMAND_ORDER[state.battleUi.commandIndex ?? 0] ?? "fight";
+          dom.battleChoiceHint.textContent = "* LEFT/RIGHT choose command. ENTER confirms.";
+          dom.battleChoiceList.innerHTML = UNDERTALE_COMMAND_ORDER.map((commandId) => {
+            const active = commandId === selectedId;
+            return `<li class="${active ? "active" : ""}">${active ? ">" : " "} ${commandId.toUpperCase()}</li>`;
+          }).join("");
+          return;
+        }
+        const commandName = String(state.battleUi.submenuCommand || "").toUpperCase();
+        dom.battleChoiceHint.textContent = `* ${commandName}: UP/DOWN select, ENTER confirm, ESC back.`;
+        dom.battleChoiceList.innerHTML = state.battleUi.submenuOptions
+          .map((option, index) => {
+            const active = index === (state.battleUi.submenuIndex ?? 0);
+            const disabled = option.disabled ? " (locked)" : "";
+            return `<li class="${active ? "active" : ""}">${active ? ">" : " "} ${escapeHtml(option.label)}${disabled}</li>`;
+          })
+          .join("");
       };
 
       const saveConfig = () => {
@@ -9322,6 +9542,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         state.mode = "battle";
         state.encounterEnemyId = enemy.id;
         setBattleCommandIndex(0);
+        closeBattleSubmenu();
         refreshUndertaleCommandButtons();
         setBattlePopupActive(true);
         resetOverworldProjectiles();
@@ -9588,6 +9809,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           state.mode = "explore";
           state.encounterEnemyId = null;
           setBattleCommandIndex(0);
+          closeBattleSubmenu();
           refreshUndertaleCommandButtons();
           setBattlePopupActive(false);
           resetBattleFx();
@@ -9599,7 +9821,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }, 1250);
       };
 
-      const resolveLocalTurn = (kind, element) => {
+      const resolveLocalTurn = (kind, element, turnMeta = {}) => {
         if (!state.battle || state.battle.status !== "active") return;
         const battle = state.battle;
         const undertale = ensureUndertaleBattleState(battle);
@@ -9626,18 +9848,21 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           playerDamage = Math.round((12 + state.hero.magic * 5) * elementBonus * boost * randomRoll());
         } else if (kind === "act") {
           const lane = battle.encounterLane ?? "tactical";
-          const actLine = pickFromList(
-            UNDERTALE_ACT_VARIANTS[lane] ?? UNDERTALE_ACT_VARIANTS.default,
-            `${getEnemyBattleKind(battle)}:${lane}`,
-            battle.turnNumber,
-          );
+          const actLine = turnMeta.actLineOverride
+            ? String(turnMeta.actLineOverride)
+            : pickFromList(
+                UNDERTALE_ACT_VARIANTS[lane] ?? UNDERTALE_ACT_VARIANTS.default,
+                `${getEnemyBattleKind(battle)}:${lane}`,
+                battle.turnNumber,
+              );
+          const actLabel = turnMeta.actLabel ? ` (${turnMeta.actLabel})` : "";
           const actGain = (battle.enemy?.boss ? 1 : 2) + (state.hero.magic >= 4 ? 1 : 0) + (state.hero.morality >= 0 ? 1 : 0);
           const mercyThreshold = battle.enemy?.boss ? 8 : 6;
           undertale.actProgress = Math.min(12, undertale.actProgress + actGain);
           undertale.mood = getUndertaleMoodLine(battle);
           undertale.mercyReady = undertale.actProgress >= mercyThreshold || battle.enemy.hp <= Math.round(battle.enemy.maxHp * 0.22);
           battle.enemy.guard = Math.max(0, battle.enemy.guard - (5 + state.hero.magic));
-          battle.battleLog.push(`* ${actLine}`);
+          battle.battleLog.push(`* ACT${actLabel}: ${actLine}`);
           battle.battleLog.push(`* ${battle.enemy.name} ${undertale.mood.toLowerCase()}`);
           if (undertale.mercyReady) {
             battle.battleLog.push(`* ${battle.enemy.name} can be spared.`);
@@ -9731,7 +9956,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         battle.updatedAt = new Date().toISOString();
       };
 
-      const playTurn = async (kind) => {
+      const playTurn = async (kind, turnMeta = {}) => {
         if (!state.battle || state.battle.status !== "active") {
           setStatus("No active battle turn to resolve.", true);
           return;
@@ -9807,7 +10032,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             state.battleMode = "local";
             appendBattleLog("Undertale action resolved locally for social-route compatibility.");
           }
-          resolveLocalTurn(kind, element);
+          resolveLocalTurn(kind, element, turnMeta);
           appendBattleLog(`Local turn ${state.battle.turnNumber}: ${kind}`);
         }
 
@@ -11399,7 +11624,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (battle.status === "active") {
           battleCtx.fillStyle = "rgba(191, 219, 254, 0.9)";
           battleCtx.font = "12px sans-serif";
-          battleCtx.fillText("Use LEFT/RIGHT to choose FIGHT ACT ITEM MERCY, press ENTER to confirm.", 14, battleCanvas.height - 34);
+          battleCtx.fillText("LEFT/RIGHT choose command, ENTER opens it, UP/DOWN choose option, ENTER confirms.", 14, battleCanvas.height - 34);
         }
       };
 
@@ -11683,7 +11908,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         dom.itemBtn.disabled = !battleActive || state.inventory.mycoPotion <= 0;
         if (dom.fleeBtn) dom.fleeBtn.disabled = !battleActive;
         if (dom.elementSelect) dom.elementSelect.disabled = !battleActive;
+        if (!battleActive) {
+          closeBattleSubmenu();
+        }
         refreshUndertaleCommandButtons();
+        refreshBattleChoiceMenu();
 
         if (state.battle) {
           const undertale = ensureUndertaleBattleState(state.battle);
@@ -11859,6 +12088,31 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           return;
         }
         if (state.mode === "battle" && state.battle?.status === "active") {
+          if (isBattleSubmenuOpen()) {
+            if (key === "arrowup" || key === "w") {
+              shiftBattleSubmenuSelection(-1);
+              event.preventDefault();
+              return;
+            }
+            if (key === "arrowdown" || key === "s") {
+              shiftBattleSubmenuSelection(1);
+              event.preventDefault();
+              return;
+            }
+            if (key === "enter" || key === "z" || key === " ") {
+              executeBattleSubmenuSelection();
+              event.preventDefault();
+              return;
+            }
+            if (key === "escape" || key === "backspace") {
+              closeBattleSubmenu();
+              refreshUndertaleCommandButtons();
+              refreshBattleChoiceMenu();
+              playSfx("talk");
+              event.preventDefault();
+              return;
+            }
+          }
           if (key === "arrowleft" || key === "a") {
             shiftBattleCommandSelection(-1);
             event.preventDefault();
@@ -11869,7 +12123,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             event.preventDefault();
             return;
           }
-          if (key === "enter" || key === "z") {
+          if (key === "enter" || key === "z" || key === " ") {
             executeSelectedBattleCommand();
             event.preventDefault();
             return;
@@ -11880,27 +12134,26 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             return;
           }
           if (key === "q") {
+            closeBattleSubmenu();
             void playTurn("act");
             event.preventDefault();
             return;
           }
           if (key === "r") {
+            closeBattleSubmenu();
             void playTurn("mercy");
             event.preventDefault();
             return;
           }
           if (key === "g") {
+            closeBattleSubmenu();
             void playTurn("guard");
             event.preventDefault();
             return;
           }
           if (key === "x") {
+            closeBattleSubmenu();
             void playTurn("skill");
-            event.preventDefault();
-            return;
-          }
-          if (key === " ") {
-            executeSelectedBattleCommand();
             event.preventDefault();
             return;
           }
@@ -11990,14 +12243,31 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         refreshUndertaleCommandButtons();
         executeSelectedBattleCommand();
       });
-      dom.guardBtn.addEventListener("click", () => playTurn("guard"));
-      dom.skillBtn.addEventListener("click", () => playTurn("skill"));
+      dom.guardBtn.addEventListener("click", () => {
+        closeBattleSubmenu();
+        refreshUndertaleCommandButtons();
+        refreshBattleChoiceMenu();
+        playTurn("guard");
+      });
+      dom.skillBtn.addEventListener("click", () => {
+        closeBattleSubmenu();
+        refreshUndertaleCommandButtons();
+        refreshBattleChoiceMenu();
+        playTurn("skill");
+      });
       dom.itemBtn.addEventListener("click", () => {
         setBattleCommandIndex(UNDERTALE_COMMAND_ORDER.indexOf("item"));
         refreshUndertaleCommandButtons();
         executeSelectedBattleCommand();
       });
-      if (dom.fleeBtn) dom.fleeBtn.addEventListener("click", attemptBattleFlee);
+      if (dom.fleeBtn) {
+        dom.fleeBtn.addEventListener("click", () => {
+          closeBattleSubmenu();
+          refreshUndertaleCommandButtons();
+          refreshBattleChoiceMenu();
+          attemptBattleFlee();
+        });
+      }
 
       dom.buyPotionBtn.addEventListener("click", () => tryBuyItem("mycoPotion"));
       dom.buyManaBtn.addEventListener("click", () => tryBuyItem("manaDew"));
@@ -12121,6 +12391,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       setupCornerMenus();
       setupMobileControls();
       setBattleCommandIndex(0);
+      closeBattleSubmenu();
       refreshUndertaleCommandButtons();
       resetDialogueReveal("...");
       refreshTitleScreen();
