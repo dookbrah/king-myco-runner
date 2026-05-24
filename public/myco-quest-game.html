@@ -8867,7 +8867,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             label: "Exit Gate",
           },
         ];
-        return {
+        const layout = {
           id: structure.id,
           interiorType,
           width,
@@ -8883,6 +8883,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           exploredAt: Date.now(),
           nodeStates: {},
         };
+        ensureInteriorLayoutAccessibility(layout);
+        return layout;
       };
 
       const isInteriorBlocked = (layout, x, y) => {
@@ -8900,6 +8902,146 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           if (intersectsRect(heroRect, obstacle)) return true;
         }
         return false;
+      };
+
+      const getInteriorGridCellCenter = (layout, cellSize, col, row) => ({
+        x: clamp(Math.round(col * cellSize + cellSize * 0.5), 24, layout.width - 24),
+        y: clamp(Math.round(row * cellSize + cellSize * 0.5), 24, layout.height - 24),
+      });
+
+      const findNearestInteriorWalkableCell = (layout, walkable, cols, rows, cellSize, preferredX, preferredY) => {
+        const preferredCol = clamp(Math.floor(preferredX / cellSize), 0, cols - 1);
+        const preferredRow = clamp(Math.floor(preferredY / cellSize), 0, rows - 1);
+        const inBounds = (col, row) => col >= 0 && row >= 0 && col < cols && row < rows;
+        if (inBounds(preferredCol, preferredRow) && walkable[preferredRow][preferredCol]) {
+          return { col: preferredCol, row: preferredRow };
+        }
+        const maxRing = Math.max(cols, rows);
+        for (let ring = 1; ring <= maxRing; ring += 1) {
+          for (let row = preferredRow - ring; row <= preferredRow + ring; row += 1) {
+            for (let col = preferredCol - ring; col <= preferredCol + ring; col += 1) {
+              const isEdge = row === preferredRow - ring || row === preferredRow + ring || col === preferredCol - ring || col === preferredCol + ring;
+              if (!isEdge || !inBounds(col, row)) continue;
+              if (walkable[row][col]) return { col, row };
+            }
+          }
+        }
+        return null;
+      };
+
+      const buildInteriorReachabilityMap = (layout, startX, startY) => {
+        const cellSize = 20;
+        const cols = Math.max(1, Math.floor(layout.width / cellSize));
+        const rows = Math.max(1, Math.floor(layout.height / cellSize));
+        const walkable = Array.from({ length: rows }, (_, row) =>
+          Array.from({ length: cols }, (_, col) => {
+            const center = getInteriorGridCellCenter(layout, cellSize, col, row);
+            return !isInteriorBlocked(layout, center.x, center.y);
+          }),
+        );
+        const startCell = findNearestInteriorWalkableCell(layout, walkable, cols, rows, cellSize, startX, startY);
+        const reachable = new Set();
+        const centers = new Map();
+        if (!startCell) {
+          return { cellSize, cols, rows, reachable, centers };
+        }
+        const queue = [startCell];
+        const keyFor = (col, row) => `${col}:${row}`;
+        reachable.add(keyFor(startCell.col, startCell.row));
+        while (queue.length) {
+          const { col, row } = queue.shift();
+          const key = keyFor(col, row);
+          centers.set(key, getInteriorGridCellCenter(layout, cellSize, col, row));
+          const neighbors = [
+            { col: col + 1, row },
+            { col: col - 1, row },
+            { col, row: row + 1 },
+            { col, row: row - 1 },
+          ];
+          for (const next of neighbors) {
+            if (next.col < 0 || next.row < 0 || next.col >= cols || next.row >= rows) continue;
+            if (!walkable[next.row][next.col]) continue;
+            const nextKey = keyFor(next.col, next.row);
+            if (reachable.has(nextKey)) continue;
+            reachable.add(nextKey);
+            queue.push(next);
+          }
+        }
+        return { cellSize, cols, rows, reachable, centers };
+      };
+
+      const findReachableInteriorPoint = (layout, reachability, preferredX, preferredY, radius, occupied = []) => {
+        const candidates = [];
+        for (const key of reachability.reachable) {
+          const center = reachability.centers.get(key);
+          if (!center) continue;
+          if (isInteriorPointBlocked(center.x, center.y, radius, layout.obstacles, layout.width, layout.height)) continue;
+          candidates.push(center);
+        }
+        if (!candidates.length) {
+          return resolveInteriorPoint(preferredX, preferredY, radius, layout.obstacles, layout.width, layout.height);
+        }
+        const pickBest = (respectSpacing) => {
+          let best = null;
+          let bestScore = Number.POSITIVE_INFINITY;
+          for (const center of candidates) {
+            if (respectSpacing) {
+              let blockedBySpacing = false;
+              for (const entry of occupied) {
+                const minGap = entry.minGap ?? 0;
+                if (minGap > 0 && dist(center.x, center.y, entry.x, entry.y) < minGap) {
+                  blockedBySpacing = true;
+                  break;
+                }
+              }
+              if (blockedBySpacing) continue;
+            }
+            const score = (center.x - preferredX) ** 2 + (center.y - preferredY) ** 2;
+            if (score < bestScore) {
+              best = center;
+              bestScore = score;
+            }
+          }
+          return best;
+        };
+        const spaced = pickBest(true);
+        if (spaced) return spaced;
+        return pickBest(false) ?? candidates[0];
+      };
+
+      const ensureInteriorLayoutAccessibility = (layout) => {
+        const initialSpawn = resolveInteriorPoint(
+          layout.spawn.x,
+          layout.spawn.y,
+          16,
+          layout.obstacles,
+          layout.width,
+          layout.height,
+        );
+        layout.spawn = { x: initialSpawn.x, y: initialSpawn.y };
+        const reachability = buildInteriorReachabilityMap(layout, layout.spawn.x, layout.spawn.y);
+        if (!reachability.reachable.size) {
+          return;
+        }
+        const occupied = [{ x: layout.spawn.x, y: layout.spawn.y, minGap: 120 }];
+        for (const node of layout.nodes) {
+          const point = findReachableInteriorPoint(layout, reachability, node.x, node.y, 14, occupied);
+          node.x = point.x;
+          node.y = point.y;
+          occupied.push({ x: point.x, y: point.y, minGap: node.kind === "exit" ? 92 : 72 });
+        }
+        for (const npc of layout.npcs ?? []) {
+          const point = findReachableInteriorPoint(layout, reachability, npc.x, npc.y, 16, occupied);
+          npc.x = point.x;
+          npc.y = point.y;
+          occupied.push({ x: point.x, y: point.y, minGap: 86 });
+        }
+        for (const enemy of layout.enemies ?? []) {
+          const point = findReachableInteriorPoint(layout, reachability, enemy.x, enemy.y, 14, occupied);
+          enemy.x = point.x;
+          enemy.y = point.y;
+          occupied.push({ x: point.x, y: point.y, minGap: 66 });
+        }
       };
 
       const moveInteriorHero = (dt, layout) => {
