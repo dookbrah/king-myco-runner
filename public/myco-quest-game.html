@@ -787,7 +787,7 @@
         height: 100%;
       }
       #panelBattle.battle-popup-active #battleCanvas {
-        height: min(56vh, 560px);
+        height: min(62vh, 620px);
         min-height: 220px;
       }
       #panelBattle.battle-popup-active .battle-controls {
@@ -956,7 +956,7 @@
           grid-template-rows: auto auto minmax(180px, 1fr) auto auto auto;
         }
         #panelBattle.battle-popup-active #battleCanvas {
-          height: min(48vh, 380px);
+          height: min(52vh, 420px);
           min-height: 180px;
         }
         .mobile-pad {
@@ -4639,45 +4639,51 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const playBattleActionSfx = (kind, actor = "player", critical = false) => {
         if (kind === "skill") {
           playLayeredSfx([
-            { frequency: 560, duration: 0.14, gain: 0.06, type: "triangle" },
-            { frequency: 740, duration: 0.11, gain: 0.04, type: "square", offset: 0.035 },
-            { frequency: 420, duration: 0.16, gain: 0.03, type: "sawtooth", offset: 0.02 },
+            { frequency: 560, duration: 0.15, gain: 0.072, type: "triangle" },
+            { frequency: 840, duration: 0.12, gain: 0.055, type: "square", offset: 0.03 },
+            { frequency: 420, duration: 0.2, gain: 0.042, type: "sawtooth", offset: 0.015 },
+            { frequency: 1140, duration: 0.09, gain: 0.035, type: "square", offset: 0.11 },
           ]);
           return;
         }
         if (kind === "guard") {
           playLayeredSfx([
-            { frequency: 250, duration: 0.08, gain: 0.045, type: "square" },
-            { frequency: 330, duration: 0.1, gain: 0.03, type: "triangle", offset: 0.05 },
+            { frequency: 240, duration: 0.1, gain: 0.056, type: "square" },
+            { frequency: 330, duration: 0.12, gain: 0.04, type: "triangle", offset: 0.04 },
+            { frequency: 480, duration: 0.07, gain: 0.032, type: "square", offset: 0.095 },
           ]);
           return;
         }
         if (kind === "hit") {
           playLayeredSfx([
-            { frequency: actor === "enemy" ? 128 : 156, duration: 0.07, gain: 0.058, type: "sawtooth" },
-            { frequency: critical ? 420 : 280, duration: 0.08, gain: 0.032, type: "square", offset: 0.015 },
+            { frequency: actor === "enemy" ? 122 : 150, duration: 0.08, gain: 0.068, type: "sawtooth" },
+            { frequency: critical ? 460 : 300, duration: 0.09, gain: 0.038, type: "square", offset: 0.012 },
+            { frequency: critical ? 720 : 520, duration: 0.05, gain: critical ? 0.042 : 0.024, type: "triangle", offset: 0.04 },
           ]);
           return;
         }
         if (kind === "death") {
           playLayeredSfx([
-            { frequency: 170, duration: 0.1, gain: 0.05, type: "triangle" },
-            { frequency: 120, duration: 0.2, gain: 0.04, type: "sawtooth", offset: 0.06 },
+            { frequency: 170, duration: 0.12, gain: 0.06, type: "triangle" },
+            { frequency: 120, duration: 0.26, gain: 0.05, type: "sawtooth", offset: 0.06 },
+            { frequency: 82, duration: 0.3, gain: 0.04, type: "triangle", offset: 0.11 },
           ]);
           return;
         }
         if (kind === "victory") {
           playLayeredSfx([
-            { frequency: 880, duration: 0.12, gain: 0.06, type: "square" },
-            { frequency: 1174, duration: 0.12, gain: 0.05, type: "square", offset: 0.11 },
-            { frequency: 1396, duration: 0.16, gain: 0.04, type: "triangle", offset: 0.22 },
+            { frequency: 880, duration: 0.14, gain: 0.07, type: "square" },
+            { frequency: 1174, duration: 0.14, gain: 0.058, type: "square", offset: 0.1 },
+            { frequency: 1396, duration: 0.18, gain: 0.05, type: "triangle", offset: 0.2 },
+            { frequency: 1568, duration: 0.18, gain: 0.04, type: "square", offset: 0.3 },
           ]);
           return;
         }
         if (kind === "strike") {
           playLayeredSfx([
-            { frequency: actor === "player" ? 320 : 220, duration: 0.08, gain: 0.06, type: "sawtooth" },
-            { frequency: 500, duration: 0.05, gain: 0.03, type: "square", offset: 0.03 },
+            { frequency: actor === "player" ? 320 : 220, duration: 0.09, gain: 0.07, type: "sawtooth" },
+            { frequency: 500, duration: 0.06, gain: 0.04, type: "square", offset: 0.03 },
+            { frequency: actor === "player" ? 760 : 540, duration: 0.05, gain: 0.028, type: "triangle", offset: 0.07 },
           ]);
           return;
         }
@@ -10409,52 +10415,94 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         let scaleX = 1;
         let scaleY = 1;
         let alpha = 1;
+        let guardPulse = 0;
+        let specialBloom = 0;
+        let attackSwing = 0;
+        let victoryPulse = 0;
+        let deathProgress = 0;
 
         const activeAction = [...state.battleFx.actions].reverse().find((fx) => fx.source === side && now - fx.startedAt <= fx.duration);
         if (activeAction) {
           const progress = clamp((now - activeAction.startedAt) / activeAction.duration, 0, 1);
           const lunge = Math.sin(Math.PI * progress);
           if (activeAction.kind === "guard") {
-            scaleX += Math.sin(progress * Math.PI) * 0.08;
-            scaleY -= Math.sin(progress * Math.PI) * 0.06;
+            guardPulse = lunge;
+            scaleX += lunge * 0.12;
+            scaleY -= lunge * 0.08;
+            y -= lunge * 3;
+            tilt -= direction * 0.08 * lunge;
+          } else if (activeAction.kind === "skill") {
+            specialBloom = lunge;
+            x += direction * 22 * lunge;
+            y -= 11 * lunge;
+            tilt += direction * 0.3 * lunge;
+            scaleY += lunge * 0.06;
+            scaleX -= lunge * 0.04;
+          } else if (activeAction.kind === "act" || activeAction.kind === "mercy") {
+            guardPulse = lunge * 0.7;
+            y -= lunge * 6;
+            tilt += direction * 0.06 * lunge;
+            scaleY += lunge * 0.04;
           } else {
-            x += direction * (activeAction.kind === "skill" ? 18 : 24) * lunge;
-            y -= 7 * lunge;
-            tilt += direction * 0.2 * lunge;
+            attackSwing = lunge;
+            x += direction * 30 * lunge;
+            y -= 9 * lunge;
+            tilt += direction * 0.35 * lunge;
+            scaleY += lunge * 0.04;
           }
         }
 
         const hitImpact = [...state.battleFx.impacts].reverse().find((fx) => fx.target === side && now - fx.startedAt <= fx.duration);
         if (hitImpact) {
           const p = clamp((now - hitImpact.startedAt) / hitImpact.duration, 0, 1);
-          const shake = (1 - p) * 5.5 * hitImpact.magnitude;
-          x += Math.sin(now * 0.13 + direction) * shake;
+          const shake = (1 - p) * 7.5 * hitImpact.magnitude;
+          x += Math.sin(now * 0.16 + direction) * shake;
+          y -= (1 - p) * 4 * hitImpact.magnitude;
+          tilt -= direction * (1 - p) * 0.22 * hitImpact.magnitude;
+          scaleX += (1 - p) * 0.05 * hitImpact.magnitude;
+          scaleY -= (1 - p) * 0.04 * hitImpact.magnitude;
         }
 
         if (state.battleFx.outcome && (battle.status === "won" || battle.status === "lost")) {
           const p = clamp((now - state.battleFx.outcome.startedAt) / state.battleFx.outcome.duration, 0, 1);
           const actorWon = (side === "player" && battle.status === "won") || (side === "enemy" && battle.status === "lost");
           if (actorWon) {
-            y -= Math.abs(Math.sin(p * Math.PI * 3.2)) * 9;
-            scaleY += Math.abs(Math.sin(p * Math.PI * 2)) * 0.08;
-            scaleX -= Math.abs(Math.sin(p * Math.PI * 2)) * 0.04;
+            victoryPulse = Math.abs(Math.sin(p * Math.PI * 4.2));
+            y -= Math.abs(Math.sin(p * Math.PI * 3.2)) * 12;
+            scaleY += Math.abs(Math.sin(p * Math.PI * 2.2)) * 0.12;
+            scaleX -= Math.abs(Math.sin(p * Math.PI * 2.2)) * 0.05;
+            tilt += direction * Math.sin(p * Math.PI * 2.6) * 0.1;
           } else {
-            y += p * 24;
+            deathProgress = p;
+            y += p * 38;
             tilt += direction * p * 1.05;
-            scaleY = Math.max(0.55, 1 - p * 0.42);
-            scaleX = 1 + p * 0.22;
-            alpha = Math.max(0.16, 1 - p * 0.84);
+            scaleY = Math.max(0.48, 1 - p * 0.5);
+            scaleX = 1 + p * 0.34;
+            alpha = Math.max(0.08, 1 - p * 0.9);
           }
         }
 
-        return { x, y, tilt, scaleX, scaleY, alpha, action: activeAction };
+        return {
+          x,
+          y,
+          tilt,
+          scaleX,
+          scaleY,
+          alpha,
+          action: activeAction,
+          guardPulse,
+          specialBloom,
+          attackSwing,
+          victoryPulse,
+          deathProgress,
+        };
       };
 
       const drawBattleActor = (ctx, actor, side, pose, palette, stage, battle) => {
         const now = Date.now();
         const direction = side === "player" ? 1 : -1;
         const isPlayer = side === "player";
-        const actorScale = stage.actorScale;
+        const actorScale = stage.actorScale * 1.18;
         const isBoss = Boolean(actor?.boss || getEnemyBattleKind(battle) === "dark-mycelius");
 
         ctx.save();
@@ -10462,6 +10510,41 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         ctx.rotate(pose.tilt);
         ctx.scale(direction * actorScale * pose.scaleX, actorScale * pose.scaleY);
         ctx.globalAlpha = pose.alpha;
+
+        if (pose.specialBloom > 0.01) {
+          const bloomRadius = (isBoss ? 48 : 40) + pose.specialBloom * 16;
+          ctx.fillStyle = `${palette.aura}44`;
+          ctx.beginPath();
+          ctx.arc(0, 4, bloomRadius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        if (pose.guardPulse > 0.01) {
+          ctx.strokeStyle = `${palette.trim}cc`;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(0, 8, 30 + pose.guardPulse * 16, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.strokeStyle = `${palette.eye}99`;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(0, 8, 24 + pose.guardPulse * 10, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        if (pose.attackSwing > 0.01) {
+          const slashOffset = 18 + pose.attackSwing * 22;
+          ctx.strokeStyle = `${palette.trim}cc`;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(direction * (slashOffset - 16), -20);
+          ctx.lineTo(direction * (slashOffset + 18), 10);
+          ctx.stroke();
+          ctx.strokeStyle = `${palette.eye}99`;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(direction * (slashOffset - 8), 18);
+          ctx.lineTo(direction * (slashOffset + 12), -10);
+          ctx.stroke();
+        }
 
         ctx.fillStyle = "rgba(2, 6, 23, 0.42)";
         ctx.beginPath();
@@ -10572,6 +10655,27 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             ctx.stroke();
           }
         }
+
+        if (pose.victoryPulse > 0.01) {
+          const sparkleY = -34 - pose.victoryPulse * 8;
+          ctx.fillStyle = `${palette.eye}dd`;
+          ctx.fillRect(-2, sparkleY - 6, 4, 12);
+          ctx.fillRect(-8, sparkleY, 16, 4);
+        }
+        if (pose.deathProgress > 0.01) {
+          const fragments = 4;
+          for (let idx = 0; idx < fragments; idx += 1) {
+            const angle = (idx / fragments) * Math.PI * 2 + now * 0.002;
+            const drift = 10 + pose.deathProgress * 32;
+            ctx.fillStyle = `${palette.trim}${Math.floor((1 - pose.deathProgress) * 180).toString(16).padStart(2, "0")}`;
+            ctx.fillRect(
+              Math.cos(angle) * drift - 2,
+              Math.sin(angle) * drift - 2,
+              4,
+              4,
+            );
+          }
+        }
         ctx.restore();
       };
 
@@ -10592,26 +10696,34 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           ctx.strokeStyle = `rgba(${action.tint}, ${0.78 * alpha})`;
           ctx.fillStyle = `rgba(${action.tint}, ${0.34 * alpha})`;
           if (action.kind === "guard") {
-            const radius = 14 + Math.sin(progress * Math.PI) * 12;
-            ctx.lineWidth = 3;
+            const radius = 16 + Math.sin(progress * Math.PI) * 16;
+            ctx.lineWidth = 3.5;
             ctx.beginPath();
             ctx.arc(source.x, source.y - 2, radius, 0, Math.PI * 2);
             ctx.stroke();
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(source.x, source.y - 2, Math.max(8, radius - 10), 0, Math.PI * 2);
+            ctx.stroke();
           } else if (action.kind === "skill") {
             const sx = source.x + (target.x - source.x) * progress;
-            const sy = source.y + (target.y - source.y) * progress - Math.sin(progress * Math.PI) * 26;
+            const sy = source.y + (target.y - source.y) * progress - Math.sin(progress * Math.PI) * 34;
             ctx.beginPath();
-            ctx.arc(sx, sy, 7 + action.power * 3, 0, Math.PI * 2);
+            ctx.arc(sx, sy, 9 + action.power * 4, 0, Math.PI * 2);
             ctx.fill();
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 2.5;
             ctx.beginPath();
             ctx.moveTo(source.x, source.y - 4);
             ctx.lineTo(sx, sy);
             ctx.stroke();
-          } else {
+            ctx.beginPath();
+            ctx.moveTo(source.x - 8, source.y + 6);
+            ctx.lineTo(sx + 8, sy - 6);
+            ctx.stroke();
+          } else if (action.kind === "strike") {
             const burstX = target.x + (action.target === "enemy" ? -6 : 6);
             const burstY = target.y - 8;
-            ctx.lineWidth = 3;
+            ctx.lineWidth = 3.5;
             ctx.beginPath();
             ctx.moveTo(burstX - 16, burstY - 8);
             ctx.lineTo(burstX + 18, burstY + 10);
@@ -10619,6 +10731,16 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             ctx.beginPath();
             ctx.moveTo(burstX - 10, burstY + 13);
             ctx.lineTo(burstX + 12, burstY - 10);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(source.x + (target.x > source.x ? 8 : -8), source.y - 4);
+            ctx.lineTo(burstX, burstY);
+            ctx.stroke();
+          } else {
+            const ring = 12 + Math.sin(progress * Math.PI) * 10;
+            ctx.lineWidth = 2.4;
+            ctx.beginPath();
+            ctx.arc(source.x, source.y - 6, ring, 0, Math.PI * 2);
             ctx.stroke();
           }
         }
@@ -10628,12 +10750,42 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           if (!anchor) continue;
           const progress = clamp((now - impact.startedAt) / impact.duration, 0, 1);
           const alpha = 1 - progress;
-          const radius = 16 + progress * 34 * impact.magnitude;
+          const radius = 18 + progress * 40 * impact.magnitude;
           ctx.strokeStyle = `rgba(${impact.rgb}, ${0.84 * alpha})`;
-          ctx.lineWidth = Math.max(1.5, 4 * alpha);
+          ctx.lineWidth = Math.max(1.5, 4.8 * alpha);
           ctx.beginPath();
           ctx.arc(anchor.x, anchor.y - 6, radius, 0, Math.PI * 2);
           ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(anchor.x, anchor.y - 6, Math.max(8, radius - 12), 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        if (state.battleFx.outcome && state.battle) {
+          const p = clamp((now - state.battleFx.outcome.startedAt) / state.battleFx.outcome.duration, 0, 1);
+          const victory = state.battle.status === "won";
+          const focus = victory ? anchors.player : anchors.enemy;
+          if (focus) {
+            const alpha = Math.max(0, 1 - p * 0.78);
+            const burstRadius = 26 + p * 64;
+            ctx.strokeStyle = victory
+              ? `rgba(74, 222, 128, ${0.62 * alpha})`
+              : `rgba(251, 113, 133, ${0.62 * alpha})`;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(focus.x, focus.y - 10, burstRadius, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.lineWidth = 2.5;
+            for (let ray = 0; ray < 10; ray += 1) {
+              const angle = (Math.PI * 2 * ray) / 10 + now * 0.002;
+              const inner = 20 + p * 16;
+              const outer = inner + 14 + p * 22;
+              ctx.beginPath();
+              ctx.moveTo(focus.x + Math.cos(angle) * inner, focus.y - 10 + Math.sin(angle) * inner);
+              ctx.lineTo(focus.x + Math.cos(angle) * outer, focus.y - 10 + Math.sin(angle) * outer);
+              ctx.stroke();
+            }
+          }
         }
 
         ctx.save();
@@ -10676,7 +10828,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           battleCtx.fillRect(sx, sy, 2, 2);
         }
 
-        const floorY = Math.round(battleCanvas.height * 0.73);
+        const floorY = Math.round(battleCanvas.height * 0.76);
         battleCtx.fillStyle = "rgba(56, 189, 248, 0.09)";
         battleCtx.fillRect(0, floorY - 6, battleCanvas.width, battleCanvas.height - floorY + 12);
         battleCtx.strokeStyle = "rgba(125, 211, 252, 0.22)";
@@ -10697,15 +10849,15 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const battle = state.battle;
         const stage = {
           floorY,
-          actorScale: clamp(battleCanvas.width / 760, 0.88, 1.4),
-          panelY: Math.round(battleCanvas.height * 0.2),
+          actorScale: clamp(battleCanvas.width / 620, 1.08, 1.9),
+          panelY: Math.round(battleCanvas.height * 0.18),
           panelW: Math.round(battleCanvas.width * 0.24),
-          panelH: Math.round(battleCanvas.height * 0.36),
+          panelH: Math.round(battleCanvas.height * 0.34),
           playerPanelX: Math.round(battleCanvas.width * 0.05),
           enemyPanelX: Math.round(battleCanvas.width * 0.71),
-          actorCenterY: floorY - 34,
-          playerCenterX: Math.round(battleCanvas.width * 0.26),
-          enemyCenterX: Math.round(battleCanvas.width * 0.74),
+          actorCenterY: floorY - 18,
+          playerCenterX: Math.round(battleCanvas.width * 0.23),
+          enemyCenterX: Math.round(battleCanvas.width * 0.77),
         };
         const enemyBarX = battleCanvas.width - 216;
         const laneColor = {
