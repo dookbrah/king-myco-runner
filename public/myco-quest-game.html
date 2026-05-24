@@ -285,6 +285,7 @@
         background: linear-gradient(180deg, rgba(8, 16, 34, 0.98), rgba(6, 13, 28, 0.98));
         padding: 12px;
         box-shadow: 0 22px 44px rgba(2, 6, 23, 0.58);
+        position: relative;
       }
       .interior-head {
         display: flex;
@@ -466,6 +467,17 @@
       }
       .dialogue.active {
         display: block;
+      }
+      .interior-card .dialogue.interior-inline {
+        position: absolute;
+        left: 10px;
+        right: 10px;
+        bottom: 10px;
+        width: auto;
+        transform: none;
+        border-color: #4f74ab;
+        background: rgba(6, 12, 26, 0.96);
+        z-index: 9;
       }
       .cutscene {
         border-color: #6d28d9;
@@ -1459,7 +1471,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
     </section>
 
     <section id="interiorScreen" class="interior-screen">
-      <article class="interior-card">
+      <article id="interiorCard" class="interior-card">
         <div class="interior-head">
           <h3 id="interiorTitle">Interior</h3>
           <p id="interiorSubtitle" class="subtle">Region node interior</p>
@@ -1650,6 +1662,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         cutsceneNextBtn: document.getElementById("cutsceneNextBtn"),
         cutsceneSkipBtn: document.getElementById("cutsceneSkipBtn"),
         interiorScreen: document.getElementById("interiorScreen"),
+        interiorCard: document.getElementById("interiorCard"),
         interiorTitle: document.getElementById("interiorTitle"),
         interiorSubtitle: document.getElementById("interiorSubtitle"),
         interiorHint: document.getElementById("interiorHint"),
@@ -6917,6 +6930,22 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         return { glyph: "✨", subtitle: "Nexus Echo" };
       };
 
+      const dialogueHomeParent = dom.dialoguePanel?.parentElement ?? document.body;
+
+      const syncDialoguePanelMount = () => {
+        if (!dom.dialoguePanel) return;
+        const interiorHostActive = Boolean(
+          state.interior.active &&
+          dom.interiorScreen?.classList.contains("active") &&
+          dom.interiorCard,
+        );
+        const targetParent = interiorHostActive ? dom.interiorCard : dialogueHomeParent;
+        if (targetParent && dom.dialoguePanel.parentElement !== targetParent) {
+          targetParent.appendChild(dom.dialoguePanel);
+        }
+        dom.dialoguePanel.classList.toggle("interior-inline", interiorHostActive);
+      };
+
       const showBossIntro = (enemy) => {
         if (!enemy?.boss || !dom.bossIntroCard) return;
         const meta = BOSS_INTRO_META[enemy.kind] ?? {
@@ -6942,6 +6971,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const openDialogue = (payload) => {
         state.activeDialogue = payload;
+        syncDialoguePanelMount();
         payload._qaPairs = Array.isArray(payload.qaPairs)
           ? payload.qaPairs.filter((entry) => entry && typeof entry.question === "string" && typeof entry.answer === "string")
           : [];
@@ -7034,6 +7064,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
         resetDialogueReveal("...");
         dom.dialoguePanel.classList.remove("active");
+        syncDialoguePanelMount();
       };
 
       const applyMorality = (delta) => {
@@ -8335,6 +8366,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         state.mode = "interior";
         updateInteriorCamera(layout);
         dom.interiorScreen.classList.add("active");
+        syncDialoguePanelMount();
         dom.interiorTitle.textContent = structure.name;
         dom.interiorSubtitle.textContent = `${layout.interiorType.replace(/-/g, " ").toUpperCase()} INTERIOR // ${INTERIOR_FEATURE_LABELS[layout.feature]} // ${layout.sigil}`;
         refreshInteriorHint(structure, true);
@@ -8354,6 +8386,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         state.interior.lastResult = "";
         dom.interiorScreen.classList.remove("active");
         state.mode = "explore";
+        syncDialoguePanelMount();
         state.keys.clear();
         state.contactLockUntil = Date.now() + 600;
       };
@@ -12390,6 +12423,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       populateRealmSelector();
       setupCornerMenus();
       setupMobileControls();
+      syncDialoguePanelMount();
       setBattleCommandIndex(0);
       closeBattleSubmenu();
       refreshUndertaleCommandButtons();
