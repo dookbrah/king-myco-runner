@@ -9196,10 +9196,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           interiorCtx.fillRect(obstacle.x - cameraX, obstacle.y - cameraY, obstacle.w, obstacle.h);
           interiorCtx.fillStyle = `${accent}88`;
           interiorCtx.fillRect(obstacle.x - cameraX + 2, obstacle.y - cameraY + 2, Math.max(0, obstacle.w - 4), 3);
+          interiorCtx.fillStyle = "rgba(255, 255, 255, 0.07)";
+          interiorCtx.fillRect(obstacle.x - cameraX + 1, obstacle.y - cameraY + 1, Math.max(0, obstacle.w - 2), 1);
           interiorCtx.fillStyle = "rgba(9, 13, 27, 0.96)";
-          interiorCtx.strokeStyle = "#0b1020";
-          interiorCtx.lineWidth = 1;
-          interiorCtx.strokeRect(obstacle.x - cameraX + 0.5, obstacle.y - cameraY + 0.5, obstacle.w - 1, obstacle.h - 1);
         }
 
         for (const prop of layout.props) {
@@ -11181,11 +11180,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             ctx.fillRect(-12, -2, 2, 6);
             ctx.fillRect(10, -2, 2, 6);
           }
-          ctx.strokeStyle = "rgba(2, 6, 23, 0.7)";
-          ctx.lineWidth = 1;
-          ctx.strokeRect(-12.5, -28.5, 25, 42);
           ctx.fillStyle = "#d6ca9f";
           ctx.fillRect(-6, -20, 12, 2);
+          ctx.fillStyle = "rgba(15, 23, 42, 0.6)";
+          ctx.fillRect(-11, -1, 1, 14);
+          ctx.fillRect(10, -1, 1, 14);
+          ctx.fillRect(-10, 13, 20, 1);
         });
       };
 
@@ -11214,11 +11214,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           ctx.fillRect(2, -5, 2, 2);
           ctx.fillStyle = "#94a3b8";
           ctx.fillRect(-1, -1, 2, 6);
-          ctx.strokeStyle = "#0b1020";
-          ctx.lineWidth = 1;
-          ctx.strokeRect(-10.5, -15.5, 21, 22);
           ctx.fillStyle = "#d8cba8";
           ctx.fillRect(-5, -17, 10, 2);
+          ctx.fillStyle = "rgba(15, 23, 42, 0.55)";
+          ctx.fillRect(-10, 6, 20, 1);
         });
       };
 
@@ -11319,9 +11318,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
               ctx.stroke();
             }
           }
-          ctx.strokeStyle = "rgba(2, 6, 23, 0.7)";
-          ctx.lineWidth = 1;
-          ctx.strokeRect(-11.5, -10.5, 23, 21);
+          ctx.fillStyle = "rgba(15, 23, 42, 0.5)";
+          ctx.fillRect(-11, 10, 22, 1);
         });
       };
 
@@ -11612,9 +11610,6 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           ctx.fillRect(x + 1, ty + 2, 1, 3);
           ctx.fillRect(x + w - 2, ty + 1, 1, 4);
         }
-        ctx.strokeStyle = "rgba(15, 23, 42, 0.72)";
-        ctx.lineWidth = 1;
-        ctx.strokeRect(x + 0.5, y + 0.5, Math.max(0, w - 1), Math.max(0, h - 1));
       };
 
       const drawCliffBand = (ctx, x, y, w, h, theme) => {
@@ -11633,9 +11628,6 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           ctx.fillStyle = "rgba(15, 23, 42, 0.5)";
           ctx.fillRect(tx, y + 4, 4, 3);
         }
-        ctx.strokeStyle = "rgba(15, 23, 42, 0.74)";
-        ctx.lineWidth = 1;
-        ctx.strokeRect(x + 0.5, y + 0.5, Math.max(0, w - 1), Math.max(0, h - 1));
       };
 
       const drawRoofTiles = (ctx, x, y, w, h, roofA, roofB, roofTrim) => {
@@ -11653,9 +11645,6 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
         ctx.fillStyle = roofTrim;
         ctx.fillRect(x, y + h - 3, w, 3);
-        ctx.strokeStyle = "rgba(15, 23, 42, 0.82)";
-        ctx.lineWidth = 1;
-        ctx.strokeRect(x + 0.5, y + 0.5, Math.max(0, w - 1), Math.max(0, h - 1));
       };
 
       const drawStructure = (ctx, structure, sx, sy) => {
@@ -11837,9 +11826,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
         ctx.fillStyle = "rgba(2, 6, 23, 0.28)";
         ctx.fillRect(sx + 2, sy + structure.h - 6, Math.max(0, structure.w - 4), 4);
-        ctx.strokeStyle = "rgba(15, 23, 42, 0.78)";
-        ctx.lineWidth = 1;
-        ctx.strokeRect(sx + 0.5, sy + 0.5, Math.max(0, structure.w - 1), Math.max(0, structure.h - 1));
+        ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
+        ctx.fillRect(sx + 2, sy + 2, Math.max(0, structure.w - 4), 2);
       };
 
       const drawScenicProp = (ctx, prop, sx, sy, realmId = state.currentRealmId) => {
@@ -12083,6 +12071,13 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             const checker = ((x >> 4) + (y >> 4)) % 2 === 0;
             worldCtx.fillStyle = checker ? realmTheme.tileA : realmTheme.tileB;
             worldCtx.fillRect(sx, sy, tile16, tile16);
+            // Add SNES-like beveling so tiles read as authored terrain, not flat blocks.
+            worldCtx.fillStyle = `${realmTheme.floorNoiseLight}`;
+            worldCtx.fillRect(sx, sy, tile16, 1);
+            worldCtx.fillRect(sx, sy, 1, tile16);
+            worldCtx.fillStyle = `${realmTheme.floorNoiseDark}`;
+            worldCtx.fillRect(sx, sy + tile16 - 1, tile16, 1);
+            worldCtx.fillRect(sx + tile16 - 1, sy, 1, tile16);
             if (((x * 5 + y * 7) >> 4) % 5 === 0) {
               worldCtx.fillStyle = realmTheme.floorNoiseLight;
               worldCtx.fillRect(sx + 2, sy + 2, 4, 4);
@@ -12096,6 +12091,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
                 worldCtx.fillStyle = realmTheme.biomeAccentA;
                 worldCtx.fillRect(sx + 6, sy + 4, 3, 3);
                 worldCtx.fillRect(sx + 5, sy + 8, 2, 2);
+                worldCtx.fillStyle = realmTheme.biomeAccentB;
+                worldCtx.fillRect(sx + 8, sy + 8, 2, 2);
               } else if (currentRealm.id === "rougarou-fen") {
                 worldCtx.fillStyle = realmTheme.biomeAccentA;
                 worldCtx.fillRect(sx + 4, sy + 8, 5, 2);
@@ -12106,9 +12103,33 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
                 worldCtx.fillRect(sx + 8, sy + 6, 4, 2);
                 worldCtx.fillStyle = realmTheme.biomeAccentA;
                 worldCtx.fillRect(sx + 10, sy + 4, 2, 2);
+                worldCtx.fillRect(sx + 4, sy + 10, 2, 2);
               } else {
                 worldCtx.fillStyle = realmTheme.biomeAccentA;
                 worldCtx.fillRect(sx + 7, sy + 7, 3, 2);
+                worldCtx.fillStyle = realmTheme.biomeAccentB;
+                worldCtx.fillRect(sx + 5, sy + 5, 2, 2);
+              }
+            }
+            if (((x * 17 + y * 19) >> 4) % 29 === 0) {
+              if (currentRealm.id === "myco-kingdom" || currentRealm.id === "verdant-commons") {
+                // Tiny flower tuft clusters inspired by SNES grassland dressing.
+                worldCtx.fillStyle = "#f2d9a3";
+                worldCtx.fillRect(sx + 3, sy + 9, 2, 2);
+                worldCtx.fillRect(sx + 10, sy + 4, 2, 2);
+                worldCtx.fillStyle = "#d17aa0";
+                worldCtx.fillRect(sx + 4, sy + 10, 1, 1);
+                worldCtx.fillRect(sx + 11, sy + 5, 1, 1);
+              } else if (currentRealm.id === "crimson-tide") {
+                // Coral pebble fragments.
+                worldCtx.fillStyle = "#9bd3d5";
+                worldCtx.fillRect(sx + 3, sy + 4, 2, 1);
+                worldCtx.fillRect(sx + 9, sy + 10, 2, 1);
+              } else if (currentRealm.id === "solana-chainlands") {
+                // Rune fragments for chainlands ground language.
+                worldCtx.fillStyle = "#b9b8de";
+                worldCtx.fillRect(sx + 6, sy + 4, 1, 4);
+                worldCtx.fillRect(sx + 4, sy + 6, 5, 1);
               }
             }
           }
@@ -12437,12 +12458,14 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         };
       };
 
-      const drawBattleSpriteBlock = (ctx, x, y, w, h, fill, stroke = "rgba(2, 6, 23, 0.86)") => {
+      const drawBattleSpriteBlock = (ctx, x, y, w, h, fill, stroke = null) => {
         ctx.fillStyle = fill;
         ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
-        ctx.strokeStyle = stroke;
-        ctx.lineWidth = 1;
-        ctx.strokeRect(Math.round(x) + 0.5, Math.round(y) + 0.5, Math.max(1, Math.round(w) - 1), Math.max(1, Math.round(h) - 1));
+        if (stroke) {
+          ctx.strokeStyle = stroke;
+          ctx.lineWidth = 1;
+          ctx.strokeRect(Math.round(x) + 0.5, Math.round(y) + 0.5, Math.max(1, Math.round(w) - 1), Math.max(1, Math.round(h) - 1));
+        }
       };
 
       const getBattleActorPose = (side, battle, stage, now) => {
