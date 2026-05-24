@@ -683,30 +683,38 @@
         display: none;
         align-items: center;
         justify-content: center;
-        background: #020617;
-        backdrop-filter: blur(4px);
+        background: #070b18;
         overflow: hidden;
+        image-rendering: pixelated;
+      }
+      .title-pixel-canvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        image-rendering: pixelated;
+        opacity: 0.96;
+        pointer-events: none;
       }
       .title-screen::before {
         content: "";
         position: absolute;
         inset: 0;
-        background-image:
-          linear-gradient(180deg, rgba(2, 6, 23, 0.2), rgba(2, 6, 23, 0.86)),
-          radial-gradient(circle at 22% 18%, rgba(59, 130, 246, 0.24), transparent 42%),
-          radial-gradient(circle at 82% 14%, rgba(168, 85, 247, 0.22), transparent 46%),
-          url("/myco-quest-start-screen.svg");
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-        filter: saturate(1.1) contrast(1.05);
+        background:
+          repeating-linear-gradient(
+            180deg,
+            rgba(2, 6, 23, 0) 0px,
+            rgba(2, 6, 23, 0) 3px,
+            rgba(2, 6, 23, 0.26) 3px,
+            rgba(2, 6, 23, 0.26) 4px
+          );
         pointer-events: none;
       }
       .title-screen::after {
         content: "";
         position: absolute;
         inset: 0;
-        background: linear-gradient(180deg, rgba(2, 6, 23, 0.2), rgba(2, 6, 23, 0.72));
+        background: linear-gradient(180deg, rgba(2, 6, 23, 0.22), rgba(2, 6, 23, 0.8));
         pointer-events: none;
       }
       .title-screen.active {
@@ -716,25 +724,32 @@
         position: relative;
         z-index: 1;
         width: min(860px, calc(100% - 24px));
-        border: 1px solid #4368a2;
-        border-radius: 16px;
+        border: 4px solid #4f658f;
+        border-radius: 0;
         padding: 18px;
-        background: rgba(3, 9, 24, 0.82);
-        box-shadow: 0 26px 56px rgba(2, 6, 23, 0.62);
-        backdrop-filter: blur(5px);
+        background: rgba(7, 12, 24, 0.9);
+        box-shadow:
+          0 0 0 3px rgba(8, 13, 27, 0.95),
+          0 16px 34px rgba(2, 6, 23, 0.65);
       }
       .title-logo {
         margin-bottom: 8px;
         font-size: clamp(28px, 4.2vw, 46px);
-        color: #f8fafc;
-        letter-spacing: 0.04em;
+        font-family: "Courier New", monospace;
+        color: #f4ecd0;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        text-shadow:
+          0 2px 0 #213255,
+          0 0 18px rgba(165, 196, 248, 0.26);
       }
       .title-lore {
         margin-top: 10px;
         white-space: pre-wrap;
-        font-size: 13px;
-        color: #c9d8f6;
-        line-height: 1.45;
+        font-size: 12px;
+        color: #d4dbe9;
+        line-height: 1.5;
+        font-family: "Courier New", monospace;
       }
       .title-actions {
         margin-top: 14px;
@@ -1190,6 +1205,7 @@
   </head>
   <body>
     <section id="titleScreen" class="title-screen active">
+      <canvas id="titlePixelCanvas" class="title-pixel-canvas" width="1280" height="720" aria-hidden="true"></canvas>
       <div class="title-card">
         <p class="tiny">KINGDOM CHRONICLE // START FROM THE BEGINNING</p>
         <h1 class="title-logo">MYCO QUEST</h1>
@@ -1232,6 +1248,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           <button id="skipIntroBtn" style="display:none">Skip Intro Card</button>
         </div>
         <p id="titleHint" class="subtle" style="margin-top: 8px">Loading your chronicle...</p>
+        <p class="subtle" style="margin-top: 6px; font-family: 'Courier New', monospace; color: #d7c38e">
+          Press ENTER to begin your 32-bit adventure.
+        </p>
       </div>
     </section>
 
@@ -1696,12 +1715,16 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const battleCtx = battleCanvas.getContext("2d");
       const interiorCanvas = document.getElementById("interiorCanvas");
       const interiorCtx = interiorCanvas.getContext("2d");
+      const titlePixelCanvas = document.getElementById("titlePixelCanvas");
+      const titlePixelCtx = titlePixelCanvas?.getContext("2d") ?? null;
       worldCtx.imageSmoothingEnabled = false;
       battleCtx.imageSmoothingEnabled = false;
       interiorCtx.imageSmoothingEnabled = false;
+      if (titlePixelCtx) titlePixelCtx.imageSmoothingEnabled = false;
 
       const dom = {
         titleScreen: document.getElementById("titleScreen"),
+        titlePixelCanvas,
         titleLore: document.getElementById("titleLore"),
         titleHint: document.getElementById("titleHint"),
         titleNickname: document.getElementById("titleNickname"),
@@ -4827,6 +4850,14 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const resizeCanvases = () => {
         const dpr = Math.min(2, window.devicePixelRatio || 1);
+        if (titlePixelCanvas) {
+          const titleW = Math.max(640, Math.round(window.innerWidth * dpr));
+          const titleH = Math.max(360, Math.round(window.innerHeight * dpr));
+          if (titlePixelCanvas.width !== titleW || titlePixelCanvas.height !== titleH) {
+            titlePixelCanvas.width = titleW;
+            titlePixelCanvas.height = titleH;
+          }
+        }
         const worldRect = worldCanvas.getBoundingClientRect();
         const worldW = Math.max(320, Math.round((worldRect.width * dpr) / WORLD_CAMERA_ZOOM));
         const worldH = Math.max(220, Math.round((worldRect.height * dpr) / WORLD_CAMERA_ZOOM));
@@ -11882,6 +11913,128 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         // Avoid "debug box" silhouettes and keep props naturally integrated.
       };
 
+      const drawTitlePixelScene = () => {
+        if (!titlePixelCtx || !titlePixelCanvas) return;
+        const ctx = titlePixelCtx;
+        const width = titlePixelCanvas.width;
+        const height = titlePixelCanvas.height;
+        const nowTick = Math.floor(Date.now() / 140);
+        const tile = Math.max(8, Math.round(Math.min(width, height) / 92));
+        const horizon = Math.round(height * 0.52);
+        const groundY = Math.round(height * 0.72);
+
+        const skyBands = ["#0a1022", "#121a34", "#1a2648", "#213260", "#2a3f72"];
+        const bandHeight = Math.ceil(horizon / skyBands.length);
+        for (let idx = 0; idx < skyBands.length; idx += 1) {
+          ctx.fillStyle = skyBands[idx];
+          ctx.fillRect(0, idx * bandHeight, width, bandHeight + 1);
+        }
+
+        for (let idx = 0; idx < 84; idx += 1) {
+          const sx = (idx * 173 + (idx % 5) * 23) % width;
+          const sy = (idx * 97 + (idx % 7) * 11) % Math.max(12, horizon - tile);
+          const twinkle = (nowTick + idx) % 10 === 0 ? 2 : 1;
+          ctx.fillStyle = twinkle > 1 ? "#e4eefb" : "#b8c8ea";
+          ctx.fillRect(sx, sy, twinkle, twinkle);
+        }
+
+        const drawMountainBand = (baseY, shadeA, shadeB, seed, maxSteps) => {
+          const colWidth = tile * 2;
+          const cols = Math.ceil(width / colWidth);
+          for (let col = 0; col <= cols; col += 1) {
+            const steps = 2 + ((col * seed + seed * 5) % maxSteps);
+            const x = col * colWidth;
+            const y = baseY - steps * tile;
+            ctx.fillStyle = col % 2 === 0 ? shadeA : shadeB;
+            ctx.fillRect(x, y, colWidth, steps * tile);
+            ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
+            ctx.fillRect(x + 1, y + 1, Math.max(1, colWidth - 2), 2);
+          }
+        };
+        drawMountainBand(groundY - tile * 3, "#24395c", "#2f4b6f", 3, 6);
+        drawMountainBand(groundY - tile, "#1b2d4d", "#24395c", 5, 8);
+
+        for (let y = groundY; y < height; y += tile) {
+          for (let x = 0; x < width; x += tile) {
+            const checker = ((x / tile) + (y / tile)) % 2 === 0;
+            ctx.fillStyle = checker ? "#4a6e36" : "#3e5f2d";
+            ctx.fillRect(x, y, tile, tile);
+            if (((x + y) / tile) % 7 === 0) {
+              ctx.fillStyle = "#87b16b";
+              ctx.fillRect(x + 2, y + 2, 3, 3);
+            }
+          }
+        }
+
+        const waterY = groundY - tile * 4;
+        const waterH = tile * 3;
+        for (let y = 0; y < waterH; y += tile) {
+          for (let x = 0; x < width; x += tile) {
+            const checker = ((x / tile) + (y / tile)) % 2 === 0;
+            ctx.fillStyle = checker ? "#366488" : "#2a5476";
+            ctx.fillRect(x, waterY + y, tile, tile);
+          }
+        }
+        ctx.fillStyle = "#d9ebf7";
+        for (let x = 0; x < width; x += tile * 2) {
+          ctx.fillRect(x + 1, waterY + 1, 4, 1);
+          ctx.fillRect(x + 2, waterY + waterH - 2, 3, 1);
+        }
+
+        const castleW = Math.max(tile * 24, Math.round(width * 0.24));
+        const castleH = Math.max(tile * 12, Math.round(height * 0.21));
+        const castleX = Math.round(width * 0.5 - castleW * 0.5);
+        const castleY = waterY - castleH + tile;
+        ctx.fillStyle = "#4a5668";
+        ctx.fillRect(castleX, castleY + tile * 2, castleW, castleH - tile * 2);
+        ctx.fillStyle = "#5d6a7f";
+        ctx.fillRect(castleX + tile, castleY + tile * 3, castleW - tile * 2, castleH - tile * 4);
+        ctx.fillStyle = "#2b3445";
+        const battlementW = tile * 2;
+        for (let x = 0; x < castleW; x += battlementW + 2) {
+          ctx.fillRect(castleX + x, castleY + tile, battlementW, tile);
+        }
+        const towerW = tile * 4;
+        ctx.fillStyle = "#4f5c70";
+        ctx.fillRect(castleX - towerW + tile, castleY + tile * 2, towerW, castleH - tile);
+        ctx.fillRect(castleX + castleW - tile, castleY + tile * 2, towerW, castleH - tile);
+        ctx.fillStyle = "#2b3445";
+        ctx.fillRect(castleX + Math.round(castleW * 0.5) - tile, castleY + castleH - tile * 4, tile * 2, tile * 4);
+        ctx.fillStyle = "#89a9cf";
+        ctx.fillRect(castleX + tile * 3, castleY + tile * 5, tile * 2, tile * 2);
+        ctx.fillRect(castleX + castleW - tile * 5, castleY + tile * 5, tile * 2, tile * 2);
+
+        const drawMushroom = (x, y, cap, spot) => {
+          ctx.fillStyle = "#ddd7c1";
+          ctx.fillRect(x - 3, y - 2, 6, 10);
+          ctx.fillStyle = cap;
+          ctx.fillRect(x - 11, y - 9, 22, 8);
+          ctx.fillStyle = spot;
+          ctx.fillRect(x - 6, y - 7, 3, 2);
+          ctx.fillRect(x + 2, y - 7, 3, 2);
+        };
+        for (let idx = 0; idx < 10; idx += 1) {
+          const mx = Math.round((idx + 0.5) * (width / 10));
+          const my = groundY + tile * (1 + ((idx * 3) % 3));
+          drawMushroom(mx, my, idx % 2 === 0 ? "#8f3458" : "#6f5aa3", "#eed7e5");
+        }
+
+        const heroX = Math.round(width * 0.5);
+        const heroY = groundY + tile * 1.2;
+        ctx.fillStyle = "#0a1020";
+        ctx.fillRect(heroX - 11, heroY - 8, 22, 18);
+        ctx.fillStyle = "#6d2a42";
+        ctx.fillRect(heroX - 13, heroY - 15, 26, 8);
+        ctx.fillStyle = "#f2d67b";
+        ctx.fillRect(heroX - 7, heroY - 20, 14, 5);
+        ctx.fillStyle = "#3f7a49";
+        ctx.fillRect(heroX + 14, heroY - 10, 3, 22);
+        ctx.fillStyle = nowTick % 3 === 0 ? "#f5e68d" : "#8ad56b";
+        ctx.fillRect(heroX + 12, heroY - 14, 7, 5);
+        ctx.fillStyle = "#0e1d33";
+        ctx.fillRect(0, height - 12, width, 12);
+      };
+
       const drawWorld = () => {
         worldCtx.fillStyle = "#040913";
         worldCtx.fillRect(0, 0, worldCanvas.width, worldCanvas.height);
@@ -13132,6 +13285,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (!frameLoop.last) frameLoop.last = timestamp;
         const dt = Math.min(0.05, (timestamp - frameLoop.last) / 1000);
         frameLoop.last = timestamp;
+        if (dom.titleScreen.classList.contains("active")) {
+          drawTitlePixelScene();
+        }
         await update(dt);
         drawWorld();
         drawBattleScene();
