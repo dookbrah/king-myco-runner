@@ -880,9 +880,9 @@
       .corner-menu {
         position: fixed;
         z-index: 30;
-        width: min(380px, 31vw);
-        max-height: 42vh;
-        overflow: auto;
+        width: min(300px, 24vw);
+        max-height: 44vh;
+        overflow: visible;
       }
       .corner-menu.top-left {
         top: max(10px, env(safe-area-inset-top));
@@ -900,30 +900,47 @@
         bottom: max(10px, env(safe-area-inset-bottom));
         right: 12px;
       }
-      .corner-menu details {
+      .corner-menu .corner-root {
         border: 1px solid #355487;
         background: rgba(8, 15, 32, 0.95);
         border-radius: 10px;
-        margin-bottom: 8px;
         overflow: hidden;
       }
-      .corner-menu.bottom-left details,
-      .corner-menu.bottom-right details {
-        margin-bottom: 0;
-        margin-top: 8px;
-      }
-      .corner-menu details.dropup {
+      .corner-menu .corner-root.dropup {
         display: flex;
         flex-direction: column-reverse;
       }
-      .corner-menu summary {
+      .corner-menu .corner-root > summary {
         cursor: pointer;
         font-weight: 700;
         padding: 8px 10px;
         background: #0f1d39;
       }
-      .corner-menu .panel {
-        margin: 8px;
+      .corner-menu .corner-root > .menu-dropdown-body {
+        padding: 8px;
+      }
+      .corner-menu .menu-stack {
+        display: grid;
+        gap: 8px;
+      }
+      .corner-menu .menu-stack details {
+        border: 1px solid #2f4f82;
+        border-radius: 8px;
+        overflow: hidden;
+        background: rgba(11, 20, 39, 0.94);
+      }
+      .corner-menu .menu-stack details > summary {
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 7px 9px;
+        background: rgba(19, 35, 66, 0.9);
+      }
+      .corner-menu .menu-stack .menu-dropdown-body {
+        padding: 6px;
+      }
+      .corner-menu .menu-stack .panel {
+        margin: 0;
       }
       .menu-dropdown-body {
         padding: 8px;
@@ -1024,21 +1041,48 @@
         display: none;
         justify-content: space-between;
         align-items: flex-end;
-        padding: 0 10px;
+        padding: 0 12px;
         pointer-events: none;
       }
-      .mobile-pad,
+      .mobile-joystick,
       .mobile-actions {
         pointer-events: auto;
-        display: grid;
-        gap: 6px;
       }
-      .mobile-pad {
-        grid-template-columns: repeat(3, 50px);
-        grid-template-rows: repeat(3, 42px);
+      .mobile-joystick {
+        position: relative;
+        width: 124px;
+        height: 124px;
+        border-radius: 999px;
+        border: 2px solid #3d5f96;
+        background: radial-gradient(circle at 35% 30%, rgba(35, 57, 95, 0.84), rgba(12, 23, 45, 0.92));
+        touch-action: none;
+      }
+      .mobile-joystick::before {
+        content: "";
+        position: absolute;
+        inset: 18px;
+        border-radius: 999px;
+        border: 1px dashed rgba(148, 197, 255, 0.4);
+      }
+      .mobile-stick {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 52px;
+        height: 52px;
+        margin-left: -26px;
+        margin-top: -26px;
+        border-radius: 999px;
+        border: 2px solid #6ea2e8;
+        background: rgba(38, 80, 146, 0.9);
+        box-shadow: 0 4px 10px rgba(2, 6, 23, 0.5);
+        pointer-events: none;
+        transition: transform 60ms linear;
       }
       .mobile-actions {
-        grid-template-columns: repeat(2, minmax(56px, 72px));
+        display: grid;
+        grid-template-columns: repeat(2, minmax(72px, 90px));
+        gap: 8px;
       }
       .touch-btn {
         border: 1px solid #3e639a;
@@ -1053,9 +1097,6 @@
       .touch-btn.active {
         background: #1d4ed8;
       }
-      .touch-spacer {
-        pointer-events: none;
-      }
       @media (max-width: 1024px) {
         h1 {
           font-size: 20px;
@@ -1065,7 +1106,7 @@
           min-height: 300px;
         }
         .corner-menu {
-          width: min(44vw, 330px);
+          width: min(42vw, 296px);
           max-height: 41vh;
         }
       }
@@ -1090,8 +1131,8 @@
           min-height: 220px;
         }
         .corner-menu {
-          width: calc(50vw - 8px);
-          max-height: 40vh;
+          width: min(46vw, 280px);
+          max-height: 38vh;
         }
         .corner-menu.top-left {
           top: max(6px, env(safe-area-inset-top));
@@ -1109,12 +1150,15 @@
           bottom: max(6px, env(safe-area-inset-bottom));
           right: 6px;
         }
-        .corner-menu summary {
+        .corner-menu .corner-root > summary {
           font-size: 12px;
           padding: 7px 8px;
         }
-        .corner-menu .panel {
-          margin: 6px;
+        .corner-menu .menu-stack details > summary {
+          font-size: 11px;
+          padding: 6px 8px;
+        }
+        .corner-menu .menu-stack .panel {
           padding: 8px;
         }
         .top-config-panel summary {
@@ -1154,9 +1198,15 @@
           height: min(52vh, 420px);
           min-height: 180px;
         }
-        .mobile-pad {
-          grid-template-columns: repeat(3, 44px);
-          grid-template-rows: repeat(3, 38px);
+        .mobile-joystick {
+          width: 110px;
+          height: 110px;
+        }
+        .mobile-stick {
+          width: 46px;
+          height: 46px;
+          margin-left: -23px;
+          margin-top: -23px;
         }
       }
       @media (max-width: 950px) and (orientation: landscape) and (hover: none) and (pointer: coarse) {
@@ -1181,7 +1231,7 @@
           padding: 6px 8px;
         }
         .mobile-actions {
-          grid-template-columns: repeat(3, minmax(52px, 66px));
+          grid-template-columns: repeat(2, minmax(64px, 74px));
         }
       }
       body.force-landscape #worldCanvas {
@@ -1563,27 +1613,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
     <button id="minimalHudFloating" class="hud-toggle-floating">Show HUD</button>
 
     <section id="mobileControls" class="mobile-controls">
-      <div class="mobile-pad">
-        <span class="touch-spacer"></span>
-        <button class="touch-btn" data-key="arrowup">▲</button>
-        <button class="touch-btn" data-key="shift">RUN</button>
-        <button class="touch-btn" data-key="arrowleft">◀</button>
-        <span class="touch-spacer"></span>
-        <button class="touch-btn" data-key="arrowright">▶</button>
-        <span class="touch-spacer"></span>
-        <button class="touch-btn" data-key="arrowdown">▼</button>
-        <span class="touch-spacer"></span>
+      <div id="mobileJoystick" class="mobile-joystick" aria-label="Movement joystick">
+        <div id="mobileStick" class="mobile-stick"></div>
       </div>
       <div class="mobile-actions">
-        <button class="touch-btn" data-action="interact">Interact</button>
-        <button class="touch-btn" data-action="strike">Fight</button>
-        <button class="touch-btn" data-action="act">Act</button>
-        <button class="touch-btn" data-action="item">Item</button>
-        <button class="touch-btn" data-action="mercy">Mercy</button>
-        <button class="touch-btn" data-action="guard">Defend</button>
-        <button class="touch-btn" data-action="skill">Spell</button>
-        <button class="touch-btn" data-action="flee">Run</button>
-        <button class="touch-btn" data-action="sync">Sync</button>
+        <button class="touch-btn" data-action="strike">Attack</button>
+        <button class="touch-btn" data-action="interact">Engage</button>
       </div>
     </section>
 
@@ -1886,6 +1921,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         panelControls: document.getElementById("panelControls"),
         panelAudio: document.getElementById("panelAudio"),
         mobileControls: document.getElementById("mobileControls"),
+        mobileJoystick: document.getElementById("mobileJoystick"),
+        mobileStick: document.getElementById("mobileStick"),
       };
 
       const REGIONS = [
@@ -4691,15 +4728,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const bottomLeft = dom.bottomLeftMenuContent;
         const bottomRight = dom.bottomRightMenuContent;
         if (!topLeft || !topRight || !bottomLeft || !bottomRight) return;
-        const compactUi =
-          window.matchMedia("(max-width: 900px)").matches ||
-          window.matchMedia("(hover: none) and (pointer: coarse)").matches;
-        const createMenuDropdown = (container, title, panel, options = {}) => {
-          if (!container || !panel) return null;
-          const { openByDefault = false, dropup = false } = options;
+        const createSubmenu = (stack, title, panel, openByDefault = false) => {
+          if (!stack || !panel) return null;
           const details = document.createElement("details");
           if (openByDefault) details.open = true;
-          if (dropup) details.classList.add("dropup");
           const summary = document.createElement("summary");
           summary.textContent = title;
           const host = document.createElement("div");
@@ -4707,24 +4739,76 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           details.appendChild(summary);
           details.appendChild(host);
           host.appendChild(panel);
-          container.appendChild(details);
+          stack.appendChild(details);
           return host;
+        };
+        const createRootMenu = (container, title, sections, options = {}) => {
+          if (!container) return {};
+          const { openByDefault = false, dropup = false } = options;
+          const root = document.createElement("details");
+          root.className = "corner-root";
+          if (dropup) root.classList.add("dropup");
+          if (openByDefault) root.open = true;
+          const summary = document.createElement("summary");
+          summary.textContent = title;
+          const body = document.createElement("div");
+          body.className = "menu-dropdown-body";
+          const stack = document.createElement("div");
+          stack.className = "menu-stack";
+          body.appendChild(stack);
+          root.appendChild(summary);
+          root.appendChild(body);
+          container.appendChild(root);
+          const hosts = {};
+          for (const section of sections) {
+            const host = createSubmenu(stack, section.title, section.panel, Boolean(section.openByDefault));
+            hosts[section.title] = host;
+          }
+          return hosts;
         };
         topLeft.innerHTML = "";
         topRight.innerHTML = "";
         bottomLeft.innerHTML = "";
         bottomRight.innerHTML = "";
-        createMenuDropdown(topLeft, "Game Menu + Sync", dom.panelCommand, { openByDefault: !compactUi });
-        createMenuDropdown(topLeft, "Story Journal", dom.panelStory, { openByDefault: false });
-        createMenuDropdown(topRight, "Character Status", dom.panelStatus, { openByDefault: !compactUi });
-        createMenuDropdown(topRight, "Inventory + Shop", dom.panelInventory, { openByDefault: false });
-        createMenuDropdown(bottomLeft, "Web3 Deck", dom.panelWeb3, { dropup: true });
-        createMenuDropdown(bottomLeft, "Mini Games", dom.panelMiniGames, { dropup: true });
-        createMenuDropdown(bottomLeft, "Leaderboards", dom.panelLeaderboard, { dropup: true });
-        const battleHost = createMenuDropdown(bottomRight, "Battle Menu", dom.panelBattle, { dropup: true });
-        createMenuDropdown(bottomRight, "Controls + Tips", dom.panelControls, { dropup: true });
-        createMenuDropdown(bottomRight, "Audio", dom.panelAudio, { dropup: true });
-        dom.battleMenuHost = battleHost;
+        createRootMenu(
+          topLeft,
+          "TOP LEFT MENU",
+          [
+            { title: "Game Menu + Sync", panel: dom.panelCommand, openByDefault: false },
+            { title: "Story Journal", panel: dom.panelStory, openByDefault: false },
+          ],
+          { openByDefault: false },
+        );
+        createRootMenu(
+          topRight,
+          "TOP RIGHT MENU",
+          [
+            { title: "Character Status", panel: dom.panelStatus, openByDefault: false },
+            { title: "Inventory + Shop", panel: dom.panelInventory, openByDefault: false },
+          ],
+          { openByDefault: false },
+        );
+        createRootMenu(
+          bottomLeft,
+          "BOTTOM LEFT MENU",
+          [
+            { title: "Web3 Deck", panel: dom.panelWeb3, openByDefault: false },
+            { title: "Mini Games", panel: dom.panelMiniGames, openByDefault: false },
+            { title: "Leaderboards", panel: dom.panelLeaderboard, openByDefault: false },
+          ],
+          { dropup: true, openByDefault: false },
+        );
+        const bottomRightHosts = createRootMenu(
+          bottomRight,
+          "BOTTOM RIGHT MENU",
+          [
+            { title: "Battle Menu", panel: dom.panelBattle, openByDefault: false },
+            { title: "Controls + Tips", panel: dom.panelControls, openByDefault: false },
+            { title: "Audio", panel: dom.panelAudio, openByDefault: false },
+          ],
+          { dropup: true, openByDefault: false },
+        );
+        dom.battleMenuHost = bottomRightHosts["Battle Menu"] ?? null;
         if (dom.hudAside) {
           dom.hudAside.classList.add("hidden");
         }
@@ -4897,47 +4981,104 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const setupMobileControls = () => {
         if (!dom.mobileControls) return;
-        const keyButtons = dom.mobileControls.querySelectorAll("[data-key]");
-        keyButtons.forEach((button) => {
-          const key = button.getAttribute("data-key");
-          if (!key) return;
-          const down = (event) => {
-            event.preventDefault();
-            if (!state.audio.initialized) {
-              initAudio();
+
+        const joystickEl = dom.mobileJoystick;
+        const stickEl = dom.mobileStick;
+        const joystickState = {
+          pointerId: null,
+          activeKeys: new Set(),
+          radius: 42,
+        };
+        const applyJoystickKeys = (nextKeys) => {
+          for (const key of ["arrowup", "arrowdown", "arrowleft", "arrowright"]) {
+            const shouldBeDown = nextKeys.has(key);
+            const isDown = joystickState.activeKeys.has(key);
+            if (shouldBeDown && !isDown) {
+              setVirtualKey(key, true, null);
+              joystickState.activeKeys.add(key);
+            } else if (!shouldBeDown && isDown) {
+              setVirtualKey(key, false, null);
+              joystickState.activeKeys.delete(key);
             }
-            setVirtualKey(key, true, button);
-          };
-          const up = (event) => {
+          }
+        };
+        const resetJoystick = () => {
+          applyJoystickKeys(new Set());
+          if (stickEl) {
+            stickEl.style.transform = "translate(0px, 0px)";
+          }
+          joystickState.pointerId = null;
+        };
+        const updateJoystickFromPointer = (clientX, clientY) => {
+          if (!joystickEl || !stickEl) return;
+          const rect = joystickEl.getBoundingClientRect();
+          const centerX = rect.left + rect.width * 0.5;
+          const centerY = rect.top + rect.height * 0.5;
+          const dx = clientX - centerX;
+          const dy = clientY - centerY;
+          const distance = Math.hypot(dx, dy);
+          const clamped = Math.min(joystickState.radius, distance);
+          const angle = distance > 0.001 ? Math.atan2(dy, dx) : 0;
+          const knobX = Math.round(Math.cos(angle) * clamped);
+          const knobY = Math.round(Math.sin(angle) * clamped);
+          stickEl.style.transform = `translate(${knobX}px, ${knobY}px)`;
+
+          const normalizedX = joystickState.radius > 0 ? knobX / joystickState.radius : 0;
+          const normalizedY = joystickState.radius > 0 ? knobY / joystickState.radius : 0;
+          const threshold = 0.3;
+          const nextKeys = new Set();
+          if (normalizedX <= -threshold) nextKeys.add("arrowleft");
+          if (normalizedX >= threshold) nextKeys.add("arrowright");
+          if (normalizedY <= -threshold) nextKeys.add("arrowup");
+          if (normalizedY >= threshold) nextKeys.add("arrowdown");
+          applyJoystickKeys(nextKeys);
+        };
+        if (joystickEl) {
+          joystickEl.addEventListener("pointerdown", (event) => {
             event.preventDefault();
-            setVirtualKey(key, false, button);
+            if (!state.audio.initialized) initAudio();
+            joystickState.pointerId = event.pointerId;
+            joystickEl.setPointerCapture(event.pointerId);
+            updateJoystickFromPointer(event.clientX, event.clientY);
+          });
+          joystickEl.addEventListener("pointermove", (event) => {
+            if (joystickState.pointerId !== event.pointerId) return;
+            event.preventDefault();
+            updateJoystickFromPointer(event.clientX, event.clientY);
+          });
+          const release = (event) => {
+            if (joystickState.pointerId !== event.pointerId) return;
+            event.preventDefault();
+            if (joystickEl.hasPointerCapture(event.pointerId)) {
+              joystickEl.releasePointerCapture(event.pointerId);
+            }
+            resetJoystick();
           };
-          button.addEventListener("pointerdown", down);
-          button.addEventListener("pointerup", up);
-          button.addEventListener("pointercancel", up);
-          button.addEventListener("pointerleave", up);
-        });
+          joystickEl.addEventListener("pointerup", release);
+          joystickEl.addEventListener("pointercancel", release);
+          joystickEl.addEventListener("pointerleave", release);
+          window.addEventListener("blur", resetJoystick);
+        }
 
         const actionButtons = dom.mobileControls.querySelectorAll("[data-action]");
         actionButtons.forEach((button) => {
           const action = button.getAttribute("data-action");
           if (!action) return;
+          button.addEventListener("pointerdown", () => button.classList.add("active"));
+          const clearButtonState = () => button.classList.remove("active");
+          button.addEventListener("pointerup", clearButtonState);
+          button.addEventListener("pointercancel", clearButtonState);
+          button.addEventListener("pointerleave", clearButtonState);
           button.addEventListener("click", (event) => {
             event.preventDefault();
             if (!state.audio.initialized) {
               initAudio();
             }
             if (action === "interact") {
-              interact();
-              return;
-            }
-            if (action === "item") {
               if (state.mode === "battle" && state.battle?.status === "active") {
-                setBattleCommandIndex(UNDERTALE_COMMAND_ORDER.indexOf("item"));
-                refreshUndertaleCommandButtons();
                 executeSelectedBattleCommand();
               } else {
-                useInventoryItem("mycoPotion");
+                interact();
               }
               return;
             }
@@ -4950,50 +5091,6 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
                 performOverworldAttack();
               }
               return;
-            }
-            if (action === "act") {
-              if (state.mode === "battle" && state.battle?.status === "active") {
-                setBattleCommandIndex(UNDERTALE_COMMAND_ORDER.indexOf("act"));
-                refreshUndertaleCommandButtons();
-                executeSelectedBattleCommand();
-              } else {
-                setStatus("ACT is available during enemy encounters.", true);
-              }
-              return;
-            }
-            if (action === "mercy") {
-              if (state.mode === "battle" && state.battle?.status === "active") {
-                setBattleCommandIndex(UNDERTALE_COMMAND_ORDER.indexOf("mercy"));
-                refreshUndertaleCommandButtons();
-                executeSelectedBattleCommand();
-              } else {
-                setStatus("MERCY is available during enemy encounters.", true);
-              }
-              return;
-            }
-            if (action === "guard") {
-              closeBattleSubmenu();
-              refreshUndertaleCommandButtons();
-              refreshBattleChoiceMenu();
-              playTurn("guard");
-              return;
-            }
-            if (action === "skill") {
-              closeBattleSubmenu();
-              refreshUndertaleCommandButtons();
-              refreshBattleChoiceMenu();
-              playTurn("skill");
-              return;
-            }
-            if (action === "flee") {
-              closeBattleSubmenu();
-              refreshUndertaleCommandButtons();
-              refreshBattleChoiceMenu();
-              attemptBattleFlee();
-              return;
-            }
-            if (action === "sync") {
-              syncCampaign();
             }
           });
         });
