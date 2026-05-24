@@ -618,6 +618,46 @@
       .journal-card li.done {
         color: #4ade80;
       }
+      .minigame-grid {
+        margin-top: 8px;
+        display: grid;
+        gap: 8px;
+      }
+      .minigame-card {
+        border: 1px solid #2e4c83;
+        background: rgba(12, 24, 48, 0.76);
+        border-radius: 10px;
+        padding: 8px;
+      }
+      .minigame-card h4 {
+        margin: 0;
+        font-size: 13px;
+        color: #dbeafe;
+        letter-spacing: 0.02em;
+      }
+      .minigame-card p {
+        margin: 6px 0 0;
+        font-size: 12px;
+        color: #a7bfe4;
+      }
+      .minigame-meta {
+        margin-top: 6px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .minigame-meta .chip {
+        font-size: 10px;
+      }
+      .minigame-actions {
+        margin-top: 8px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .minigame-actions button {
+        flex: 1 1 140px;
+      }
       .title-screen {
         position: fixed;
         inset: 0;
@@ -1300,6 +1340,13 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             </div>
           </section>
 
+          <section id="panelMiniGames" class="panel">
+            <h2>Kingmyco Mini Games Warfront</h2>
+            <p class="subtle">Launch Kingmyco.io mini-games as side missions to farm spores, fuel burn rituals, and unlock NFT relic tags + power-ups.</p>
+            <p id="miniGameSummary" class="subtle" style="margin-top: 8px">Mini-game contracts calibrating...</p>
+            <div id="miniGameList" class="minigame-grid"></div>
+          </section>
+
           <section id="panelLeaderboard" class="panel">
             <h2>Realm Leaderboard</h2>
             <div class="leaderboard-subsection">
@@ -1631,6 +1678,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         web3Relics: document.getElementById("web3Relics"),
         onchainMilestoneSummary: document.getElementById("onchainMilestoneSummary"),
         onchainMilestoneList: document.getElementById("onchainMilestoneList"),
+        miniGameSummary: document.getElementById("miniGameSummary"),
+        miniGameList: document.getElementById("miniGameList"),
         leaderboardSummary: document.getElementById("leaderboardSummary"),
         leaderboardList: document.getElementById("leaderboardList"),
         clanLeaderboardSummary: document.getElementById("clanLeaderboardSummary"),
@@ -1693,6 +1742,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         panelStory: document.getElementById("panelStory"),
         panelInventory: document.getElementById("panelInventory"),
         panelWeb3: document.getElementById("panelWeb3"),
+        panelMiniGames: document.getElementById("panelMiniGames"),
         panelLeaderboard: document.getElementById("panelLeaderboard"),
         panelBattle: document.getElementById("panelBattle"),
         panelControls: document.getElementById("panelControls"),
@@ -3013,6 +3063,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           title: "Living Ledger",
           description: "Record 20 chronicle story entries and keep evolving your timeline.",
         },
+        {
+          id: "arcade-sovereign",
+          title: "Arcade Sovereign",
+          description: "Win 8 Kingmyco mini-game contracts and bind one arcade NFT relic.",
+        },
       ];
       const ROTATING_WORLD_BOSS_CATALOG = [
         {
@@ -3100,6 +3155,60 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         elite: { title: "Warfront Vanguard", spores: 120, goldenSpores: 2, relicPrefix: "Season Relic Drop", pointsBonus: 30 },
         contender: { title: "Chronicle Contender", spores: 80, goldenSpores: 1, relicPrefix: "Season Relic Drop", pointsBonus: 18 },
       };
+      const KINGMYCO_MINI_GAME_PORTAL = "https://kingmyco.io";
+      const MINI_GAME_CONTRACTS = [
+        {
+          id: "spore-sprint",
+          title: "Spore Sprint Rush",
+          summary: "Speed-run a neon lane to vacuum blue + golden spores before rot spores catch you.",
+          entryCost: 18,
+          cooldownMs: 45 * 1000,
+          clearScore: 84,
+          eliteScore: 106,
+          nftScore: 118,
+          rewardMin: 28,
+          rewardMax: 120,
+          goldenChance: 0.22,
+          burnRatio: 0.1,
+          seasonPoints: 12,
+          powerup: "focus",
+          portalPath: "/",
+        },
+        {
+          id: "burn-pit-raid",
+          title: "Burn Pit Raid Defense",
+          summary: "Hold a ritual pit against corruption waves and route captured spores into Sunday burns.",
+          entryCost: 26,
+          cooldownMs: 55 * 1000,
+          clearScore: 92,
+          eliteScore: 114,
+          nftScore: 126,
+          rewardMin: 38,
+          rewardMax: 136,
+          goldenChance: 0.16,
+          burnRatio: 0.2,
+          seasonPoints: 15,
+          powerup: "ward",
+          portalPath: "/",
+        },
+        {
+          id: "chainlands-siege",
+          title: "Chainlands Relic Siege",
+          summary: "Duel corrupted validators in tactical waves to recover relic signatures and power-up runes.",
+          entryCost: 34,
+          cooldownMs: 70 * 1000,
+          clearScore: 102,
+          eliteScore: 126,
+          nftScore: 138,
+          rewardMin: 44,
+          rewardMax: 168,
+          goldenChance: 0.3,
+          burnRatio: 0.12,
+          seasonPoints: 19,
+          powerup: "arcane",
+          portalPath: "/",
+        },
+      ];
 
       const state = {
         mode: "intro",
@@ -3270,6 +3379,17 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           burnedToday: 0,
           totalBurned: 0,
           events: [],
+        },
+        minigames: {
+          plays: 0,
+          wins: 0,
+          totalSporesWon: 0,
+          totalSporesBurned: 0,
+          powerupsClaimed: 0,
+          nftClaims: 0,
+          bestScoreById: {},
+          lastPlayedAtById: {},
+          lastResultById: {},
         },
         roamingSpores: {
           seq: 0,
@@ -3560,6 +3680,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
         if (milestoneId === "living-ledger") {
           return state.story.entries.length >= 20;
+        }
+        if (milestoneId === "arcade-sovereign") {
+          const hasArcadeRelic = state.web3.mintedRelics.some((tag) => String(tag).startsWith("MiniGame NFT //"));
+          return (state.minigames?.wins ?? 0) >= 8 && hasArcadeRelic;
         }
         return false;
       };
@@ -4028,6 +4152,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           state.progress.interactedNpcs.size * 12 +
           state.hero.goldenSpores * 95 +
           Math.max(0, Math.round(state.hero.spores / 9)) +
+          (state.minigames?.wins ?? 0) * 24 +
+          Math.max(0, Math.round((state.minigames?.totalSporesBurned ?? 0) / 8)) +
           Math.max(-40, state.hero.morality) +
           profileBonus
         );
@@ -4404,6 +4530,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         createMenuDropdown(right, "Character Status", dom.panelStatus, !compactUi);
         createMenuDropdown(right, "Inventory + Shop", dom.panelInventory, false);
         createMenuDropdown(right, "Web3 Deck", dom.panelWeb3, false);
+        createMenuDropdown(right, "Mini Games", dom.panelMiniGames, false);
         createMenuDropdown(right, "Leaderboards", dom.panelLeaderboard, false);
         const battleHost = createMenuDropdown(right, "Battle Menu", dom.panelBattle, false);
         createMenuDropdown(right, "Audio", dom.panelAudio, false);
@@ -4955,7 +5082,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const score =
           state.progress.defeatedBosses.size * 4 +
           state.progress.clues.size * 2 +
-          Math.floor((state.hero.attack + state.hero.defense + state.hero.magic) / 2);
+          Math.floor((state.hero.attack + state.hero.defense + state.hero.magic) / 2) +
+          Math.round((state.minigames.wins ?? 0) * 1.2) +
+          Math.round((state.minigames.nftClaims ?? 0) * 3);
         state.web3.relicPower = score;
         state.web3.chainRank = computeChainTier(score);
         state.web3.lastSyncedAt = Date.now();
@@ -5771,6 +5900,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           playerClan: state.playerClan,
           playerAvatar: state.playerAvatar,
           burn: state.burn,
+          minigames: state.minigames,
           season: state.season,
           worldMutation: state.worldMutation,
           liveEvent: state.liveEvent,
@@ -5913,6 +6043,27 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
               };
               if (!Array.isArray(state.burn.events)) state.burn.events = [];
               refreshDailyBurnQuota();
+            }
+            if (parsed.minigames && typeof parsed.minigames === "object") {
+              state.minigames = {
+                ...state.minigames,
+                ...parsed.minigames,
+              };
+              state.minigames.plays = Math.max(0, Math.round(Number(state.minigames.plays ?? 0)));
+              state.minigames.wins = Math.max(0, Math.round(Number(state.minigames.wins ?? 0)));
+              state.minigames.totalSporesWon = Math.max(0, Math.round(Number(state.minigames.totalSporesWon ?? 0)));
+              state.minigames.totalSporesBurned = Math.max(0, Math.round(Number(state.minigames.totalSporesBurned ?? 0)));
+              state.minigames.powerupsClaimed = Math.max(0, Math.round(Number(state.minigames.powerupsClaimed ?? 0)));
+              state.minigames.nftClaims = Math.max(0, Math.round(Number(state.minigames.nftClaims ?? 0)));
+              if (!state.minigames.bestScoreById || typeof state.minigames.bestScoreById !== "object") {
+                state.minigames.bestScoreById = {};
+              }
+              if (!state.minigames.lastPlayedAtById || typeof state.minigames.lastPlayedAtById !== "object") {
+                state.minigames.lastPlayedAtById = {};
+              }
+              if (!state.minigames.lastResultById || typeof state.minigames.lastResultById !== "object") {
+                state.minigames.lastResultById = {};
+              }
             }
             if (parsed.season && typeof parsed.season === "object") {
               state.season = {
@@ -6315,6 +6466,271 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         renderBurnPitScreen();
         renderHud();
         saveGame();
+      };
+
+      const getMiniGameContractById = (miniGameId) =>
+        MINI_GAME_CONTRACTS.find((entry) => entry.id === miniGameId);
+
+      const getMiniGameCooldownRemainingMs = (miniGameId, now = Date.now()) => {
+        const contract = getMiniGameContractById(miniGameId);
+        if (!contract) return 0;
+        const lastPlayedAt = Number(state.minigames?.lastPlayedAtById?.[miniGameId] ?? 0);
+        if (!Number.isFinite(lastPlayedAt) || lastPlayedAt <= 0) return 0;
+        return Math.max(0, Math.round(lastPlayedAt + contract.cooldownMs - now));
+      };
+
+      const getMiniGameBurnPit = () => {
+        const pits = STRUCTURES.filter((entry) => entry.type === "burn-pit");
+        if (!pits.length) return null;
+        const currentRealmPits = pits.filter((entry) => getEntityRealmId(entry) === state.currentRealmId);
+        const pool = currentRealmPits.length ? currentRealmPits : pits;
+        const withDistance = pool.map((entry) => ({
+          pit: entry,
+          distance: dist(
+            state.hero.x,
+            state.hero.y,
+            entry.x + entry.w / 2,
+            entry.y + entry.h / 2,
+          ),
+        }));
+        withDistance.sort((left, right) => left.distance - right.distance);
+        return withDistance[0]?.pit ?? null;
+      };
+
+      const applyMiniGamePowerup = (powerupType, tier) => {
+        const labelTier = tier === "legend" ? 2 : tier === "elite" ? 1.5 : 1;
+        if (powerupType === "focus") {
+          const dustGain = Math.max(1, Math.round(labelTier));
+          state.hero.magicBoostTurns = Math.min(10, state.hero.magicBoostTurns + (tier === "legend" ? 2 : 1));
+          state.inventory.spellDust = Math.max(0, (state.inventory.spellDust ?? 0) + dustGain);
+          return `Arcane Focus (+${dustGain} Spell Dust, boosted magic turns)`;
+        }
+        if (powerupType === "ward") {
+          const shardGain = Math.max(1, Math.round(labelTier));
+          const heal = 10 + Math.round(8 * labelTier);
+          state.inventory.armorShards = Math.max(0, (state.inventory.armorShards ?? 0) + shardGain);
+          state.overworldCombat.hp = clamp(state.overworldCombat.hp + heal, 1, state.overworldCombat.maxHp);
+          return `Ward Surge (+${shardGain} Armor Shards, +${heal} overworld vitality)`;
+        }
+        const runeGain = Math.max(1, Math.round(labelTier));
+        const sigilGain = tier === "legend" ? 1 : 0;
+        state.inventory.guardRunes = Math.max(0, (state.inventory.guardRunes ?? 0) + runeGain);
+        state.inventory.bossSigils = Math.max(0, (state.inventory.bossSigils ?? 0) + sigilGain);
+        return `Chain Surge (+${runeGain} Guard Runes${sigilGain ? `, +${sigilGain} Boss Sigil` : ""})`;
+      };
+
+      const recordMiniGameBurnEvent = async (contract, requestedBurn, score) => {
+        const pit = getMiniGameBurnPit();
+        if (!pit) {
+          return { burned: 0, remoteStatus: "no-pit", pitName: "No burn pit available" };
+        }
+        refreshDailyBurnQuota();
+        const remaining = getBurnRemainingToday();
+        const burnAmount = Math.min(
+          Math.max(0, Math.floor(requestedBurn)),
+          remaining,
+          Math.max(0, Math.floor(state.hero.spores)),
+        );
+        if (burnAmount <= 0) {
+          return { burned: 0, remoteStatus: remaining <= 0 ? "daily-cap" : "insufficient-spores", pitName: pit.name };
+        }
+        state.hero.spores -= burnAmount;
+        state.burn.burnedToday += burnAmount;
+        state.burn.totalBurned += burnAmount;
+        state.minigames.totalSporesBurned += burnAmount;
+        const now = Date.now();
+        const sundayWindow = formatShortDate(getNextSunday(now));
+        const eventRecord = {
+          id: `burn-mini-${contract.id}-${now}`,
+          pitId: pit.id,
+          pitName: pit.name,
+          realmId: state.currentRealmId,
+          clanId: state.playerClan,
+          avatarId: state.playerAvatar,
+          sporesBurned: burnAmount,
+          recordedAt: now,
+          sundayWindow,
+          sundayTokenBurnAmount: WEEKLY_TOKEN_BURN_AMOUNT,
+          sundayBurnActive: isSundayNow(),
+          remoteStatus: "local",
+          source: `mini-game:${contract.id}`,
+          score,
+        };
+        state.burn.events.unshift(eventRecord);
+        state.burn.events = state.burn.events.slice(0, 40);
+        const remoteStatus = await recordBurnPitEventRemote(eventRecord);
+        eventRecord.remoteStatus = remoteStatus;
+        recordSeasonImpact("mini-game-burn", state.playerClan, Math.max(2, Math.round(burnAmount * 0.22)), `${contract.title} burn ${burnAmount}`);
+        return { burned: burnAmount, remoteStatus, pitName: pit.name };
+      };
+
+      const launchMiniGamePortal = (miniGameId) => {
+        const contract = getMiniGameContractById(miniGameId);
+        if (!contract) return;
+        const url = `${KINGMYCO_MINI_GAME_PORTAL}${contract.portalPath}?mini_game=${encodeURIComponent(contract.id)}&ref=myco-quest`;
+        window.open(url, "_blank", "noopener");
+        setStatus(`Opened ${contract.title} on Kingmyco.io in a new tab.`);
+      };
+
+      const playMiniGameContract = async (miniGameId) => {
+        const contract = getMiniGameContractById(miniGameId);
+        if (!contract) return;
+        if (!requireSignedInIdentity(true)) return;
+        if (state.intro.active || state.cutscene.active || state.interior.active || state.mode === "battle" || state.mode === "burn-pit") {
+          setStatus("Finish the current encounter before launching a mini-game contract.", true);
+          playSfx("error");
+          return;
+        }
+        const cooldownRemaining = getMiniGameCooldownRemainingMs(contract.id);
+        if (cooldownRemaining > 0) {
+          setStatus(`${contract.title} is cooling down (${formatRemainingClock(cooldownRemaining)}).`, true);
+          playSfx("error");
+          renderMiniGamesPanel();
+          return;
+        }
+        if (state.hero.spores < contract.entryCost) {
+          setStatus(`${contract.title} entry requires ${contract.entryCost} spores.`, true);
+          playSfx("error");
+          return;
+        }
+
+        state.hero.spores -= contract.entryCost;
+        const heroPower =
+          state.hero.attack * 8 +
+          state.hero.defense * 7 +
+          state.hero.magic * 8 +
+          (state.hero.armorTier ?? 1) * 6 +
+          (state.hero.guardRank ?? 1) * 6;
+        const grindPower =
+          (state.progress.enemyWins ?? 0) * 0.7 +
+          (state.progress.puzzleSolves ?? 0) * 1.1 +
+          (state.progress.trainingMarks ?? 0) * 1.3 +
+          state.progress.defeatedBosses.size * 7;
+        const clanBias = ({
+          myco: 5,
+          "dark-mycelius": 6,
+          rougarou: 4,
+          "dragon-brood": 5,
+          tegbot: 6,
+          "shiba-inu": 4,
+        })[state.playerClan] ?? 4;
+        const score = Math.round((heroPower * 0.42) + grindPower + clanBias + (Math.random() * 48) + (Math.random() * 34));
+        const won = score >= contract.clearScore;
+        const tier = score >= contract.nftScore ? "legend" : score >= contract.eliteScore ? "elite" : won ? "clear" : "failed";
+        const tierMult = tier === "legend" ? 1.32 : tier === "elite" ? 1.18 : tier === "clear" ? 1 : 0.46;
+        const rawReward = contract.rewardMin + Math.round(Math.random() * (contract.rewardMax - contract.rewardMin));
+        const sporeReward = Math.max(8, Math.round(rawReward * tierMult));
+        state.hero.spores += sporeReward;
+        state.minigames.plays += 1;
+        if (won) {
+          state.minigames.wins += 1;
+          state.progress.trainingMarks = Math.max(0, (state.progress.trainingMarks ?? 0) + 1);
+        }
+        state.minigames.totalSporesWon += sporeReward;
+        state.minigames.lastPlayedAtById[contract.id] = Date.now();
+        state.minigames.bestScoreById[contract.id] = Math.max(Number(state.minigames.bestScoreById[contract.id] ?? 0), score);
+        state.minigames.lastResultById[contract.id] = {
+          score,
+          tier,
+          won,
+          at: Date.now(),
+        };
+
+        let goldenGain = 0;
+        const goldenChance = contract.goldenChance + (tier === "legend" ? 0.18 : tier === "elite" ? 0.08 : 0);
+        if (won && Math.random() < goldenChance) {
+          goldenGain = tier === "legend" ? 2 : 1;
+          state.hero.goldenSpores += goldenGain;
+        }
+
+        const powerupLabel = won ? applyMiniGamePowerup(contract.powerup, tier) : "No power-up recovered";
+        if (won && powerupLabel) {
+          state.minigames.powerupsClaimed += 1;
+        }
+
+        const desiredBurn = Math.round(sporeReward * contract.burnRatio);
+        const burnResult = await recordMiniGameBurnEvent(contract, desiredBurn, score);
+
+        const seasonPoints = won
+          ? contract.seasonPoints + (tier === "elite" ? 4 : 0) + (tier === "legend" ? 8 : 0)
+          : Math.max(1, Math.round(contract.seasonPoints * 0.35));
+        recordSeasonImpact("mini-game-contract", state.playerClan, seasonPoints, `${contract.title} ${tier.toUpperCase()} (${score})`);
+
+        let mintedNft = false;
+        if (won && (tier === "legend" || Math.random() < 0.18)) {
+          const relicTag = `MiniGame NFT // ${contract.title} // ${contract.id} // ${state.burn.dayKey}`;
+          mintedNft = addMintedRelic(
+            relicTag,
+            "web3",
+            `${contract.title} awarded a mini-game NFT signature after a ${tier.toUpperCase()} clear (${score}).`,
+          );
+          if (mintedNft) {
+            state.minigames.nftClaims += 1;
+          }
+        }
+
+        const burnMessage = burnResult.burned > 0
+          ? `Burned ${burnResult.burned} spores at ${burnResult.pitName} (${burnResult.remoteStatus}).`
+          : "No burn routed this run.";
+        const powerupMessage = won ? `Power-up: ${powerupLabel}.` : "";
+        pushStoryEntry(
+          `Mini-game contract resolved: ${contract.title} (${tier.toUpperCase()} ${score}). Reward ${sporeReward} spores.${goldenGain ? ` +${goldenGain} golden spores.` : ""} ${powerupMessage} ${burnMessage}`,
+          "event",
+        );
+        setStatus(
+          `${contract.title}: ${tier.toUpperCase()} ${score}. +${sporeReward} spores${goldenGain ? `, +${goldenGain} golden` : ""}. ${powerupMessage} ${burnMessage}${mintedNft ? " Mini-game NFT minted." : ""}`,
+          !won,
+        );
+        playSfx(won ? "coin" : "hit");
+        evaluateOnchainMilestones();
+        updateLeaderboardEntry();
+        renderMiniGamesPanel();
+        renderHud();
+        saveGame();
+      };
+
+      const renderMiniGamesPanel = () => {
+        if (!dom.miniGameList || !dom.miniGameSummary) return;
+        const blocked =
+          state.intro.active ||
+          state.cutscene.active ||
+          state.interior.active ||
+          state.mode === "battle" ||
+          state.mode === "burn-pit";
+        const now = Date.now();
+        dom.miniGameList.innerHTML = MINI_GAME_CONTRACTS.map((contract) => {
+          const cooldown = getMiniGameCooldownRemainingMs(contract.id, now);
+          const canAfford = state.hero.spores >= contract.entryCost;
+          const lastScore = Number(state.minigames.bestScoreById[contract.id] ?? 0);
+          const lastResult = state.minigames.lastResultById[contract.id];
+          const resultLabel = lastResult
+            ? `${String(lastResult.tier || "clear").toUpperCase()} ${Math.round(lastResult.score || 0)}`
+            : "No run yet";
+          const runDisabled = blocked || cooldown > 0 || !canAfford;
+          const runLabel = cooldown > 0
+            ? `Cooling ${formatRemainingClock(cooldown)}`
+            : `Run Contract (${contract.entryCost} spores)`;
+          return `<article class="minigame-card">
+            <h4>${contract.title}</h4>
+            <p>${contract.summary}</p>
+            <div class="minigame-meta">
+              <span class="chip">Entry ${contract.entryCost}</span>
+              <span class="chip">Rewards ${contract.rewardMin}-${contract.rewardMax}</span>
+              <span class="chip">Burn Loop ${Math.round(contract.burnRatio * 100)}%</span>
+              <span class="chip">Best ${lastScore || "-"}</span>
+              <span class="chip">Last ${resultLabel}</span>
+            </div>
+            <div class="minigame-actions">
+              <button data-minigame-action="run" data-minigame-id="${contract.id}" ${runDisabled ? "disabled" : ""}>${runLabel}</button>
+              <button data-minigame-action="open" data-minigame-id="${contract.id}">Open Kingmyco.io</button>
+            </div>
+          </article>`;
+        }).join("");
+        const plays = state.minigames.plays ?? 0;
+        const wins = state.minigames.wins ?? 0;
+        const winRate = plays > 0 ? Math.round((wins / plays) * 100) : 0;
+        const burnRemaining = getBurnRemainingToday();
+        dom.miniGameSummary.textContent = `Contracts: ${wins}/${plays} wins (${winRate}% win rate) // Spore Earned ${state.minigames.totalSporesWon} // Burn Routed ${state.minigames.totalSporesBurned} // NFT Claims ${state.minigames.nftClaims} // Power-ups ${state.minigames.powerupsClaimed} // Daily Burn Remaining ${burnRemaining}`;
       };
 
       const getOverworldHeroMaxHp = () => {
@@ -11786,6 +12202,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           `<span class="chip">Enemies Executed ${state.progress.enemiesExecuted ?? 0}</span>`,
           `<span class="chip">NPC Robberies ${state.progress.npcRobberies ?? 0}</span>`,
           `<span class="chip">Battle Flees ${state.progress.battleFlees ?? 0}</span>`,
+          `<span class="chip">Mini-game Wins ${state.minigames.wins ?? 0}/${state.minigames.plays ?? 0}</span>`,
+          `<span class="chip">Mini-game NFT Claims ${state.minigames.nftClaims ?? 0}</span>`,
           `<span class="chip">Magic Boost Turns: ${state.hero.magicBoostTurns}</span>`,
           `<span class="chip">Overworld Hearts ${getOverworldHeartDisplay()}</span>`,
           `<span class="chip">Overworld Vitality ${Math.round(overworldHpRatio * 100)}%</span>`,
@@ -11945,7 +12363,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const seasonLeaderName = CLAN_PROFILES[seasonLeaderId]?.name ?? seasonLeaderId;
         const rotatingBoss = getRotatingBossConfig();
         const liveEventRemaining = formatRemainingClock((state.liveEvent.endsAt ?? 0) - Date.now());
-        dom.regionHint.textContent = `World region: ${region?.name ?? "Unknown"}\nCurrent realm page: ${realm?.name ?? "Unknown"}\nLinked pages: ${linkedRealms || "None"}\nClan: ${clan.name} // Avatar: ${getSelectedAvatarName()}\nNarrative Persona: ${narrativeProfile.text}\nSeason: ${state.season.weekKey} // Warfront Leader: ${seasonLeaderName}\nRotating Boss: ${rotatingBoss.title}\nLive Event: ${state.liveEvent.title} (${liveEventRemaining})\nWorld Mutation: ${state.worldMutation.title} (${state.worldMutation.key})\n${realm?.label ?? region?.label ?? ""}\nAI directive: ${state.aiDirective}\nStory pulse: ${latestStoryEntry?.text ?? "No active beat yet."}`;
+        dom.regionHint.textContent = `World region: ${region?.name ?? "Unknown"}\nCurrent realm page: ${realm?.name ?? "Unknown"}\nLinked pages: ${linkedRealms || "None"}\nClan: ${clan.name} // Avatar: ${getSelectedAvatarName()}\nNarrative Persona: ${narrativeProfile.text}\nSeason: ${state.season.weekKey} // Warfront Leader: ${seasonLeaderName}\nRotating Boss: ${rotatingBoss.title}\nLive Event: ${state.liveEvent.title} (${liveEventRemaining})\nMini Games: ${state.minigames.wins}/${state.minigames.plays} contract wins // Burn routed ${state.minigames.totalSporesBurned}\nWorld Mutation: ${state.worldMutation.title} (${state.worldMutation.key})\n${realm?.label ?? region?.label ?? ""}\nAI directive: ${state.aiDirective}\nStory pulse: ${latestStoryEntry?.text ?? "No active beat yet."}`;
         if (dom.realmBanner) {
           const pathTone = state.hero.morality >= 0 ? "Mycoside" : "Darkside";
           dom.realmBanner.textContent = `${realm?.name ?? "Unknown Realm"} // ${clan.bannerTitle} // ${pathTone} path`;
@@ -11972,6 +12390,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           `<span class="chip">Last Sync ${syncAge}</span>`,
           `<span class="chip">Live Event ${state.liveEvent.title}</span>`,
           `<span class="chip">Rotating Boss ${getEnemyDisplayName(state.season.rotatingBossKind || "rougarou")}</span>`,
+          `<span class="chip">Mini-game Wins ${state.minigames.wins}/${state.minigames.plays}</span>`,
+          `<span class="chip">Mini-game NFT Claims ${state.minigames.nftClaims}</span>`,
           `<span class="chip">Spore Burn Today ${state.burn.burnedToday}/${DAILY_SPORE_BURN_LIMIT}</span>`,
           `<span class="chip">Burn Remaining ${burnRemaining}</span>`,
           `<span class="chip">Sunday Token Burn ${WEEKLY_TOKEN_BURN_AMOUNT} KING MYCO (${nextSundayLabel})</span>`,
@@ -11999,6 +12419,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         dom.syncWeb3Btn.disabled = !connected;
         dom.mintSigilBtn.disabled = !connected;
         dom.claimSeasonRewardBtn.disabled = !connected;
+        renderMiniGamesPanel();
         if (state.burnPit.active) {
           renderBurnPitScreen();
         }
@@ -12393,6 +12814,23 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       dom.syncWeb3Btn.addEventListener("click", syncWeb3Profile);
       dom.mintSigilBtn.addEventListener("click", mintVictorySigil);
       dom.claimSeasonRewardBtn.addEventListener("click", claimSeasonReward);
+      if (dom.miniGameList) {
+        dom.miniGameList.addEventListener("click", (event) => {
+          if (!(event.target instanceof Element)) return;
+          const button = event.target.closest("button[data-minigame-action]");
+          if (!button) return;
+          const action = button.dataset.minigameAction;
+          const miniGameId = button.dataset.minigameId;
+          if (!miniGameId) return;
+          if (action === "run") {
+            void playMiniGameContract(miniGameId);
+            return;
+          }
+          if (action === "open") {
+            launchMiniGamePortal(miniGameId);
+          }
+        });
+      }
       dom.interiorSearchBtn.addEventListener("click", searchInterior);
       dom.interiorExitBtn.addEventListener("click", closeInterior);
       dom.burnPitBurnBtn.addEventListener("click", () => burnSporesAtPit(dom.burnPitAmountInput.value));
