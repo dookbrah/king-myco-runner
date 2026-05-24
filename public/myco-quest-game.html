@@ -167,11 +167,11 @@
         height: min(74dvh, calc(100dvh - 132px));
         max-height: none;
         min-height: 340px;
-        filter: saturate(1.24) contrast(1.16) brightness(1.04);
+        filter: saturate(1.06) contrast(1.2);
       }
       #battleCanvas {
         image-rendering: pixelated;
-        filter: saturate(1.18) contrast(1.16);
+        filter: saturate(1.05) contrast(1.18);
       }
       .hint {
         margin-top: 8px;
@@ -1665,8 +1665,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           lookAhead: 10,
           shakeScale: 0.7,
           hitStopScale: 0.7,
-          vignetteAlpha: 0.1,
-          scanlineAlpha: 0.08,
+          vignetteAlpha: 0.02,
+          scanlineAlpha: 0.04,
         },
         balanced: {
           worldFilter: "saturate(1.24) contrast(1.16) brightness(1.04)",
@@ -1675,8 +1675,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           lookAhead: 16,
           shakeScale: 1,
           hitStopScale: 1,
-          vignetteAlpha: 0.16,
-          scanlineAlpha: 0.12,
+          vignetteAlpha: 0.05,
+          scanlineAlpha: 0.05,
         },
         cinematic: {
           worldFilter: "saturate(1.32) contrast(1.21) brightness(1.06)",
@@ -1685,8 +1685,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           lookAhead: 22,
           shakeScale: 1.2,
           hitStopScale: 1.22,
-          vignetteAlpha: 0.24,
-          scanlineAlpha: 0.15,
+          vignetteAlpha: 0.08,
+          scanlineAlpha: 0.06,
         },
       };
 
@@ -9041,44 +9041,47 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (!structure || !layout) return;
 
         const [base, accent, glow] = INTERIOR_THEME_PALETTES[layout.interiorType] ?? ["#1f2937", "#4b5563", "#e2e8f0"];
-        const roomGradient = interiorCtx.createLinearGradient(0, 0, width, height);
-        roomGradient.addColorStop(0, base);
-        roomGradient.addColorStop(1, "#020617");
-        interiorCtx.fillStyle = roomGradient;
+        interiorCtx.fillStyle = base;
         interiorCtx.fillRect(0, 0, width, height);
 
         const cameraX = state.interior.cameraX ?? 0;
         const cameraY = state.interior.cameraY ?? 0;
 
-        interiorCtx.fillStyle = "rgba(148, 163, 184, 0.11)";
-        const floorStep = 40;
+        const floorStep = 16;
         const startTileX = Math.floor(cameraX / floorStep) * floorStep;
         const startTileY = Math.floor(cameraY / floorStep) * floorStep;
         for (let y = startTileY; y <= cameraY + height + floorStep; y += floorStep) {
           for (let x = startTileX; x <= cameraX + width + floorStep; x += floorStep) {
+            const checker = ((x >> 4) + (y >> 4)) % 2 === 0;
+            interiorCtx.fillStyle = checker ? `${accent}99` : `${base}dd`;
+            interiorCtx.fillRect(x - cameraX, y - cameraY, 16, 16);
             if (((x * 5 + y * 7) / floorStep) % 5 < 2) {
-              interiorCtx.fillRect(x - cameraX + 3, y - cameraY + 3, 14, 14);
+              interiorCtx.fillStyle = `${glow}55`;
+              interiorCtx.fillRect(x - cameraX + 2, y - cameraY + 2, 4, 4);
             }
           }
         }
 
         const mapX = -cameraX;
         const mapY = -cameraY;
-        interiorCtx.fillStyle = "rgba(2, 6, 23, 0.56)";
+        interiorCtx.fillStyle = "rgba(2, 6, 23, 0.62)";
         interiorCtx.fillRect(mapX, mapY, layout.width, layout.height);
 
-        interiorCtx.fillStyle = "rgba(15, 23, 42, 0.85)";
+        interiorCtx.fillStyle = "rgba(15, 23, 42, 0.94)";
         interiorCtx.fillRect(mapX, mapY, layout.width, 18);
         interiorCtx.fillRect(mapX, mapY + layout.height - 18, layout.width, 18);
         interiorCtx.fillRect(mapX, mapY, 18, layout.height);
         interiorCtx.fillRect(mapX + layout.width - 18, mapY, 18, layout.height);
 
-        interiorCtx.fillStyle = "rgba(2, 6, 23, 0.76)";
+        interiorCtx.fillStyle = "rgba(9, 13, 27, 0.96)";
         for (const obstacle of layout.obstacles) {
           interiorCtx.fillRect(obstacle.x - cameraX, obstacle.y - cameraY, obstacle.w, obstacle.h);
-          interiorCtx.strokeStyle = `${accent}99`;
-          interiorCtx.lineWidth = 2;
-          interiorCtx.strokeRect(obstacle.x - cameraX + 1, obstacle.y - cameraY + 1, obstacle.w - 2, obstacle.h - 2);
+          interiorCtx.fillStyle = `${accent}88`;
+          interiorCtx.fillRect(obstacle.x - cameraX + 2, obstacle.y - cameraY + 2, Math.max(0, obstacle.w - 4), 3);
+          interiorCtx.fillStyle = "rgba(9, 13, 27, 0.96)";
+          interiorCtx.strokeStyle = "#0b1020";
+          interiorCtx.lineWidth = 1;
+          interiorCtx.strokeRect(obstacle.x - cameraX + 0.5, obstacle.y - cameraY + 0.5, obstacle.w - 1, obstacle.h - 1);
         }
 
         for (const prop of layout.props) {
@@ -9086,23 +9089,20 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           const py = prop.y - cameraY;
           if (px < -30 || py < -30 || px > width + 30 || py > height + 30) continue;
           if (prop.kind === "mushroom") {
-            interiorCtx.fillStyle = `${accent}bb`;
+            interiorCtx.fillStyle = "#d8d0b8";
+            interiorCtx.fillRect(px - 3, py - 2, 6, prop.size + 2);
+            interiorCtx.fillStyle = accent;
             interiorCtx.fillRect(px - prop.size, py - prop.size, prop.size * 2, 5);
-            interiorCtx.fillStyle = `${glow}dd`;
-            interiorCtx.fillRect(px - 3, py - 3, 6, prop.size);
+            interiorCtx.fillStyle = `${glow}cc`;
+            interiorCtx.fillRect(px - 1, py - prop.size + 1, 2, 2);
           } else if (prop.kind === "crystal") {
-            interiorCtx.fillStyle = `${glow}cc`;
-            interiorCtx.beginPath();
-            interiorCtx.moveTo(px, py - prop.size);
-            interiorCtx.lineTo(px + prop.size * 0.6, py);
-            interiorCtx.lineTo(px, py + prop.size);
-            interiorCtx.lineTo(px - prop.size * 0.6, py);
-            interiorCtx.closePath();
-            interiorCtx.fill();
+            interiorCtx.fillStyle = glow;
+            interiorCtx.fillRect(px - 2, py - prop.size, 4, prop.size * 2);
+            interiorCtx.fillRect(px - prop.size * 0.5, py - 2, prop.size, 4);
           } else {
-            interiorCtx.fillStyle = `${accent}aa`;
+            interiorCtx.fillStyle = accent;
             interiorCtx.fillRect(px - 3, py - prop.size, 6, prop.size + 5);
-            interiorCtx.fillStyle = `${glow}cc`;
+            interiorCtx.fillStyle = glow;
             interiorCtx.fillRect(px + 3, py - prop.size, prop.size * 0.8, prop.size * 0.55);
           }
         }
@@ -9112,20 +9112,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           const ex = enemy.x - cameraX;
           const ey = enemy.y - cameraY;
           if (ex < -40 || ey < -40 || ex > width + 40 || ey > height + 40) continue;
-          const hue = hashString(enemy.kind) % 360;
-          interiorCtx.fillStyle = "rgba(2, 6, 23, 0.46)";
-          interiorCtx.beginPath();
-          interiorCtx.ellipse(ex, ey + enemy.radius + 6, enemy.radius + 5, 6, 0, 0, Math.PI * 2);
-          interiorCtx.fill();
-          interiorCtx.fillStyle = `hsla(${hue}, 72%, 58%, 0.82)`;
-          interiorCtx.beginPath();
-          interiorCtx.arc(ex, ey, enemy.radius + 4, 0, Math.PI * 2);
-          interiorCtx.fill();
-          interiorCtx.fillStyle = "rgba(2, 6, 23, 0.85)";
-          interiorCtx.fillRect(ex - 5, ey - 3, 10, 8);
-          interiorCtx.fillStyle = "#86efac";
-          interiorCtx.fillRect(ex - 4, ey - 1, 2, 2);
-          interiorCtx.fillRect(ex + 2, ey - 1, 2, 2);
+          drawEnemy(interiorCtx, enemy, ex, ey);
         }
 
         for (const npc of layout.npcs ?? []) {
@@ -9164,21 +9151,21 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         );
 
         const solved = state.progress.solvedStructures.has(structure.id);
-        interiorCtx.fillStyle = "rgba(2, 6, 23, 0.66)";
-        interiorCtx.fillRect(14, 12, 280, 28);
+        interiorCtx.fillStyle = "rgba(2, 6, 23, 0.7)";
+        interiorCtx.fillRect(10, 10, 236, 22);
         interiorCtx.strokeStyle = `${glow}88`;
         interiorCtx.lineWidth = 1;
-        interiorCtx.strokeRect(14.5, 12.5, 279, 27);
-        interiorCtx.font = "700 11px sans-serif";
-        interiorCtx.fillStyle = "#dbeafe";
+        interiorCtx.strokeRect(10.5, 10.5, 235, 21);
+        interiorCtx.font = "700 10px monospace";
+        interiorCtx.fillStyle = "#e5e7eb";
         const contextTag = nearbyNode
           ? nearbyNode.label
           : nearbyNpc
             ? `Resident: ${nearbyNpc.name}`
             : "Exploration";
-        interiorCtx.fillText(contextTag, 22, 30);
-        interiorCtx.fillStyle = solved ? "#4ade80" : "#facc15";
-        interiorCtx.fillText(solved ? "Feature clear" : "Feature active", 196, 30);
+        interiorCtx.fillText(contextTag, 16, 24);
+        interiorCtx.fillStyle = solved ? "#9dd77a" : "#e6c06f";
+        interiorCtx.fillText(solved ? "clear" : "active", 198, 24);
       };
 
       const triggerInteriorTrialBattle = (structure) => {
@@ -10979,20 +10966,17 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         checkCutsceneTriggers();
       };
 
-      const withPaperPose = (ctx, x, y, seed, drawFn) => {
-        const sway = Math.sin(state.worldTime * 3.8 + seed) * 1.1;
-        const tilt = Math.sin(state.worldTime * 2.6 + seed * 1.8) * 0.07;
-        const stretch = 1 + Math.sin(state.worldTime * 4.1 + seed * 0.9) * 0.03;
+      const withPaperPose = (ctx, x, y, _seed, drawFn) => {
+        // Keep actors locked to a crisp SNES-like pixel grid.
         ctx.save();
-        ctx.translate(x + sway, y);
-        ctx.transform(1, 0, tilt, stretch, 0, 0);
+        ctx.translate(Math.round(x), Math.round(y));
         drawFn();
         ctx.restore();
       };
 
       const drawPixelCharacter = (ctx, screenX, screenY) => {
         const x = Math.round(screenX);
-        const y = Math.round(screenY + Math.sin(state.worldTime * 8) * 1.2);
+        const y = Math.round(screenY);
         const clan = getClanProfile();
         const aura = state.hero.morality >= 0 ? `${clan.colors.aura}66` : "rgba(244, 63, 94, 0.42)";
         const capColor = clan.colors.cap;
@@ -11006,7 +10990,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
         withPaperPose(ctx, x, y, 0.25, () => {
           ctx.fillStyle = aura;
-          ctx.fillRect(-12, -15, 24, 4);
+          ctx.fillRect(-10, -14, 20, 2);
 
           ctx.fillStyle = "#facc15";
           ctx.fillRect(-7, -22, 14, 4);
@@ -11035,7 +11019,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           ctx.fillRect(-10, -1, 20, 14);
           ctx.fillStyle = clan.colors.accent;
           ctx.fillRect(-8, 3, 16, 10);
-          ctx.fillStyle = "#c4b5fd";
+          ctx.fillStyle = "#e5d7b0";
           ctx.fillRect(-1, 2, 2, 10);
 
           ctx.fillStyle = "#713f12";
@@ -11082,6 +11066,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           ctx.strokeStyle = "rgba(2, 6, 23, 0.7)";
           ctx.lineWidth = 1;
           ctx.strokeRect(-12.5, -28.5, 25, 42);
+          ctx.fillStyle = "#d6ca9f";
+          ctx.fillRect(-6, -20, 12, 2);
         });
       };
 
@@ -11110,12 +11096,17 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           ctx.fillRect(2, -5, 2, 2);
           ctx.fillStyle = "#94a3b8";
           ctx.fillRect(-1, -1, 2, 6);
+          ctx.strokeStyle = "#0b1020";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(-10.5, -15.5, 21, 22);
+          ctx.fillStyle = "#d8cba8";
+          ctx.fillRect(-5, -17, 10, 2);
         });
       };
 
       const drawEnemy = (ctx, enemy, screenX, screenY) => {
         const x = Math.round(screenX);
-        const y = Math.round(screenY + Math.sin(state.worldTime * 6 + enemy.x * 0.01) * 1.5);
+        const y = Math.round(screenY);
         const kindPalette = {
           "rot-spore": ["#ef4444", "#fca5a5"],
           "mold-raider": ["#f97316", "#fdba74"],
@@ -11218,50 +11209,101 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const getRealmArtTheme = (realmId = state.currentRealmId) => {
         const shared = {
-          floorNoiseDark: "rgba(2, 6, 23, 0.13)",
-          floorNoiseLight: "rgba(248, 250, 252, 0.08)",
-          routeGlow: "rgba(226, 232, 240, 0.34)",
-          routeEdge: "rgba(248, 250, 252, 0.26)",
+          floorNoiseDark: "rgba(17, 24, 39, 0.24)",
+          floorNoiseLight: "rgba(255, 255, 255, 0.09)",
+          tileA: "#3f6d35",
+          tileB: "#345d2c",
+          routeGlow: "#8b6a3d",
+          routeEdge: "#b8925a",
+          border: "#1f2a1c",
+          routeRim: "#e6d0a3",
           propOverrides: {},
           decoOverrides: {},
         };
         if (realmId === "myco-kingdom") {
           return {
             ...shared,
-            floorNoiseDark: "rgba(5, 42, 30, 0.22)",
-            floorNoiseLight: "rgba(74, 222, 128, 0.14)",
-            routeGlow: "rgba(52, 211, 153, 0.42)",
-            routeEdge: "rgba(187, 247, 208, 0.34)",
+            tileA: "#4a7d3a",
+            tileB: "#3d6c31",
+            floorNoiseDark: "rgba(24, 78, 43, 0.2)",
+            floorNoiseLight: "rgba(187, 247, 208, 0.09)",
+            routeGlow: "#9a7a42",
+            routeEdge: "#c6a56a",
+            routeRim: "#e9d5a1",
+            border: "#20311d",
             propOverrides: {
-              tree: { trunk: "#6b3a18", leavesA: "#14532d", leavesB: "#16a34a", leavesC: "#86efac" },
-              mushroom: { stem: "#f8fafc", cap: "#d946ef", spotsA: "#fdf4ff", spotsB: "#f5d0fe" },
-              bush: { a: "#14532d", b: "#22c55e", c: "#bbf7d0" },
+              tree: { trunk: "#6a431b", leavesA: "#2f5f2a", leavesB: "#4d8a3e", leavesC: "#b8d987" },
+              mushroom: { stem: "#e8e4d4", cap: "#9f2f52", spotsA: "#f6d5df", spotsB: "#d98fa6" },
+              bush: { a: "#2f5f2a", b: "#4d8a3e", c: "#b8d987" },
             },
             decoOverrides: {
-              canopy: { a: "rgba(17, 94, 89, 0.82)", b: "rgba(74, 222, 128, 0.66)" },
-              cloud: { a: "rgba(20, 184, 166, 0.32)", b: "rgba(153, 246, 228, 0.3)" },
-              mist: { a: "rgba(45, 212, 191, 0.26)", b: "rgba(134, 239, 172, 0.2)" },
+              canopy: { a: "rgba(48, 95, 40, 0.9)", b: "rgba(93, 140, 74, 0.86)" },
+              cloud: { a: "rgba(175, 206, 142, 0.32)", b: "rgba(224, 241, 189, 0.28)" },
+              mist: { a: "rgba(114, 153, 93, 0.24)", b: "rgba(171, 204, 136, 0.18)" },
             },
           };
         }
         if (realmId === "rougarou-fen") {
           return {
             ...shared,
-            floorNoiseDark: "rgba(49, 20, 82, 0.24)",
-            floorNoiseLight: "rgba(192, 132, 252, 0.15)",
-            routeGlow: "rgba(192, 132, 252, 0.46)",
-            routeEdge: "rgba(233, 213, 255, 0.3)",
+            tileA: "#58496f",
+            tileB: "#493c5c",
+            floorNoiseDark: "rgba(53, 30, 79, 0.26)",
+            floorNoiseLight: "rgba(220, 188, 255, 0.1)",
+            routeGlow: "#75618a",
+            routeEdge: "#9277aa",
+            routeRim: "#d2bde8",
+            border: "#2b2438",
             propOverrides: {
-              reed: { a: "#4c1d95", b: "#9333ea", c: "#e9d5ff" },
-              mushroom: { stem: "#f5f3ff", cap: "#a855f7", spotsA: "#f5d0fe", spotsB: "#ddd6fe" },
-              bush: { a: "#3b0764", b: "#7e22ce", c: "#d8b4fe" },
-              rock: { a: "#4c1d95", b: "#6d28d9", c: "#c4b5fd" },
+              reed: { a: "#3b3150", b: "#6d5a87", c: "#c8b5df" },
+              mushroom: { stem: "#e9deef", cap: "#74469f", spotsA: "#e7d4f8", spotsB: "#c7aee0" },
+              bush: { a: "#3b3150", b: "#6d5a87", c: "#c8b5df" },
+              rock: { a: "#4a3f5a", b: "#6b5d80", c: "#aea0c6" },
             },
             decoOverrides: {
-              mist: { a: "rgba(147, 51, 234, 0.34)", b: "rgba(216, 180, 254, 0.24)" },
-              cloud: { a: "rgba(126, 34, 206, 0.34)", b: "rgba(233, 213, 255, 0.26)" },
-              vine: { a: "rgba(126, 34, 206, 0.58)", b: "rgba(216, 180, 254, 0.44)" },
+              mist: { a: "rgba(114, 90, 144, 0.34)", b: "rgba(173, 149, 198, 0.24)" },
+              cloud: { a: "rgba(98, 80, 126, 0.34)", b: "rgba(194, 176, 218, 0.24)" },
+              vine: { a: "rgba(85, 64, 116, 0.58)", b: "rgba(173, 149, 198, 0.42)" },
             },
+          };
+        }
+        if (realmId === "tri-drake-peaks") {
+          return {
+            ...shared,
+            tileA: "#7a6b53",
+            tileB: "#665843",
+            floorNoiseDark: "rgba(53, 42, 30, 0.27)",
+            floorNoiseLight: "rgba(238, 213, 168, 0.11)",
+            routeGlow: "#9c7a53",
+            routeEdge: "#c69b6c",
+            routeRim: "#e8d0a6",
+            border: "#352c22",
+          };
+        }
+        if (realmId === "crimson-tide") {
+          return {
+            ...shared,
+            tileA: "#2f5f68",
+            tileB: "#264f56",
+            floorNoiseDark: "rgba(19, 48, 58, 0.28)",
+            floorNoiseLight: "rgba(171, 224, 232, 0.11)",
+            routeGlow: "#50878d",
+            routeEdge: "#78aeb6",
+            routeRim: "#b8dde1",
+            border: "#1d3940",
+          };
+        }
+        if (realmId === "solana-chainlands") {
+          return {
+            ...shared,
+            tileA: "#4a4a66",
+            tileB: "#3c3c58",
+            floorNoiseDark: "rgba(27, 27, 44, 0.3)",
+            floorNoiseLight: "rgba(205, 205, 241, 0.1)",
+            routeGlow: "#6e6e92",
+            routeEdge: "#9696bd",
+            routeRim: "#d1d1ee",
+            border: "#232338",
           };
         }
         return shared;
@@ -11440,6 +11482,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           ctx.lineTo(sx + structure.w - 24, sy + 14);
           ctx.stroke();
         }
+        ctx.fillStyle = "rgba(2, 6, 23, 0.28)";
+        ctx.fillRect(sx + 2, sy + structure.h - 6, Math.max(0, structure.w - 4), 4);
+        ctx.strokeStyle = "rgba(15, 23, 42, 0.78)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(sx + 0.5, sy + 0.5, Math.max(0, structure.w - 1), Math.max(0, structure.h - 1));
       };
 
       const drawScenicProp = (ctx, prop, sx, sy, realmId = state.currentRealmId) => {
@@ -11510,9 +11557,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           ctx.fillStyle = override.c ?? "#4ade80";
           ctx.fillRect(sxr - 3, syr - 8, 6, 3);
         }
-        ctx.strokeStyle = "rgba(2, 6, 23, 0.36)";
-        ctx.lineWidth = 1;
-        ctx.strokeRect(sxr - 14, syr - 18, 28, 26);
+        // Avoid "debug box" silhouettes and keep props naturally integrated.
       };
 
       const drawWorld = () => {
@@ -11545,36 +11590,30 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const currentRealm = getCurrentRealm();
         const realmTheme = getRealmArtTheme(currentRealm.id);
         const tuning = getPresentationTuning();
-        const overworld = REGIONS[0];
-        const viewLeft = Math.max(0, Math.floor((state.camera.x - TILE) / TILE) * TILE);
-        const viewTop = Math.max(0, Math.floor((state.camera.y - TILE) / TILE) * TILE);
-        const viewRight = Math.min(WORLD_WIDTH, state.camera.x + worldCanvas.width + TILE);
-        const viewBottom = Math.min(WORLD_HEIGHT, state.camera.y + worldCanvas.height + TILE);
         const tile16 = 16;
         const viewLeft16 = Math.max(0, Math.floor((state.camera.x - tile16) / tile16) * tile16);
         const viewTop16 = Math.max(0, Math.floor((state.camera.y - tile16) / tile16) * tile16);
         const viewRight16 = Math.min(WORLD_WIDTH, state.camera.x + worldCanvas.width + tile16);
         const viewBottom16 = Math.min(WORLD_HEIGHT, state.camera.y + worldCanvas.height + tile16);
         worldCtx.imageSmoothingEnabled = false;
-        worldCtx.fillStyle = "#070b16";
-        worldCtx.fillRect(-state.camera.x, -state.camera.y, WORLD_WIDTH, WORLD_HEIGHT);
-        worldCtx.fillStyle = overworld.colorA;
-        worldCtx.fillRect(-state.camera.x, -state.camera.y, WORLD_WIDTH, WORLD_HEIGHT);
+        worldCtx.fillStyle = realmTheme.tileA;
+        worldCtx.fillRect(0, 0, worldCanvas.width, worldCanvas.height);
 
-        // Pixel texture pass for a sharper 32-bit styled world floor.
-        worldCtx.fillStyle = realmTheme.floorNoiseLight;
-        for (let y = viewTop; y <= viewBottom; y += TILE) {
-          for (let x = viewLeft; x <= viewRight; x += TILE) {
-            if (((x * 13 + y * 17) / TILE) % 7 === 0) {
-              worldCtx.fillRect(x - state.camera.x + 4, y - state.camera.y + 4, TILE - 8, TILE - 8);
-            }
-          }
-        }
-        worldCtx.fillStyle = realmTheme.floorNoiseDark;
+        // SNES-style checker tiles and simple dithering for clean 16-bit readability.
         for (let y = viewTop16; y <= viewBottom16; y += tile16) {
           for (let x = viewLeft16; x <= viewRight16; x += tile16) {
-            if (((x * 3 + y * 5) >> 4) % 5 === 0) {
-              worldCtx.fillRect(x - state.camera.x, y - state.camera.y, 8, 8);
+            const sx = x - state.camera.x;
+            const sy = y - state.camera.y;
+            const checker = ((x >> 4) + (y >> 4)) % 2 === 0;
+            worldCtx.fillStyle = checker ? realmTheme.tileA : realmTheme.tileB;
+            worldCtx.fillRect(sx, sy, tile16, tile16);
+            if (((x * 5 + y * 7) >> 4) % 5 === 0) {
+              worldCtx.fillStyle = realmTheme.floorNoiseLight;
+              worldCtx.fillRect(sx + 2, sy + 2, 4, 4);
+            }
+            if (((x * 3 + y * 2) >> 4) % 7 === 0) {
+              worldCtx.fillStyle = realmTheme.floorNoiseDark;
+              worldCtx.fillRect(sx + 10, sy + 10, 3, 3);
             }
           }
         }
@@ -11582,58 +11621,21 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           if (!visible(realm.x, realm.y, realm.w, realm.h)) continue;
           const rx = realm.x - state.camera.x;
           const ry = realm.y - state.camera.y;
-
-          const gradient = worldCtx.createLinearGradient(rx, ry, rx + realm.w, ry + realm.h);
-          gradient.addColorStop(0, realm.colorA);
-          gradient.addColorStop(1, realm.colorB);
-          worldCtx.fillStyle = gradient;
-          worldCtx.fillRect(rx, ry, realm.w, realm.h);
-          if (realm.id === "myco-kingdom") {
-            worldCtx.fillStyle = "rgba(34, 211, 153, 0.12)";
-            for (let y = ry + 8; y < ry + realm.h - 8; y += 20) {
-              worldCtx.fillRect(rx + 8, y, realm.w - 16, 4);
-            }
-          } else if (realm.id === "rougarou-fen") {
-            worldCtx.fillStyle = "rgba(192, 132, 252, 0.14)";
-            for (let x = rx + 8; x < rx + realm.w - 8; x += 22) {
-              worldCtx.fillRect(x, ry + 8, 4, realm.h - 16);
-            }
-          }
-
-          worldCtx.fillStyle = realmTheme.floorNoiseDark;
-          const localStartX = Math.max(0, Math.floor((state.camera.x - realm.x - 24) / 24) * 24);
-          const localStartY = Math.max(0, Math.floor((state.camera.y - realm.y - 24) / 24) * 24);
-          const localEndX = Math.min(realm.w, Math.ceil((state.camera.x + worldCanvas.width - realm.x + 24) / 24) * 24);
-          const localEndY = Math.min(realm.h, Math.ceil((state.camera.y + worldCanvas.height - realm.y + 24) / 24) * 24);
-          for (let y = localStartY; y < localEndY; y += 24) {
-            for (let x = localStartX; x < localEndX; x += 24) {
-              const worldX = x + realm.x;
-              const worldY = y + realm.y;
-              if (((worldX) * 5 + (worldY) * 7) % 11 < 4) {
-                worldCtx.fillRect(rx + x, ry + y, 12, 12);
-              }
-            }
-          }
-
-          worldCtx.globalAlpha = 0.25;
-          worldCtx.fillStyle =
-            realm.id === "solana-chainlands" ? "#c4b5fd" : realm.id === "crimson-tide" ? "#67e8f9" : "#dcfce7";
-          worldCtx.fillRect(rx + 12, ry + 12, realm.w - 24, 8);
-          worldCtx.globalAlpha = 1;
-
-          worldCtx.strokeStyle = "#0f172a";
+          worldCtx.strokeStyle = realmTheme.border;
           worldCtx.lineWidth = 3;
-          worldCtx.strokeRect(rx, ry, realm.w, realm.h);
-          worldCtx.fillStyle = "#f8fafc";
-          worldCtx.font = "700 15px sans-serif";
-          worldCtx.fillText(realm.name, rx + 12, ry + 24);
+          worldCtx.strokeRect(rx + 1.5, ry + 1.5, Math.max(0, realm.w - 3), Math.max(0, realm.h - 3));
+          worldCtx.fillStyle = "rgba(0, 0, 0, 0.14)";
+          worldCtx.fillRect(rx + 4, ry + 4, Math.max(0, realm.w - 8), 6);
+          worldCtx.fillStyle = "#f5f1dd";
+          worldCtx.font = "700 14px monospace";
+          worldCtx.fillText(realm.name, rx + 10, ry + 20);
         }
 
-        drawParallaxLayer("back", 0.62, 0.58);
+        drawParallaxLayer("back", 0.7, 0.2);
 
         // Route overlays
         worldCtx.strokeStyle = realmTheme.routeGlow;
-        worldCtx.lineWidth = 8;
+        worldCtx.lineWidth = 14;
         worldCtx.beginPath();
         worldCtx.moveTo(300 - state.camera.x, 500 - state.camera.y);
         worldCtx.lineTo(2140 - state.camera.x, 640 - state.camera.y);
@@ -11650,9 +11652,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         worldCtx.lineTo(3300 - state.camera.x, 3740 - state.camera.y);
         worldCtx.stroke();
         worldCtx.strokeStyle = realmTheme.routeEdge;
-        worldCtx.lineWidth = 3;
+        worldCtx.lineWidth = 9;
         worldCtx.stroke();
-        drawParallaxLayer("mid", 0.84, 0.44);
+        worldCtx.strokeStyle = realmTheme.routeRim;
+        worldCtx.lineWidth = 2;
+        worldCtx.stroke();
+        drawParallaxLayer("mid", 0.9, 0.24);
 
         // Static scene props
         for (const prop of SCENIC_PROPS) {
@@ -11688,25 +11693,28 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           const locked = portalLocked(portal);
           const px = portal.x - state.camera.x;
           const py = portal.y - state.camera.y;
-          const centerX = px + portal.w / 2;
-          const centerY = py + portal.h / 2;
-
-          worldCtx.fillStyle = locked ? "#7f1d1d" : "#0284c7";
+          const tileSize = 8;
+          worldCtx.fillStyle = locked ? "#5c2525" : "#355d85";
           worldCtx.fillRect(px, py, portal.w, portal.h);
-          worldCtx.fillStyle = locked ? "#fecaca" : "#bae6fd";
-          worldCtx.fillRect(px + 8, py + 8, portal.w - 16, portal.h - 16);
-          worldCtx.strokeStyle = locked ? "#fca5a5" : "#e0f2fe";
+          for (let y = 4; y < portal.h - 4; y += tileSize) {
+            for (let x = 4; x < portal.w - 4; x += tileSize) {
+              const checker = ((x / tileSize) + (y / tileSize)) % 2 === 0;
+              worldCtx.fillStyle = locked
+                ? (checker ? "#7b3939" : "#9a5454")
+                : (checker ? "#4d79a6" : "#6996c0");
+              worldCtx.fillRect(px + x, py + y, tileSize, tileSize);
+            }
+          }
+          worldCtx.strokeStyle = locked ? "#d9a7a7" : "#bfd8ee";
           worldCtx.lineWidth = 2;
-          worldCtx.beginPath();
-          worldCtx.arc(centerX, centerY, portal.w / 2 - 4, 0, Math.PI * 2);
-          worldCtx.stroke();
-          worldCtx.fillStyle = locked ? "#fecaca" : "#f0f9ff";
-          worldCtx.fillRect(centerX - 2, centerY - 6, 4, 12);
-          worldCtx.fillRect(centerX - 6, centerY - 2, 12, 4);
-          worldCtx.fillStyle = locked ? "#fca5a5" : "#dbeafe";
-          worldCtx.font = "11px sans-serif";
+          worldCtx.strokeRect(px + 0.5, py + 0.5, portal.w - 1, portal.h - 1);
+          worldCtx.fillStyle = locked ? "#e8c9c9" : "#e7f0f8";
+          worldCtx.fillRect(px + Math.round(portal.w / 2) - 1, py + 8, 2, portal.h - 16);
+          worldCtx.fillRect(px + 8, py + Math.round(portal.h / 2) - 1, portal.w - 16, 2);
+          worldCtx.fillStyle = locked ? "#e2b5b5" : "#d5e7f5";
+          worldCtx.font = "10px monospace";
           const destinationRealm = REALMS.find((realm) => realm.id === portalDestinationRealmId(portal));
-          worldCtx.fillText(`${portal.name} -> ${destinationRealm?.name ?? "Unknown"}`, px - 12, py - 6);
+          worldCtx.fillText(`${portal.name} -> ${destinationRealm?.name ?? "Unknown"}`, px - 10, py - 6);
         }
 
         if (Date.now() < state.visualFx.portalPulseUntil) {
@@ -11771,32 +11779,25 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           if (!visible(projectile.x - 12, projectile.y - 12, 24, 24)) continue;
           const sx = projectile.x - state.camera.x;
           const sy = projectile.y - state.camera.y;
-          worldCtx.fillStyle = `${projectile.color}55`;
-          worldCtx.beginPath();
-          worldCtx.arc(sx, sy, projectile.radius + 4, 0, Math.PI * 2);
-          worldCtx.fill();
           worldCtx.fillStyle = projectile.color;
-          worldCtx.beginPath();
-          worldCtx.arc(sx, sy, projectile.radius, 0, Math.PI * 2);
-          worldCtx.fill();
+          const r = Math.max(2, Math.round(projectile.radius));
+          worldCtx.fillRect(Math.round(sx - r), Math.round(sy - r), r * 2, r * 2);
+          worldCtx.fillStyle = "#0b1220";
+          worldCtx.fillRect(Math.round(sx - 1), Math.round(sy - r), 2, r * 2);
+          worldCtx.fillRect(Math.round(sx - r), Math.round(sy - 1), r * 2, 2);
         }
 
         for (const projectile of state.overworldCombat.heroProjectiles) {
           if (!visible(projectile.x - 14, projectile.y - 14, 28, 28)) continue;
           const sx = projectile.x - state.camera.x;
           const sy = projectile.y - state.camera.y;
-          worldCtx.fillStyle = `${projectile.color}44`;
-          worldCtx.beginPath();
-          worldCtx.arc(sx, sy, projectile.radius + 6, 0, Math.PI * 2);
-          worldCtx.fill();
           worldCtx.fillStyle = projectile.color;
-          worldCtx.beginPath();
-          worldCtx.arc(sx, sy, projectile.radius + 1.5, 0, Math.PI * 2);
-          worldCtx.fill();
+          const r = Math.max(3, Math.round(projectile.radius + 1));
+          worldCtx.fillRect(Math.round(sx - r), Math.round(sy - r), r * 2, r * 2);
+          worldCtx.fillStyle = `${projectile.color}aa`;
+          worldCtx.fillRect(Math.round(sx - r - 2), Math.round(sy - 1), r * 2 + 4, 2);
           worldCtx.fillStyle = "#f8fafc";
-          worldCtx.beginPath();
-          worldCtx.arc(sx, sy, Math.max(1.5, projectile.radius * 0.35), 0, Math.PI * 2);
-          worldCtx.fill();
+          worldCtx.fillRect(Math.round(sx - 1), Math.round(sy - 1), 2, 2);
         }
 
         for (const impact of state.overworldCombat.impacts) {
@@ -11822,7 +11823,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           const xOffset = (y / 6) % 2 === 0 ? 0 : 3;
           worldCtx.fillRect(xOffset, y, worldCanvas.width, 1);
         }
-        drawParallaxLayer("front", 1.08, 0.8);
+        drawParallaxLayer("front", 1, 0.32);
 
         const miniW = 210;
         const miniH = 132;
@@ -11905,28 +11906,28 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const regionId = battle?.regionId ?? state.currentRealmId;
         if (regionId === "myco-kingdom") {
           return {
-            top: "#051926",
-            mid: "#0f3d35",
-            bottom: "#04241f",
-            stars: "rgba(74, 222, 128, 0.32)",
-            lane: "rgba(16, 185, 129, 0.2)",
+            top: "#214128",
+            mid: "#2f5d36",
+            bottom: "#3d6f3e",
+            stars: "rgba(216, 237, 166, 0.38)",
+            lane: "#6d8c4a",
           };
         }
         if (regionId === "rougarou-fen") {
           return {
-            top: "#120828",
-            mid: "#341454",
-            bottom: "#1d0f39",
-            stars: "rgba(196, 132, 252, 0.3)",
-            lane: "rgba(147, 51, 234, 0.24)",
+            top: "#2f2f4f",
+            mid: "#414166",
+            bottom: "#57527a",
+            stars: "rgba(220, 205, 238, 0.32)",
+            lane: "#746891",
           };
         }
         return {
-          top: "#080f27",
-          mid: "#0b1d43",
-          bottom: "#050a1a",
-          stars: "rgba(148, 163, 184, 0.2)",
-          lane: "rgba(56, 189, 248, 0.1)",
+          top: "#35425e",
+          mid: "#495674",
+          bottom: "#5d6482",
+          stars: "rgba(213, 223, 234, 0.3)",
+          lane: "#7d806e",
         };
       };
 
@@ -12281,25 +12282,37 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const drawBattleScene = () => {
         const now = Date.now();
         const battleTheme = getBattleBackdropTheme(state.battle);
-        const bg = battleCtx.createLinearGradient(0, 0, 0, battleCanvas.height);
-        bg.addColorStop(0, battleTheme.top);
-        bg.addColorStop(0.5, battleTheme.mid);
-        bg.addColorStop(1, battleTheme.bottom);
-        battleCtx.fillStyle = bg;
+        battleCtx.fillStyle = battleTheme.top;
         battleCtx.fillRect(0, 0, battleCanvas.width, battleCanvas.height);
+        const tile = 12;
+        const horizonY = Math.round(battleCanvas.height * 0.42);
+        for (let y = 0; y < battleCanvas.height; y += tile) {
+          for (let x = 0; x < battleCanvas.width; x += tile) {
+            const checker = ((x / tile) + (y / tile)) % 2 === 0;
+            if (y < horizonY) {
+              battleCtx.fillStyle = checker ? battleTheme.mid : battleTheme.top;
+            } else {
+              battleCtx.fillStyle = checker ? battleTheme.bottom : battleTheme.lane;
+            }
+            battleCtx.fillRect(x, y, tile, tile);
+          }
+        }
 
-        for (let i = 0; i < 36; i += 1) {
-          const sx = ((i * 97) % battleCanvas.width) + Math.sin(now * 0.001 + i) * 3;
-          const sy = ((i * 53) % Math.floor(battleCanvas.height * 0.46)) + Math.cos(now * 0.0016 + i) * 2;
+        for (let i = 0; i < 24; i += 1) {
+          const sx = ((i * 97) % battleCanvas.width) + Math.sin(now * 0.001 + i) * 2;
+          const sy = ((i * 53) % Math.floor(horizonY * 0.88)) + Math.cos(now * 0.0016 + i) * 1.5;
           battleCtx.fillStyle = battleTheme.stars;
-          battleCtx.fillRect(sx, sy, 2, 2);
+          battleCtx.fillRect(Math.round(sx), Math.round(sy), 2, 2);
         }
 
         const floorY = Math.round(battleCanvas.height * 0.79);
         battleCtx.fillStyle = battleTheme.lane;
-        battleCtx.fillRect(0, floorY - 6, battleCanvas.width, battleCanvas.height - floorY + 12);
-        battleCtx.strokeStyle = "rgba(125, 211, 252, 0.22)";
+        battleCtx.fillRect(0, floorY - 4, battleCanvas.width, battleCanvas.height - floorY + 8);
+        battleCtx.strokeStyle = "rgba(17, 24, 39, 0.82)";
         battleCtx.lineWidth = 2;
+        battleCtx.strokeRect(0.5, floorY - 3.5, battleCanvas.width - 1, battleCanvas.height - floorY + 7);
+        battleCtx.strokeStyle = "rgba(230, 208, 162, 0.34)";
+        battleCtx.lineWidth = 1;
         battleCtx.beginPath();
         battleCtx.moveTo(0, floorY);
         battleCtx.lineTo(battleCanvas.width, floorY);
@@ -12329,12 +12342,12 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         };
         const enemyBarX = battleCanvas.width - 216;
         const laneColor = {
-          speed: "#38bdf8",
-          precision: "#67e8f9",
-          survival: "#fb923c",
-          puzzle: "#c084fc",
-          tactical: "#facc15",
-        }[battle.encounterLane] ?? "#60a5fa";
+          speed: "#6f97bf",
+          precision: "#8fa8b5",
+          survival: "#aa8656",
+          puzzle: "#7c7198",
+          tactical: "#9f9365",
+        }[battle.encounterLane] ?? "#7487a2";
         battleCtx.fillStyle = laneColor;
         battleCtx.fillRect(0, 0, battleCanvas.width, 16);
         battleCtx.fillStyle = "rgba(15, 23, 42, 0.9)";
@@ -12360,15 +12373,15 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         battleCtx.fillText(battle.enemy.name, stage.enemyPanelX + 10, stage.panelY - 8);
 
         const drawBar = (x, y, width, ratio, color) => {
-          battleCtx.fillStyle = "rgba(2, 6, 23, 0.82)";
+          battleCtx.fillStyle = "#101827";
           battleCtx.fillRect(x, y, width, 15);
-          const gradient = battleCtx.createLinearGradient(x, y, x + width, y);
-          gradient.addColorStop(0, color);
-          gradient.addColorStop(1, "#22d3ee");
-          battleCtx.fillStyle = gradient;
-          battleCtx.fillRect(x, y, Math.floor(width * clamp(ratio, 0, 1)), 15);
-          battleCtx.strokeStyle = "rgba(148, 163, 184, 0.44)";
-          battleCtx.strokeRect(x, y, width, 15);
+          const fillW = Math.floor(width * clamp(ratio, 0, 1));
+          battleCtx.fillStyle = color;
+          battleCtx.fillRect(x + 1, y + 1, Math.max(0, fillW - 2), 13);
+          battleCtx.fillStyle = "rgba(255, 255, 255, 0.16)";
+          battleCtx.fillRect(x + 2, y + 2, Math.max(0, fillW - 6), 3);
+          battleCtx.strokeStyle = "#0b1020";
+          battleCtx.strokeRect(x + 0.5, y + 0.5, width - 1, 14);
         };
 
         drawBar(20, 64, 196, battle.player.maxHp > 0 ? battle.player.hp / battle.player.maxHp : 0, "#4ade80");
