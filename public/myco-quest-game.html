@@ -39,6 +39,10 @@
         font-weight: 700;
         padding: 10px 12px;
         background: #0f1d39;
+        transition: filter 120ms ease;
+      }
+      .top-config-panel summary:hover {
+        filter: brightness(1.1);
       }
       .top-config-panel-body {
         padding: 10px 12px 12px;
@@ -50,6 +54,11 @@
         padding: 12px;
         box-shadow: 0 10px 28px rgba(3, 8, 20, 0.38);
         backdrop-filter: blur(4px);
+        transition: border-color 160ms ease, box-shadow 180ms ease;
+      }
+      .panel:hover {
+        border-color: #4365a2;
+        box-shadow: 0 14px 30px rgba(3, 8, 20, 0.42);
       }
       h1,
       h2,
@@ -94,6 +103,15 @@
       button {
         cursor: pointer;
         font-weight: 700;
+        transition: transform 90ms ease, filter 120ms ease, box-shadow 140ms ease, border-color 120ms ease;
+      }
+      button:hover:not(:disabled) {
+        filter: brightness(1.08);
+        border-color: #6b8ec9;
+        box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.2);
+      }
+      button:active:not(:disabled) {
+        transform: translateY(1px) scale(0.99);
       }
       button.primary {
         background: #1d4ed8;
@@ -1215,6 +1233,14 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
                 Region Page
                 <select id="realmPageSelect"></select>
               </label>
+              <label>
+                Presentation
+                <select id="presentationPreset">
+                  <option value="performance">Performance</option>
+                  <option value="balanced" selected>Balanced</option>
+                  <option value="cinematic">Cinematic</option>
+                </select>
+              </label>
             </div>
 
             <div class="actions">
@@ -1578,6 +1604,38 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const WORLD_HEIGHT = 4200;
       const BASE_MAX_HP = 126;
       const WORLD_CAMERA_ZOOM = 1.7;
+      const PRESENTATION_PRESETS = {
+        performance: {
+          worldFilter: "saturate(1.12) contrast(1.08) brightness(1.01)",
+          battleFilter: "saturate(1.1) contrast(1.08)",
+          cameraLerp: 0.24,
+          lookAhead: 10,
+          shakeScale: 0.7,
+          hitStopScale: 0.7,
+          vignetteAlpha: 0.1,
+          scanlineAlpha: 0.08,
+        },
+        balanced: {
+          worldFilter: "saturate(1.24) contrast(1.16) brightness(1.04)",
+          battleFilter: "saturate(1.18) contrast(1.16)",
+          cameraLerp: 0.17,
+          lookAhead: 16,
+          shakeScale: 1,
+          hitStopScale: 1,
+          vignetteAlpha: 0.16,
+          scanlineAlpha: 0.12,
+        },
+        cinematic: {
+          worldFilter: "saturate(1.32) contrast(1.21) brightness(1.06)",
+          battleFilter: "saturate(1.26) contrast(1.2) brightness(1.04)",
+          cameraLerp: 0.13,
+          lookAhead: 22,
+          shakeScale: 1.2,
+          hitStopScale: 1.22,
+          vignetteAlpha: 0.24,
+          scanlineAlpha: 0.15,
+        },
+      };
 
       const worldCanvas = document.getElementById("worldCanvas");
       const worldCtx = worldCanvas.getContext("2d");
@@ -1613,6 +1671,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         externalId: document.getElementById("externalId"),
         sourceToken: document.getElementById("sourceToken"),
         realmPageSelect: document.getElementById("realmPageSelect"),
+        presentationPreset: document.getElementById("presentationPreset"),
         syncBtn: document.getElementById("syncBtn"),
         switchRealmBtn: document.getElementById("switchRealmBtn"),
         saveBtn: document.getElementById("saveBtn"),
@@ -3246,6 +3305,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           titleCardSkipped: false,
           clanLocked: false,
           nicknameLocked: false,
+          presentationPreset: "balanced",
         },
         nicknameLock: {
           identityKey: "",
@@ -3262,6 +3322,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           portalPulseUntil: 0,
           portalPulseX: 0,
           portalPulseY: 0,
+          cameraShakeUntil: 0,
+          cameraShakeStrength: 0,
+          hitStopUntil: 0,
+          hitFlashUntil: 0,
+          hitFlashColor: "248,113,113",
         },
         overworldCombat: {
           maxHearts: 3,
@@ -4578,6 +4643,40 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
       };
 
+      const getPresentationTuning = () => (
+        PRESENTATION_PRESETS[state.ui.presentationPreset] ?? PRESENTATION_PRESETS.balanced
+      );
+
+      const applyPresentationPreset = () => {
+        const presetId = PRESENTATION_PRESETS[state.ui.presentationPreset] ? state.ui.presentationPreset : "balanced";
+        state.ui.presentationPreset = presetId;
+        const tuning = getPresentationTuning();
+        worldCanvas.style.filter = tuning.worldFilter;
+        battleCanvas.style.filter = tuning.battleFilter;
+        if (dom.presentationPreset && dom.presentationPreset.value !== presetId) {
+          dom.presentationPreset.value = presetId;
+        }
+      };
+
+      const triggerCameraShake = (baseStrength = 5, durationMs = 110) => {
+        const tuning = getPresentationTuning();
+        const strength = clamp(baseStrength * tuning.shakeScale, 0, 20);
+        state.visualFx.cameraShakeStrength = Math.max(state.visualFx.cameraShakeStrength ?? 0, strength);
+        state.visualFx.cameraShakeUntil = Math.max(state.visualFx.cameraShakeUntil ?? 0, Date.now() + durationMs);
+      };
+
+      const triggerHitStop = (durationMs = 22) => {
+        const tuning = getPresentationTuning();
+        const scaled = Math.max(0, Math.round(durationMs * tuning.hitStopScale));
+        if (scaled <= 0) return;
+        state.visualFx.hitStopUntil = Math.max(state.visualFx.hitStopUntil ?? 0, Date.now() + scaled);
+      };
+
+      const triggerWorldHitFlash = (rgb = "248,113,113", durationMs = 120) => {
+        state.visualFx.hitFlashColor = rgb;
+        state.visualFx.hitFlashUntil = Math.max(state.visualFx.hitFlashUntil ?? 0, Date.now() + durationMs);
+      };
+
       const toggleMinimalHud = (forceValue) => {
         if (typeof forceValue === "boolean") {
           state.ui.minimalHud = forceValue;
@@ -5840,6 +5939,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             selectedAvatar: state.playerAvatar,
             minimalHud: state.ui.minimalHud,
             titleCardSkipped: state.ui.titleCardSkipped,
+            presentationPreset: state.ui.presentationPreset,
           }),
         );
       };
@@ -5862,6 +5962,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           }
           if (typeof parsed.minimalHud === "boolean") state.ui.minimalHud = parsed.minimalHud;
           if (typeof parsed.titleCardSkipped === "boolean") state.ui.titleCardSkipped = parsed.titleCardSkipped;
+          if (typeof parsed.presentationPreset === "string" && PRESENTATION_PRESETS[parsed.presentationPreset]) {
+            state.ui.presentationPreset = parsed.presentationPreset;
+          }
         } catch (error) {
           console.warn("config load failed", error);
         }
@@ -7277,8 +7380,36 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const realm = getCurrentRealm();
         const maxX = Math.max(realm.x, realm.x + realm.w - worldCanvas.width);
         const maxY = Math.max(realm.y, realm.y + realm.h - worldCanvas.height);
-        state.camera.x = clamp(state.hero.x - worldCanvas.width / 2, realm.x, maxX);
-        state.camera.y = clamp(state.hero.y - worldCanvas.height / 2, realm.y, maxY);
+        const tuning = getPresentationTuning();
+        const aimX = state.overworldCombat.heroAimX ?? 0;
+        const aimY = state.overworldCombat.heroAimY ?? 0;
+        const lookAhead = tuning.lookAhead;
+        const targetX = clamp(state.hero.x + aimX * lookAhead - worldCanvas.width / 2, realm.x, maxX);
+        const targetY = clamp(state.hero.y + aimY * lookAhead - worldCanvas.height / 2, realm.y, maxY);
+        if (!Number.isFinite(state.camera.x) || !Number.isFinite(state.camera.y)) {
+          state.camera.x = targetX;
+          state.camera.y = targetY;
+        } else {
+          const cameraJump = Math.hypot(targetX - state.camera.x, targetY - state.camera.y);
+          if (cameraJump > Math.max(worldCanvas.width, worldCanvas.height) * 1.15) {
+            state.camera.x = targetX;
+            state.camera.y = targetY;
+          } else {
+            state.camera.x += (targetX - state.camera.x) * tuning.cameraLerp;
+            state.camera.y += (targetY - state.camera.y) * tuning.cameraLerp;
+          }
+        }
+        const now = Date.now();
+        if (now < (state.visualFx.cameraShakeUntil ?? 0)) {
+          const remaining = clamp((state.visualFx.cameraShakeUntil - now) / 220, 0, 1);
+          const shake = (state.visualFx.cameraShakeStrength ?? 0) * remaining;
+          state.camera.x += randomBetween(-shake, shake);
+          state.camera.y += randomBetween(-shake, shake);
+        } else {
+          state.visualFx.cameraShakeStrength = 0;
+        }
+        state.camera.x = clamp(state.camera.x, realm.x, maxX);
+        state.camera.y = clamp(state.camera.y, realm.y, maxY);
       };
 
       const addClue = (clueId, clueLabel) => {
@@ -9518,7 +9649,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         return "❤".repeat(filled) + "♡".repeat(Math.max(0, heartMax - filled));
       };
 
-      const spawnOverworldImpact = (x, y, color, radius = 10) => {
+      const spawnOverworldImpact = (x, y, color, radius = 10, feedbackStrength = 0) => {
         state.overworldCombat.impacts.push({
           x,
           y,
@@ -9527,6 +9658,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           createdAt: Date.now(),
           expiresAt: Date.now() + 260,
         });
+        if (feedbackStrength > 0) {
+          triggerCameraShake(feedbackStrength, 120);
+        }
       };
 
       const isOverworldProjectileBlocked = (x, y, radius = 5) => {
@@ -9630,7 +9764,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         state.overworldCombat.hp = Math.max(0, state.overworldCombat.hp - finalDamage);
         state.hero.hp = Math.max(1, state.hero.hp - Math.max(1, Math.round(finalDamage * 0.2)));
         state.overworldCombat.invulnerableUntil = now + 780;
-        spawnOverworldImpact(state.hero.x, state.hero.y - 6, "#f87171", 14);
+        spawnOverworldImpact(state.hero.x, state.hero.y - 6, "#f87171", 14, 6.5);
+        triggerHitStop(30);
+        triggerWorldHitFlash("248,113,113", 120);
         if (state.overworldCombat.hp <= 0) {
           onOverworldHeartsDepleted();
           return;
@@ -9707,7 +9843,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           projectile.x += projectile.vx * dt;
           projectile.y += projectile.vy * dt;
           if (projectile.expiresAt <= now || isOverworldProjectileBlocked(projectile.x, projectile.y, projectile.radius)) {
-            spawnOverworldImpact(projectile.x, projectile.y, projectile.color, projectile.radius + 4);
+            spawnOverworldImpact(projectile.x, projectile.y, projectile.color, projectile.radius + 4, 1.1);
             state.overworldCombat.heroProjectiles.splice(index, 1);
             continue;
           }
@@ -9717,7 +9853,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             const hitRange = projectile.radius + (enemy.boss ? 20 : 17);
             if (dist(projectile.x, projectile.y, enemy.x, enemy.y) > hitRange) continue;
             enemy.overworldHp = Math.max(0, (enemy.overworldHp ?? enemy.overworldMaxHp ?? 1) - projectile.damage);
-            spawnOverworldImpact(projectile.x, projectile.y, projectile.color, projectile.radius + 6);
+            spawnOverworldImpact(projectile.x, projectile.y, projectile.color, projectile.radius + 6, enemy.boss ? 3.8 : 2.4);
+            triggerHitStop(enemy.boss ? 26 : 18);
+            triggerWorldHitFlash("125,211,252", enemy.boss ? 110 : 80);
             if (enemy.boss) {
               enemy.overworldHp = Math.max(1, enemy.overworldHp);
               if (enemy.overworldHp <= Math.round((enemy.overworldMaxHp ?? 1) * 0.28)) {
@@ -9738,7 +9876,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           projectile.x += projectile.vx * dt;
           projectile.y += projectile.vy * dt;
           if (projectile.expiresAt <= now || isOverworldProjectileBlocked(projectile.x, projectile.y, projectile.radius)) {
-            spawnOverworldImpact(projectile.x, projectile.y, projectile.color, projectile.radius + 4);
+            spawnOverworldImpact(projectile.x, projectile.y, projectile.color, projectile.radius + 4, 1.2);
             state.overworldCombat.enemyProjectiles.splice(index, 1);
             continue;
           }
@@ -9803,6 +9941,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         } else {
           setStatus(`Space cast: ${flameLabel} flame launched.`);
         }
+        triggerCameraShake(1.2, 90);
         playSfx("strike");
       };
 
@@ -10745,6 +10884,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
         if (state.mode === "burn-pit" || state.burnPit.active) return;
         if (state.mode === "battle") return;
+        if (Date.now() < (state.visualFx.hitStopUntil ?? 0)) {
+          updateCamera();
+          return;
+        }
         moveHero(dt);
         updateEnemies(dt);
         updateOverworldCombat(dt);
@@ -11326,7 +11469,17 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
         const currentRealm = getCurrentRealm();
         const realmTheme = getRealmArtTheme(currentRealm.id);
+        const tuning = getPresentationTuning();
         const overworld = REGIONS[0];
+        const viewLeft = Math.max(0, Math.floor((state.camera.x - TILE) / TILE) * TILE);
+        const viewTop = Math.max(0, Math.floor((state.camera.y - TILE) / TILE) * TILE);
+        const viewRight = Math.min(WORLD_WIDTH, state.camera.x + worldCanvas.width + TILE);
+        const viewBottom = Math.min(WORLD_HEIGHT, state.camera.y + worldCanvas.height + TILE);
+        const tile16 = 16;
+        const viewLeft16 = Math.max(0, Math.floor((state.camera.x - tile16) / tile16) * tile16);
+        const viewTop16 = Math.max(0, Math.floor((state.camera.y - tile16) / tile16) * tile16);
+        const viewRight16 = Math.min(WORLD_WIDTH, state.camera.x + worldCanvas.width + tile16);
+        const viewBottom16 = Math.min(WORLD_HEIGHT, state.camera.y + worldCanvas.height + tile16);
         worldCtx.imageSmoothingEnabled = false;
         worldCtx.fillStyle = "#070b16";
         worldCtx.fillRect(-state.camera.x, -state.camera.y, WORLD_WIDTH, WORLD_HEIGHT);
@@ -11335,16 +11488,16 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
         // Pixel texture pass for a sharper 32-bit styled world floor.
         worldCtx.fillStyle = realmTheme.floorNoiseLight;
-        for (let y = 0; y < WORLD_HEIGHT; y += TILE) {
-          for (let x = 0; x < WORLD_WIDTH; x += TILE) {
+        for (let y = viewTop; y <= viewBottom; y += TILE) {
+          for (let x = viewLeft; x <= viewRight; x += TILE) {
             if (((x * 13 + y * 17) / TILE) % 7 === 0) {
               worldCtx.fillRect(x - state.camera.x + 4, y - state.camera.y + 4, TILE - 8, TILE - 8);
             }
           }
         }
         worldCtx.fillStyle = realmTheme.floorNoiseDark;
-        for (let y = 0; y < WORLD_HEIGHT; y += 16) {
-          for (let x = 0; x < WORLD_WIDTH; x += 16) {
+        for (let y = viewTop16; y <= viewBottom16; y += tile16) {
+          for (let x = viewLeft16; x <= viewRight16; x += tile16) {
             if (((x * 3 + y * 5) >> 4) % 5 === 0) {
               worldCtx.fillRect(x - state.camera.x, y - state.camera.y, 8, 8);
             }
@@ -11373,9 +11526,15 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           }
 
           worldCtx.fillStyle = realmTheme.floorNoiseDark;
-          for (let y = 0; y < realm.h; y += 24) {
-            for (let x = 0; x < realm.w; x += 24) {
-              if (((x + realm.x) * 5 + (y + realm.y) * 7) % 11 < 4) {
+          const localStartX = Math.max(0, Math.floor((state.camera.x - realm.x - 24) / 24) * 24);
+          const localStartY = Math.max(0, Math.floor((state.camera.y - realm.y - 24) / 24) * 24);
+          const localEndX = Math.min(realm.w, Math.ceil((state.camera.x + worldCanvas.width - realm.x + 24) / 24) * 24);
+          const localEndY = Math.min(realm.h, Math.ceil((state.camera.y + worldCanvas.height - realm.y + 24) / 24) * 24);
+          for (let y = localStartY; y < localEndY; y += 24) {
+            for (let x = localStartX; x < localEndX; x += 24) {
+              const worldX = x + realm.x;
+              const worldY = y + realm.y;
+              if (((worldX) * 5 + (worldY) * 7) % 11 < 4) {
                 worldCtx.fillRect(rx + x, ry + y, 12, 12);
               }
             }
@@ -11583,7 +11742,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           drawPixelCharacter(worldCtx, state.hero.x - state.camera.x, state.hero.y - state.camera.y);
         }
         // Final pixel-detail pass to keep the overworld crisp and game-like.
-        worldCtx.fillStyle = "rgba(2, 6, 23, 0.16)";
+        worldCtx.fillStyle = `rgba(2, 6, 23, ${tuning.scanlineAlpha.toFixed(2)})`;
         for (let y = 0; y < worldCanvas.height; y += 6) {
           const xOffset = (y / 6) % 2 === 0 ? 0 : 3;
           worldCtx.fillRect(xOffset, y, worldCanvas.width, 1);
@@ -11611,6 +11770,27 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         worldCtx.strokeRect(miniX + state.camera.x * sx, miniY + state.camera.y * sy, worldCanvas.width * sx, worldCanvas.height * sy);
         worldCtx.fillStyle = "#f8fafc";
         worldCtx.fillRect(miniX + state.hero.x * sx - 2, miniY + state.hero.y * sy - 2, 4, 4);
+
+        const vignette = worldCtx.createRadialGradient(
+          worldCanvas.width * 0.5,
+          worldCanvas.height * 0.46,
+          Math.min(worldCanvas.width, worldCanvas.height) * 0.25,
+          worldCanvas.width * 0.5,
+          worldCanvas.height * 0.5,
+          Math.max(worldCanvas.width, worldCanvas.height) * 0.72,
+        );
+        vignette.addColorStop(0, "rgba(2, 6, 23, 0)");
+        vignette.addColorStop(1, `rgba(2, 6, 23, ${tuning.vignetteAlpha.toFixed(2)})`);
+        worldCtx.fillStyle = vignette;
+        worldCtx.fillRect(0, 0, worldCanvas.width, worldCanvas.height);
+
+        const now = Date.now();
+        if (now < (state.visualFx.hitFlashUntil ?? 0)) {
+          const progress = clamp((state.visualFx.hitFlashUntil - now) / 160, 0, 1);
+          const alpha = 0.2 * progress;
+          worldCtx.fillStyle = `rgba(${state.visualFx.hitFlashColor ?? "248,113,113"}, ${alpha.toFixed(3)})`;
+          worldCtx.fillRect(0, 0, worldCanvas.width, worldCanvas.height);
+        }
       };
 
       const getBattlePlayerPalette = () => {
@@ -12746,6 +12926,15 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       dom.minimalHudFloating.addEventListener("click", () => {
         toggleMinimalHud(false);
       });
+      if (dom.presentationPreset) {
+        dom.presentationPreset.addEventListener("change", () => {
+          const selected = dom.presentationPreset.value;
+          state.ui.presentationPreset = PRESENTATION_PRESETS[selected] ? selected : "balanced";
+          applyPresentationPreset();
+          saveConfig();
+          setStatus(`Presentation preset set to ${state.ui.presentationPreset}.`);
+        });
+      }
       dom.saveBtn.addEventListener("click", () => {
         saveGame();
         setStatus("Local progress saved.");
@@ -12920,6 +13109,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         sessionStorage.removeItem(AUTO_FRESH_START_KEY);
       }
       loadConfig();
+      applyPresentationPreset();
       state.ui.titleCardSkipped = false;
       saveConfig();
       loadGame();
@@ -12947,6 +13137,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         dom.dialogueQaAnswer.textContent = "";
       }
       dom.closeDialogueBtn.textContent = "Close";
+      applyPresentationPreset();
       applyHudMode();
       updateAudioUi();
       resizeCanvases();
