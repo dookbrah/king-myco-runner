@@ -1354,6 +1354,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         <p id="dialogueQaAnswer" class="subtle"></p>
       </div>
       <div class="dialogue-actions">
+        <button id="nextDialogueBtn">Next Banter</button>
         <button id="choiceMycoBtn" class="primary">Mycoside Choice</button>
         <button id="choiceDarkBtn" class="warn">Darkside Choice</button>
         <button id="choiceTradeBtn">Trade</button>
@@ -1547,6 +1548,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         dialogueQaWrap: document.getElementById("dialogueQaWrap"),
         dialogueQaList: document.getElementById("dialogueQaList"),
         dialogueQaAnswer: document.getElementById("dialogueQaAnswer"),
+        nextDialogueBtn: document.getElementById("nextDialogueBtn"),
         choiceMycoBtn: document.getElementById("choiceMycoBtn"),
         choiceDarkBtn: document.getElementById("choiceDarkBtn"),
         choiceTradeBtn: document.getElementById("choiceTradeBtn"),
@@ -5046,6 +5048,86 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           .map((entry) => `* ${entry.trim()}`)
           .join("\n");
 
+      const getDialogueBanterLines = (payload) =>
+        Array.isArray(payload?.banterLines)
+          ? payload.banterLines.filter((line) => typeof line === "string" && line.trim())
+          : [];
+
+      const isDialogueBanterPending = (payload = state.activeDialogue) => {
+        const lines = getDialogueBanterLines(payload);
+        if (!lines.length) return false;
+        const index = Number.isFinite(payload?._banterIndex) ? payload._banterIndex : 0;
+        return index < lines.length - 1;
+      };
+
+      const refreshDialogueBanterView = () => {
+        const payload = state.activeDialogue;
+        if (!payload) return;
+        const lines = getDialogueBanterLines(payload);
+        const qaPairs = Array.isArray(payload._qaPairs) ? payload._qaPairs : [];
+        const tradeEnabled = typeof payload.onTrade === "function";
+        if (lines.length) {
+          if (!Array.isArray(payload._banterHistory) || !payload._banterHistory.length) {
+            payload._banterHistory = [lines[0]];
+            payload._banterIndex = 0;
+          }
+          const pending = isDialogueBanterPending(payload);
+          const history = payload._banterHistory.slice(-6);
+          const footer = pending
+            ? "(Press Next Banter or Enter to continue.)"
+            : "(Banter settled. Choose your response.)";
+          dom.dialogueBody.textContent = formatUndertaleScript([...history, footer]);
+          dom.choiceMycoBtn.style.display = pending ? "none" : "inline-block";
+          dom.choiceDarkBtn.style.display = pending ? "none" : "inline-block";
+          dom.choiceTradeBtn.style.display = !pending && tradeEnabled ? "inline-block" : "none";
+          if (dom.nextDialogueBtn) {
+            dom.nextDialogueBtn.style.display = pending ? "inline-block" : "none";
+            dom.nextDialogueBtn.disabled = !pending;
+          }
+          if (dom.dialogueQaWrap && dom.dialogueQaList && dom.dialogueQaAnswer) {
+            if (qaPairs.length && !pending) {
+              dom.dialogueQaWrap.hidden = false;
+            } else {
+              dom.dialogueQaWrap.hidden = true;
+              if (!pending) {
+                dom.dialogueQaList.innerHTML = "";
+                dom.dialogueQaAnswer.textContent = "";
+              }
+            }
+          }
+          dom.closeDialogueBtn.textContent = pending ? "Skip Banter" : (payload.closeLabel ?? "Close");
+          return;
+        }
+        dom.choiceMycoBtn.style.display = "inline-block";
+        dom.choiceDarkBtn.style.display = "inline-block";
+        dom.choiceTradeBtn.style.display = tradeEnabled ? "inline-block" : "none";
+        if (dom.nextDialogueBtn) {
+          dom.nextDialogueBtn.style.display = "none";
+          dom.nextDialogueBtn.disabled = true;
+        }
+        dom.dialogueBody.textContent = payload.body;
+        dom.closeDialogueBtn.textContent = payload.closeLabel ?? "Close";
+      };
+
+      const advanceDialogueBanter = () => {
+        const payload = state.activeDialogue;
+        if (!payload) return false;
+        const lines = getDialogueBanterLines(payload);
+        if (!lines.length) return false;
+        if (!Array.isArray(payload._banterHistory) || !payload._banterHistory.length) {
+          payload._banterHistory = [lines[0]];
+          payload._banterIndex = 0;
+          refreshDialogueBanterView();
+          return true;
+        }
+        if (!isDialogueBanterPending(payload)) return false;
+        payload._banterIndex += 1;
+        payload._banterHistory.push(lines[payload._banterIndex]);
+        refreshDialogueBanterView();
+        playSfx("talk");
+        return true;
+      };
+
       const toUndertaleDialogueBody = (speakerName, bodyText, contextTag = "") => {
         const bodyLines = String(bodyText ?? "")
           .split(/\n+/)
@@ -6428,6 +6510,17 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const openDialogue = (payload) => {
         state.activeDialogue = payload;
+        payload._qaPairs = Array.isArray(payload.qaPairs)
+          ? payload.qaPairs.filter((entry) => entry && typeof entry.question === "string" && typeof entry.answer === "string")
+          : [];
+        const banterLines = getDialogueBanterLines(payload);
+        if (banterLines.length) {
+          payload._banterIndex = 0;
+          payload._banterHistory = [banterLines[0]];
+        } else {
+          payload._banterIndex = -1;
+          payload._banterHistory = [];
+        }
         const portrait = getDialoguePortrait(payload);
         dom.dialogueTitle.textContent = payload.title;
         dom.dialogueSubtitle.textContent = portrait.subtitle;
@@ -6440,9 +6533,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         dom.choiceTradeBtn.textContent = payload.tradeLabel ?? "Trade";
         dom.closeDialogueBtn.textContent = payload.closeLabel ?? "Close";
         if (dom.dialogueQaWrap && dom.dialogueQaList && dom.dialogueQaAnswer) {
-          const qaPairs = Array.isArray(payload.qaPairs)
-            ? payload.qaPairs.filter((entry) => entry && typeof entry.question === "string" && typeof entry.answer === "string")
-            : [];
+          const qaPairs = payload._qaPairs;
           if (qaPairs.length) {
             dom.dialogueQaList.innerHTML = qaPairs
               .map((entry, index) => {
@@ -6478,6 +6569,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             dom.dialogueQaAnswer.textContent = "";
           }
         }
+        refreshDialogueBanterView();
         dom.dialoguePanel.classList.add("active");
         playSfx("talk");
       };
@@ -6493,7 +6585,13 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
         state.activeDialogue = null;
         state.contactLockUntil = Date.now() + 1200;
+        dom.choiceMycoBtn.style.display = "inline-block";
+        dom.choiceDarkBtn.style.display = "inline-block";
         dom.choiceTradeBtn.style.display = "none";
+        if (dom.nextDialogueBtn) {
+          dom.nextDialogueBtn.style.display = "none";
+          dom.nextDialogueBtn.disabled = true;
+        }
         dom.dialogueSubtitle.textContent = "Speaker profile";
         dom.dialoguePortrait.textContent = "?";
         dom.closeDialogueBtn.textContent = "Close";
@@ -6869,6 +6967,137 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         playSfx("error");
       };
 
+      const buildNpcBanterSequence = ({
+        npc,
+        encounterCount,
+        qaContext,
+        alignment,
+        clan,
+        profile,
+        persona,
+        reminderText,
+        alreadySpoken,
+      }) => {
+        if (reminderText) {
+          return [
+            `${npc.name}: ${reminderText}`,
+            `King Myco: Understood. I'll handle that objective now.`,
+            `${npc.name}: Good. Return after progress, and we'll continue the thread.`,
+          ];
+        }
+        const npcOpen = pickDialogueLine(
+          [
+            `You're back in ${qaContext}. I can read your aura from here.`,
+            `You walk like someone carrying unfinished chapters.`,
+            `The route shifted the moment you stepped close.`,
+            `I was hoping you'd return before this lane got worse.`,
+          ],
+          `${npc.id}:${encounterCount}:${qaContext}:open:${alreadySpoken ? "return" : "first"}`,
+        );
+        const kingReply = pickDialogueLine(
+          [
+            `Then give me the clean path, and I'll keep the people standing.`,
+            `I need your honest read. What's the next move?`,
+            `I've changed since last time. Read me again.`,
+            `Tell me where force fails and strategy wins.`,
+          ],
+          `${npc.id}:${encounterCount}:${alignment}:king-reply`,
+        );
+        const npcTactical = pickDialogueLine(
+          [
+            `${persona.archetype} instincts suit you. ${npc.name} sees a ${profile.profileName} route emerging.`,
+            `Your ${alignment} trail is obvious now. Keep your choices consistent or you'll fracture trust.`,
+            `${clan.name} whispers are spreading in ${qaContext}. People are watching what you do next.`,
+            `If you overcommit to damage, you'll miss clues. If you overtalk, enemies harden.`,
+          ],
+          `${npc.id}:${encounterCount}:${profile.dominant}:npc-tactical`,
+        );
+        const kingClose = pickDialogueLine(
+          [
+            `I hear you. I'll act and return with results.`,
+            `Then let's write the next page without losing ourselves.`,
+            `Good. Keep the lantern lit; I'll handle the field.`,
+            `I'll move now. Keep your channel open.`,
+          ],
+          `${npc.id}:${encounterCount}:king-close:${state.progress.enemyWins}`,
+        );
+        const npcSendoff = pickDialogueLine(
+          [
+            `Do that, and I'll have a new reading when you return.`,
+            `Stay sharp, King Myco. This zone only respects follow-through.`,
+            `Then go. I don't repeat warnings for free.`,
+            `Move with intent. I'll update your thread after the next encounter.`,
+          ],
+          `${npc.id}:${encounterCount}:npc-sendoff:${state.story.entries.length}`,
+        );
+        return [
+          `${npc.name}: ${npcOpen}`,
+          `King Myco: ${kingReply}`,
+          `${npc.name}: ${npcTactical}`,
+          `King Myco: ${kingClose}`,
+          `${npc.name}: ${npcSendoff}`,
+        ];
+      };
+
+      const buildInteriorNpcBanterSequence = ({
+        npc,
+        structure,
+        roleText,
+        encounterCount,
+        reminderText,
+      }) => {
+        if (reminderText) {
+          return [
+            `${npc.name}: ${reminderText}`,
+            `King Myco: I'll clear it before I leave ${structure.name}.`,
+            `${npc.name}: Good. This interior remembers who finishes what they start.`,
+          ];
+        }
+        const npcOpen = pickDialogueLine(
+          [
+            `${structure.name} is louder when you walk in.`,
+            `You're right on time; this room was waiting for your decision.`,
+            `I tracked your footsteps through three chambers.`,
+            `Back again? Good. Interior routes changed since your last sweep.`,
+          ],
+          `${npc.id}:${structure.id}:${encounterCount}:open`,
+        );
+        const kingReply = pickDialogueLine(
+          [
+            `Then brief me. I'm not leaving empty-handed.`,
+            `Talk to me. What's unstable in this room now?`,
+            `I've got one clean run in me. Point me where it matters.`,
+            `Give me the short version and the hidden one.`,
+          ],
+          `${npc.id}:${structure.id}:${encounterCount}:king`,
+        );
+        const npcRole = pickDialogueLine(
+          [
+            `Role check: ${roleText}. I monitor interior mood shifts, trade pressure, and encounter drift.`,
+            `${roleText} means I see who rushes and who reads the room.`,
+            `As ${roleText}, I'm logging your behavior for the next cycle.`,
+            `I'm still ${roleText}, and you're still the variable everyone watches.`,
+          ],
+          `${npc.id}:${structure.id}:${encounterCount}:role`,
+        );
+        const kingClose = pickDialogueLine(
+          [
+            `Understood. I'll clear this lane and report back.`,
+            `Then let's settle this chamber cleanly.`,
+            `I'll run it right and keep casualties low.`,
+            `Got it. Keep the records warm.`,
+          ],
+          `${npc.id}:${structure.id}:${encounterCount}:close`,
+        );
+        return [
+          `${npc.name}: ${npcOpen}`,
+          `King Myco: ${kingReply}`,
+          `${npc.name}: ${npcRole}`,
+          `King Myco: ${kingClose}`,
+          `${npc.name}: Return after the next objective and we'll recalibrate.`,
+        ];
+      };
+
       const buildNpcEncounter = (npc, alreadySpoken) => {
         const alignment = state.hero.morality >= 20 ? "myco" : state.hero.morality <= -20 ? "dark" : "balanced";
         const clan = getClanProfile();
@@ -6895,6 +7124,17 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             backstory,
             alreadySpoken,
           });
+        const banterLines = buildNpcBanterSequence({
+          npc,
+          encounterCount,
+          qaContext,
+          alignment,
+          clan,
+          profile,
+          persona,
+          reminderText,
+          alreadySpoken,
+        });
         const body = toUndertaleDialogueBody(npc.name, narrativeBody, `npc:${npc.id}:${encounterCount}`);
 
         const applyTrade = (trustful) => {
@@ -6928,6 +7168,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           title: npc.name,
           portrait: NPC_PORTRAITS[npc.id] ?? { glyph: "🧭", subtitle: "Nexus Resident" },
           body,
+          banterLines,
           qaPairs,
           mycoLabel: "Ask Questions (+NFT lore)",
           darkLabel: "Rob NPC (-morality)",
@@ -7529,6 +7770,13 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             encounterCount,
             alreadySpoken,
           });
+        const banterLines = buildInteriorNpcBanterSequence({
+          npc,
+          structure,
+          roleText,
+          encounterCount,
+          reminderText,
+        });
         const body = toUndertaleDialogueBody(npc.name, narrativeBody, `interior:${structure.id}:${npc.id}:${encounterCount}`);
         const applyInteriorTrade = () => {
           const cost = npc.tradeCost ?? 0;
@@ -7553,6 +7801,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           title: npc.name,
           portrait: { glyph: npc.glyph ?? "🧭", subtitle: roleText },
           body,
+          banterLines,
           qaPairs,
           mycoLabel: "Ask Questions (+NFT lore)",
           darkLabel: "Rob NPC (-morality)",
@@ -11294,6 +11543,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const handleChoice = (choice) => {
         if (!state.activeDialogue) return;
+        if (isDialogueBanterPending(state.activeDialogue)) {
+          return;
+        }
         if (choice === "myco" && typeof state.activeDialogue.onMyco === "function") {
           state.activeDialogue.onMyco();
         }
@@ -11341,13 +11593,17 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           return;
         }
         if (state.activeDialogue) {
+          if (key === "enter" && advanceDialogueBanter()) {
+            event.preventDefault();
+            return;
+          }
           if (key === "escape" || isMoveKey) {
             closeDialogue();
-          } else if (key === "1") {
+          } else if (key === "1" && !isDialogueBanterPending(state.activeDialogue)) {
             handleChoice("myco");
-          } else if (key === "2") {
+          } else if (key === "2" && !isDialogueBanterPending(state.activeDialogue)) {
             handleChoice("dark");
-          } else if (key === "3") {
+          } else if (key === "3" && !isDialogueBanterPending(state.activeDialogue)) {
             handleChoice("trade");
           }
           event.preventDefault();
@@ -11413,6 +11669,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       dom.choiceMycoBtn.addEventListener("click", () => handleChoice("myco"));
       dom.choiceDarkBtn.addEventListener("click", () => handleChoice("dark"));
       dom.choiceTradeBtn.addEventListener("click", () => handleChoice("trade"));
+      if (dom.nextDialogueBtn) dom.nextDialogueBtn.addEventListener("click", advanceDialogueBanter);
       dom.closeDialogueBtn.addEventListener("click", () => closeDialogue("leave"));
       dom.cutsceneNextBtn.addEventListener("click", advanceCutscene);
       dom.cutsceneSkipBtn.addEventListener("click", closeCutscene);
