@@ -1095,7 +1095,7 @@
         left: 0;
         right: 0;
         bottom: max(10px, env(safe-area-inset-bottom));
-        z-index: 36;
+        z-index: 25;
         display: none;
         justify-content: space-between;
         align-items: flex-end;
@@ -1142,7 +1142,6 @@
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 8px;
-        z-index: 25;
         pointer-events: auto;
       }
       .touch-btn {
@@ -1183,6 +1182,10 @@
       @media (hover: none) and (pointer: coarse) {
         .mobile-controls {
           display: flex;
+        }
+        .corner-menu.bottom-left,
+        .corner-menu.bottom-right {
+          bottom: 120px;
         }
         .dialogue {
           bottom: 112px;
@@ -6858,8 +6861,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           state.story.lastBeatAt = Date.now();
         }
         dom.titleScreen.classList.remove("active");
-        if (dom.mobileControls) dom.mobileControls.style.display = "";
-        if (dom.mobileControls) dom.mobileControls.style.pointerEvents = "";
+        if (dom.mobileControls) {
+          dom.mobileControls.classList.remove("hidden");
+          dom.mobileControls.style.pointerEvents = "";
+        }
         setStatus(`${profile.name} chronicle (${avatarName}) initialized in ${getCurrentRealm().name}. ${profile.storyThread}`);
         evaluateOnchainMilestones();
         updateLeaderboardEntry();
@@ -14555,7 +14560,7 @@ dom.titleWalletConnectBtn.addEventListener("click", async () => {
       const autoRegionTransfer = Boolean(realmEntry?.portalTravel);
       if (!autoRegionTransfer) {
         dom.titleScreen.classList.add("active");
-        if (dom.mobileControls) dom.mobileControls.style.display = "none";
+        if (dom.mobileControls) dom.mobileControls.classList.add("hidden");
       }
       if (autoFreshStart || autoRegionTransfer) {
         startAdventure();
