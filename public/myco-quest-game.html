@@ -4747,21 +4747,49 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
       };
 
+      const TITLE_THEME_SEQUENCE = [
+        329.63, 392.0, 523.25, 659.25, 523.25, 392.0, 329.63, 293.66,
+        261.63, 329.63, 392.0, 523.25, 659.25, 783.99, 659.25, 523.25,
+        440.0, 392.0, 329.63, 293.66, 261.63, 293.66, 329.63, 392.0,
+        523.25, 440.0, 392.0, 329.63, 261.63, 220.0, 261.63, 329.63,
+      ];
+      const TITLE_BASS_SEQUENCE = [
+        130.81, 164.81, 196.0, 130.81, 146.83, 164.81, 130.81, 110.0,
+        130.81, 146.83, 164.81, 196.0, 130.81, 164.81, 110.0, 130.81,
+      ];
       const THEME_SEQUENCE = [
-        261.63, 329.63, 392.0, 523.25,
-        392.0, 329.63, 293.66, 261.63,
-        220.0, 261.63, 329.63, 392.0,
-        349.23, 329.63, 293.66, 261.63,
-        293.66, 349.23, 440.0, 523.25,
-        440.0, 392.0, 349.23, 293.66,
-        261.63, 293.66, 329.63, 392.0,
-        329.63, 293.66, 261.63, 220.0,
+        329.63, 392.0, 440.0, 523.25, 440.0, 392.0, 349.23, 329.63,
+        293.66, 329.63, 392.0, 440.0, 523.25, 587.33, 523.25, 440.0,
+        392.0, 349.23, 329.63, 293.66, 261.63, 293.66, 329.63, 392.0,
+      ];
+      const OVERWORLD_BASS_SEQUENCE = [
+        130.81, 164.81, 174.61, 196.0, 164.81, 146.83, 130.81, 110.0,
+        130.81, 164.81, 196.0, 164.81, 130.81, 146.83, 130.81, 110.0,
+      ];
+      const INTERIOR_THEME_SEQUENCE = [
+        220.0, 246.94, 261.63, 220.0, 196.0, 220.0, 246.94, 220.0,
+        207.65, 220.0, 246.94, 261.63, 293.66, 261.63, 246.94, 220.0,
+        196.0, 207.65, 220.0, 196.0, 174.61, 196.0, 207.65, 220.0,
+      ];
+      const INTERIOR_BASS_SEQUENCE = [
+        110.0, 123.47, 130.81, 110.0, 98.0, 110.0, 87.31, 98.0,
+        110.0, 123.47, 110.0, 98.0, 87.31, 98.0, 110.0, 123.47,
       ];
       const BATTLE_THEME_SEQUENCE = [
         164.81, 196.0, 220.0, 246.94, 293.66, 329.63, 293.66, 261.63,
         220.0, 196.0, 174.61, 196.0, 220.0, 246.94, 261.63, 293.66,
       ];
       const BATTLE_BASS_SEQUENCE = [82.41, 98.0, 110.0, 123.47, 98.0, 87.31, 73.42, 98.0];
+      const BOSS_THEME_SEQUENCE = [
+        146.83, 174.61, 196.0, 220.0, 261.63, 293.66, 329.63, 293.66,
+        261.63, 220.0, 196.0, 174.61, 146.83, 164.81, 196.0, 220.0,
+        261.63, 329.63, 392.0, 329.63, 293.66, 261.63, 220.0, 196.0,
+        174.61, 164.81, 146.83, 130.81, 146.83, 174.61, 196.0, 220.0,
+      ];
+      const BOSS_BASS_SEQUENCE = [
+        73.42, 87.31, 98.0, 110.0, 73.42, 82.41, 73.42, 65.41,
+        73.42, 87.31, 98.0, 73.42, 82.41, 73.42, 65.41, 73.42,
+      ];
       const PLAYER_MOVE_VARIANTS = {
         strike: ["Crownstaff Rush", "Myco Blade Arc", "Spore Fang Combo", "Nexus Lunge"],
         act: ["Soul Check", "Kindness Pulse", "Talk It Down", "Pacify Pattern"],
@@ -5209,7 +5237,16 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         osc.stop(options.start + options.duration + 0.03);
       };
 
-      const getActiveMusicMode = () => (state.mode === "battle" || state.pendingBattle ? "battle" : "overworld");
+      const getActiveMusicMode = () => {
+        if (state.intro.active) return "title";
+        if (state.mode === "battle" || state.pendingBattle) {
+          const enemy = state.enemies ? state.enemies.find((e) => e.id === state.encounterEnemyId) : null;
+          if (enemy && enemy.boss) return "boss";
+          return "battle";
+        }
+        if (state.interior.active) return "interior";
+        return "overworld";
+      };
 
       const scheduleThemeWindow = () => {
         if (!state.audio.initialized || !state.audio.musicOn) return;
@@ -5221,36 +5258,50 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           state.audio.themeIndex = 0;
           state.audio.nextNoteTime = ctx.currentTime + 0.05;
         }
-        const leadSequence = nextMode === "battle" ? BATTLE_THEME_SEQUENCE : THEME_SEQUENCE;
-        const bassSequence = nextMode === "battle" ? BATTLE_BASS_SEQUENCE : THEME_SEQUENCE;
-        const noteStep = nextMode === "battle" ? 0.19 : 0.24;
+        const MUSIC_CONFIG = {
+          title:     { lead: TITLE_THEME_SEQUENCE,    bass: TITLE_BASS_SEQUENCE,     step: 0.30, dur: 0.26, bassDur: 0.28, gain: 0.038, bassGain: 0.022, leadType: "square",   arp: false, drumBeat: 4, drumFreq: 90, drumGain: 0.012 },
+          overworld: { lead: THEME_SEQUENCE,           bass: OVERWORLD_BASS_SEQUENCE, step: 0.22, dur: 0.18, bassDur: 0.20, gain: 0.042, bassGain: 0.022, leadType: "square",   arp: true,  drumBeat: 0, drumFreq: 0,  drumGain: 0 },
+          interior:  { lead: INTERIOR_THEME_SEQUENCE,  bass: INTERIOR_BASS_SEQUENCE,  step: 0.32, dur: 0.28, bassDur: 0.30, gain: 0.030, bassGain: 0.018, leadType: "triangle", arp: false, drumBeat: 0, drumFreq: 0,  drumGain: 0 },
+          battle:    { lead: BATTLE_THEME_SEQUENCE,    bass: BATTLE_BASS_SEQUENCE,    step: 0.19, dur: 0.14, bassDur: 0.16, gain: 0.050, bassGain: 0.028, leadType: "sawtooth", arp: false, drumBeat: 2, drumFreq: 68, drumGain: 0.022 },
+          boss:      { lead: BOSS_THEME_SEQUENCE,      bass: BOSS_BASS_SEQUENCE,      step: 0.16, dur: 0.12, bassDur: 0.14, gain: 0.058, bassGain: 0.035, leadType: "sawtooth", arp: true,  drumBeat: 1, drumFreq: 58, drumGain: 0.032 },
+        };
+        const cfg = MUSIC_CONFIG[nextMode] || MUSIC_CONFIG.overworld;
         while (state.audio.nextNoteTime < ctx.currentTime + 0.7) {
-          const note = leadSequence[state.audio.themeIndex % leadSequence.length];
-          const bass = bassSequence[state.audio.themeIndex % bassSequence.length];
+          const note = cfg.lead[state.audio.themeIndex % cfg.lead.length];
+          const bass = cfg.bass[state.audio.themeIndex % cfg.bass.length];
           scheduleTone(ctx, state.audio.musicGain, {
             frequency: note,
             start: state.audio.nextNoteTime,
-            duration: nextMode === "battle" ? 0.14 : 0.2,
-            gain: nextMode === "battle" ? 0.05 : 0.04,
-            type: nextMode === "battle" ? "sawtooth" : "square",
+            duration: cfg.dur,
+            gain: cfg.gain,
+            type: cfg.leadType,
           });
           scheduleTone(ctx, state.audio.musicGain, {
             frequency: bass / 2,
             start: state.audio.nextNoteTime,
-            duration: nextMode === "battle" ? 0.16 : 0.22,
-            gain: nextMode === "battle" ? 0.028 : 0.02,
+            duration: cfg.bassDur,
+            gain: cfg.bassGain,
             type: "triangle",
           });
-          if (nextMode === "battle" && state.audio.themeIndex % 2 === 0) {
+          if (cfg.arp && state.audio.themeIndex % 3 === 0) {
             scheduleTone(ctx, state.audio.musicGain, {
-              frequency: 68,
-              start: state.audio.nextNoteTime + 0.08,
-              duration: 0.07,
-              gain: 0.022,
+              frequency: note * 1.5,
+              start: state.audio.nextNoteTime + cfg.step * 0.33,
+              duration: cfg.dur * 0.6,
+              gain: cfg.gain * 0.4,
               type: "square",
             });
           }
-          state.audio.nextNoteTime += noteStep;
+          if (cfg.drumBeat > 0 && state.audio.themeIndex % cfg.drumBeat === 0) {
+            scheduleTone(ctx, state.audio.musicGain, {
+              frequency: cfg.drumFreq,
+              start: state.audio.nextNoteTime + cfg.step * 0.5,
+              duration: 0.07,
+              gain: cfg.drumGain,
+              type: "square",
+            });
+          }
+          state.audio.nextNoteTime += cfg.step;
           state.audio.themeIndex += 1;
         }
       };
