@@ -4952,8 +4952,16 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
 
         const battleRect = battleCanvas.getBoundingClientRect();
-        const battleW = Math.max(260, Math.round(battleRect.width * dpr));
-        const battleH = Math.max(180, Math.round((battleRect.width * 0.62) * dpr));
+        const popupActive = document.body.classList.contains("battle-popup-active");
+        const popupWidthPx = Math.max(340, window.innerWidth - 22);
+        const baseBattleWidth = popupActive
+          ? popupWidthPx
+          : Math.max(260, battleRect.width || 0);
+        const baseBattleHeight = popupActive
+          ? Math.max(220, Math.min(window.innerHeight * 0.62, popupWidthPx * 0.66))
+          : Math.max(180, (battleRect.width || 260) * 0.62);
+        const battleW = Math.max(260, Math.round(baseBattleWidth * dpr));
+        const battleH = Math.max(180, Math.round(baseBattleHeight * dpr));
         if (battleCanvas.width !== battleW || battleCanvas.height !== battleH) {
           battleCanvas.width = battleW;
           battleCanvas.height = battleH;
@@ -12697,6 +12705,36 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         };
       };
 
+      const getRenderableBattleState = (battle = state.battle) => {
+        if (!battle || typeof battle !== "object") return null;
+        const safePlayer = {
+          name: battle.player?.name ?? state.hero?.name ?? "King Myco",
+          hp: Number.isFinite(battle.player?.hp) ? battle.player.hp : (state.hero?.hp ?? 100),
+          maxHp: Number.isFinite(battle.player?.maxHp) ? battle.player.maxHp : (state.hero?.maxHp ?? 100),
+          guard: Number.isFinite(battle.player?.guard) ? battle.player.guard : 0,
+          ...(battle.player ?? {}),
+        };
+        const safeEnemy = {
+          name: battle.enemy?.name ?? "Rotbound Enemy",
+          kind: battle.enemy?.kind ?? "rot-spore",
+          hp: Number.isFinite(battle.enemy?.hp) ? battle.enemy.hp : 36,
+          maxHp: Number.isFinite(battle.enemy?.maxHp) ? battle.enemy.maxHp : 36,
+          guard: Number.isFinite(battle.enemy?.guard) ? battle.enemy.guard : 0,
+          ...(battle.enemy ?? {}),
+        };
+        const safeStatus = typeof battle.status === "string" && battle.status ? battle.status : "active";
+        const safeLane = typeof battle.encounterLane === "string" && battle.encounterLane ? battle.encounterLane : "tactical";
+        const safeTurn = Number.isFinite(battle.turnNumber) ? battle.turnNumber : 1;
+        return {
+          ...battle,
+          player: safePlayer,
+          enemy: safeEnemy,
+          status: safeStatus,
+          encounterLane: safeLane,
+          turnNumber: safeTurn,
+        };
+      };
+
       const drawBattleSpriteBlock = (ctx, x, y, w, h, fill, stroke = null) => {
         ctx.fillStyle = fill;
         ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
@@ -13048,141 +13086,178 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       };
 
       const drawBattleScene = () => {
-        const now = Date.now();
-        const battleTheme = getBattleBackdropTheme(state.battle);
-        battleCtx.fillStyle = battleTheme.top;
-        battleCtx.fillRect(0, 0, battleCanvas.width, battleCanvas.height);
-        const tile = 12;
-        const horizonY = Math.round(battleCanvas.height * 0.42);
-        for (let y = 0; y < battleCanvas.height; y += tile) {
-          for (let x = 0; x < battleCanvas.width; x += tile) {
-            const checker = ((x / tile) + (y / tile)) % 2 === 0;
-            if (y < horizonY) {
-              battleCtx.fillStyle = checker ? battleTheme.mid : battleTheme.top;
-            } else {
-              battleCtx.fillStyle = checker ? battleTheme.bottom : battleTheme.lane;
+        try {
+          const now = Date.now();
+          const battleTheme = getBattleBackdropTheme(state.battle);
+          battleCtx.fillStyle = battleTheme.top;
+          battleCtx.fillRect(0, 0, battleCanvas.width, battleCanvas.height);
+          const tile = 12;
+          const horizonY = Math.round(battleCanvas.height * 0.42);
+          for (let y = 0; y < battleCanvas.height; y += tile) {
+            for (let x = 0; x < battleCanvas.width; x += tile) {
+              const checker = ((x / tile) + (y / tile)) % 2 === 0;
+              if (y < horizonY) {
+                battleCtx.fillStyle = checker ? battleTheme.mid : battleTheme.top;
+              } else {
+                battleCtx.fillStyle = checker ? battleTheme.bottom : battleTheme.lane;
+              }
+              battleCtx.fillRect(x, y, tile, tile);
             }
-            battleCtx.fillRect(x, y, tile, tile);
           }
-        }
 
-        for (let i = 0; i < 24; i += 1) {
-          const sx = ((i * 97) % battleCanvas.width) + Math.sin(now * 0.001 + i) * 2;
-          const sy = ((i * 53) % Math.floor(horizonY * 0.88)) + Math.cos(now * 0.0016 + i) * 1.5;
-          battleCtx.fillStyle = battleTheme.stars;
-          battleCtx.fillRect(Math.round(sx), Math.round(sy), 2, 2);
-        }
+          for (let i = 0; i < 24; i += 1) {
+            const sx = ((i * 97) % battleCanvas.width) + Math.sin(now * 0.001 + i) * 2;
+            const sy = ((i * 53) % Math.floor(horizonY * 0.88)) + Math.cos(now * 0.0016 + i) * 1.5;
+            battleCtx.fillStyle = battleTheme.stars;
+            battleCtx.fillRect(Math.round(sx), Math.round(sy), 2, 2);
+          }
 
-        const floorY = Math.round(battleCanvas.height * 0.79);
-        battleCtx.fillStyle = battleTheme.lane;
-        battleCtx.fillRect(0, floorY - 4, battleCanvas.width, battleCanvas.height - floorY + 8);
-        battleCtx.strokeStyle = "rgba(17, 24, 39, 0.82)";
-        battleCtx.lineWidth = 2;
-        battleCtx.strokeRect(0.5, floorY - 3.5, battleCanvas.width - 1, battleCanvas.height - floorY + 7);
-        battleCtx.strokeStyle = "rgba(230, 208, 162, 0.34)";
-        battleCtx.lineWidth = 1;
-        battleCtx.beginPath();
-        battleCtx.moveTo(0, floorY);
-        battleCtx.lineTo(battleCanvas.width, floorY);
-        battleCtx.stroke();
+          const floorY = Math.round(battleCanvas.height * 0.79);
+          battleCtx.fillStyle = battleTheme.lane;
+          battleCtx.fillRect(0, floorY - 4, battleCanvas.width, battleCanvas.height - floorY + 8);
+          battleCtx.strokeStyle = "rgba(17, 24, 39, 0.82)";
+          battleCtx.lineWidth = 2;
+          battleCtx.strokeRect(0.5, floorY - 3.5, battleCanvas.width - 1, battleCanvas.height - floorY + 7);
+          battleCtx.strokeStyle = "rgba(230, 208, 162, 0.34)";
+          battleCtx.lineWidth = 1;
+          battleCtx.beginPath();
+          battleCtx.moveTo(0, floorY);
+          battleCtx.lineTo(battleCanvas.width, floorY);
+          battleCtx.stroke();
 
-        if (!state.battle) {
-          resetBattleFx();
-          battleCtx.fillStyle = "#93c5fd";
-          battleCtx.font = "700 18px sans-serif";
-          battleCtx.fillText("No active battle", 20, 42);
-          return;
-        }
+          const battle = getRenderableBattleState(state.battle);
+          if (!battle) {
+            resetBattleFx();
+            battleCtx.fillStyle = "#93c5fd";
+            battleCtx.font = "700 18px sans-serif";
+            battleCtx.fillText("No active battle", 20, 42);
+            return;
+          }
 
-        const battle = state.battle;
-        const actorScale = clamp(battleCanvas.width / 500, 1.3, 2.7);
-        const stage = {
-          floorY,
-          actorScale,
-          panelY: Math.round(battleCanvas.height * 0.15),
-          panelW: Math.round(battleCanvas.width * 0.24),
-          panelH: Math.round(battleCanvas.height * 0.38),
-          playerPanelX: Math.round(battleCanvas.width * 0.05),
-          enemyPanelX: Math.round(battleCanvas.width * 0.71),
-          actorCenterY: floorY - Math.round(44 * actorScale),
-          playerCenterX: Math.round(battleCanvas.width * 0.23),
-          enemyCenterX: Math.round(battleCanvas.width * 0.77),
-        };
-        const enemyBarX = battleCanvas.width - 216;
-        const laneColor = {
-          speed: "#6f97bf",
-          precision: "#8fa8b5",
-          survival: "#aa8656",
-          puzzle: "#7c7198",
-          tactical: "#9f9365",
-        }[battle.encounterLane] ?? "#7487a2";
-        battleCtx.fillStyle = laneColor;
-        battleCtx.fillRect(0, 0, battleCanvas.width, 16);
-        battleCtx.fillStyle = "rgba(15, 23, 42, 0.9)";
-        battleCtx.fillRect(0, 16, battleCanvas.width, 30);
-        battleCtx.fillStyle = "#f8fafc";
-        battleCtx.font = "700 14px sans-serif";
-        battleCtx.fillText(`Lane: ${battle.encounterLane.toUpperCase()}  |  Turn ${battle.turnNumber}`, 14, 36);
+          const actorScale = clamp(battleCanvas.width / 420, 1.55, 3.1);
+          const stage = {
+            floorY,
+            actorScale,
+            panelY: Math.round(battleCanvas.height * 0.15),
+            panelW: Math.round(battleCanvas.width * 0.24),
+            panelH: Math.round(battleCanvas.height * 0.38),
+            playerPanelX: Math.round(battleCanvas.width * 0.05),
+            enemyPanelX: Math.round(battleCanvas.width * 0.71),
+            actorCenterY: floorY - Math.round(44 * actorScale),
+            playerCenterX: Math.round(battleCanvas.width * 0.23),
+            enemyCenterX: Math.round(battleCanvas.width * 0.77),
+          };
+          const enemyBarX = battleCanvas.width - 216;
+          const laneColor = {
+            speed: "#6f97bf",
+            precision: "#8fa8b5",
+            survival: "#aa8656",
+            puzzle: "#7c7198",
+            tactical: "#9f9365",
+          }[battle.encounterLane] ?? "#7487a2";
+          battleCtx.fillStyle = laneColor;
+          battleCtx.fillRect(0, 0, battleCanvas.width, 16);
+          battleCtx.fillStyle = "rgba(15, 23, 42, 0.9)";
+          battleCtx.fillRect(0, 16, battleCanvas.width, 30);
+          battleCtx.fillStyle = "#f8fafc";
+          battleCtx.font = "700 14px sans-serif";
+          battleCtx.fillText(`Lane: ${battle.encounterLane.toUpperCase()}  |  Turn ${battle.turnNumber}`, 14, 36);
 
-        battleCtx.fillStyle = "rgba(59, 130, 246, 0.18)";
-        battleCtx.fillRect(stage.playerPanelX, stage.panelY, stage.panelW, stage.panelH);
-        battleCtx.fillStyle = "rgba(239, 68, 68, 0.2)";
-        battleCtx.fillRect(stage.enemyPanelX, stage.panelY, stage.panelW, stage.panelH);
+          battleCtx.fillStyle = "rgba(59, 130, 246, 0.18)";
+          battleCtx.fillRect(stage.playerPanelX, stage.panelY, stage.panelW, stage.panelH);
+          battleCtx.fillStyle = "rgba(239, 68, 68, 0.2)";
+          battleCtx.fillRect(stage.enemyPanelX, stage.panelY, stage.panelW, stage.panelH);
 
-        const playerPose = getBattleActorPose("player", battle, stage, now);
-        const enemyPose = getBattleActorPose("enemy", battle, stage, now);
-        drawBattleActor(battleCtx, battle.player, "player", playerPose, getBattlePlayerPalette(), stage, battle);
-        drawBattleActor(battleCtx, battle.enemy, "enemy", enemyPose, getBattleEnemyPalette(battle), stage, battle);
-        drawBattleTurnFx(battleCtx, stage);
+          const playerPose = getBattleActorPose("player", battle, stage, now);
+          const enemyPose = getBattleActorPose("enemy", battle, stage, now);
+          drawBattleActor(battleCtx, battle.player, "player", playerPose, getBattlePlayerPalette(), stage, battle);
+          drawBattleActor(battleCtx, battle.enemy, "enemy", enemyPose, getBattleEnemyPalette(battle), stage, battle);
+          drawBattleTurnFx(battleCtx, stage);
 
-        battleCtx.fillStyle = "#dbeafe";
-        battleCtx.font = "700 15px sans-serif";
-        battleCtx.fillText(battle.player.name, stage.playerPanelX + 10, stage.panelY - 8);
-        battleCtx.fillText(battle.enemy.name, stage.enemyPanelX + 10, stage.panelY - 8);
+          battleCtx.fillStyle = "#dbeafe";
+          battleCtx.font = "700 15px sans-serif";
+          battleCtx.fillText(battle.player.name, stage.playerPanelX + 10, stage.panelY - 8);
+          battleCtx.fillText(battle.enemy.name, stage.enemyPanelX + 10, stage.panelY - 8);
 
-        const drawBar = (x, y, width, ratio, color) => {
-          battleCtx.fillStyle = "#101827";
-          battleCtx.fillRect(x, y, width, 15);
-          const fillW = Math.floor(width * clamp(ratio, 0, 1));
-          battleCtx.fillStyle = color;
-          battleCtx.fillRect(x + 1, y + 1, Math.max(0, fillW - 2), 13);
-          battleCtx.fillStyle = "rgba(255, 255, 255, 0.16)";
-          battleCtx.fillRect(x + 2, y + 2, Math.max(0, fillW - 6), 3);
-          battleCtx.strokeStyle = "#0b1020";
-          battleCtx.strokeRect(x + 0.5, y + 0.5, width - 1, 14);
-        };
+          const drawBar = (x, y, width, ratio, color) => {
+            battleCtx.fillStyle = "#101827";
+            battleCtx.fillRect(x, y, width, 15);
+            const fillW = Math.floor(width * clamp(ratio, 0, 1));
+            battleCtx.fillStyle = color;
+            battleCtx.fillRect(x + 1, y + 1, Math.max(0, fillW - 2), 13);
+            battleCtx.fillStyle = "rgba(255, 255, 255, 0.16)";
+            battleCtx.fillRect(x + 2, y + 2, Math.max(0, fillW - 6), 3);
+            battleCtx.strokeStyle = "#0b1020";
+            battleCtx.strokeRect(x + 0.5, y + 0.5, width - 1, 14);
+          };
 
-        drawBar(20, 64, 196, battle.player.maxHp > 0 ? battle.player.hp / battle.player.maxHp : 0, "#4ade80");
-        drawBar(enemyBarX, 64, 196, battle.enemy.maxHp > 0 ? battle.enemy.hp / battle.enemy.maxHp : 0, "#f87171");
-        battleCtx.fillStyle = "#cbd5e1";
-        battleCtx.font = "12px sans-serif";
-        battleCtx.fillText(`HP ${battle.player.hp}/${battle.player.maxHp} | Guard ${battle.player.guard}`, 20, 86);
-        battleCtx.fillText(`HP ${battle.enemy.hp}/${battle.enemy.maxHp} | Guard ${battle.enemy.guard}`, enemyBarX, 86);
-
-        if (now - state.battleFx.lastMoveAt.player < 1600 && state.battleFx.lastMoveName.player) {
-          battleCtx.fillStyle = "#a7f3d0";
-          battleCtx.font = "700 13px sans-serif";
-          battleCtx.fillText(state.battleFx.lastMoveName.player, stage.playerPanelX + 8, floorY + 24);
-        }
-        if (now - state.battleFx.lastMoveAt.enemy < 1600 && state.battleFx.lastMoveName.enemy) {
-          battleCtx.fillStyle = "#fecaca";
-          battleCtx.font = "700 13px sans-serif";
-          battleCtx.fillText(state.battleFx.lastMoveName.enemy, stage.enemyPanelX - 6, floorY + 24);
-        }
-
-        battleCtx.fillStyle = battle.status === "won"
-          ? "#4ade80"
-          : battle.status === "lost"
-            ? "#fb7185"
-            : battle.status === "fled"
-              ? "#facc15"
-              : "#cbd5e1";
-        battleCtx.font = "700 16px sans-serif";
-        battleCtx.fillText(`Status: ${battle.status.toUpperCase()}`, 14, battleCanvas.height - 16);
-        if (battle.status === "active") {
-          battleCtx.fillStyle = "rgba(191, 219, 254, 0.9)";
+          drawBar(20, 64, 196, battle.player.maxHp > 0 ? battle.player.hp / battle.player.maxHp : 0, "#4ade80");
+          drawBar(enemyBarX, 64, 196, battle.enemy.maxHp > 0 ? battle.enemy.hp / battle.enemy.maxHp : 0, "#f87171");
+          battleCtx.fillStyle = "#cbd5e1";
           battleCtx.font = "12px sans-serif";
-          battleCtx.fillText("LEFT/RIGHT choose command, ENTER opens it, UP/DOWN choose option, ENTER confirms.", 14, battleCanvas.height - 34);
+          battleCtx.fillText(`HP ${battle.player.hp}/${battle.player.maxHp} | Guard ${battle.player.guard}`, 20, 86);
+          battleCtx.fillText(`HP ${battle.enemy.hp}/${battle.enemy.maxHp} | Guard ${battle.enemy.guard}`, enemyBarX, 86);
+
+          if (now - state.battleFx.lastMoveAt.player < 1600 && state.battleFx.lastMoveName.player) {
+            battleCtx.fillStyle = "#a7f3d0";
+            battleCtx.font = "700 13px sans-serif";
+            battleCtx.fillText(state.battleFx.lastMoveName.player, stage.playerPanelX + 8, floorY + 24);
+          }
+          if (now - state.battleFx.lastMoveAt.enemy < 1600 && state.battleFx.lastMoveName.enemy) {
+            battleCtx.fillStyle = "#fecaca";
+            battleCtx.font = "700 13px sans-serif";
+            battleCtx.fillText(state.battleFx.lastMoveName.enemy, stage.enemyPanelX - 6, floorY + 24);
+          }
+
+          battleCtx.fillStyle = battle.status === "won"
+            ? "#4ade80"
+            : battle.status === "lost"
+              ? "#fb7185"
+              : battle.status === "fled"
+                ? "#facc15"
+                : "#cbd5e1";
+          battleCtx.font = "700 16px sans-serif";
+          battleCtx.fillText(`Status: ${battle.status.toUpperCase()}`, 14, battleCanvas.height - 16);
+          if (battle.status === "active") {
+            battleCtx.fillStyle = "rgba(191, 219, 254, 0.9)";
+            battleCtx.font = "12px sans-serif";
+            battleCtx.fillText("LEFT/RIGHT choose command, ENTER opens it, UP/DOWN choose option, ENTER confirms.", 14, battleCanvas.height - 34);
+          }
+        } catch (error) {
+          battleCtx.fillStyle = "#0b1020";
+          battleCtx.fillRect(0, 0, battleCanvas.width, battleCanvas.height);
+          battleCtx.fillStyle = "#f4f7ff";
+          battleCtx.font = "700 16px sans-serif";
+          battleCtx.fillText("Battle renderer recovered from an error.", 18, 30);
+          const fallbackStage = {
+            floorY: Math.round(battleCanvas.height * 0.79),
+            actorScale: 2.2,
+            actorCenterY: Math.round(battleCanvas.height * 0.55),
+            playerCenterX: Math.round(battleCanvas.width * 0.24),
+            enemyCenterX: Math.round(battleCanvas.width * 0.76),
+            panelY: 0,
+            panelW: 0,
+            panelH: 0,
+            playerPanelX: 0,
+            enemyPanelX: 0,
+          };
+          const fallbackBattle = getRenderableBattleState(state.battle) ?? {
+            status: "active",
+            player: { name: "King Myco", hp: 100, maxHp: 100, guard: 0 },
+            enemy: { name: "Rotbound Enemy", hp: 36, maxHp: 36, guard: 0, kind: "rot-spore" },
+          };
+          const neutralPose = { x: 0, y: 0, tilt: 0, scaleX: 1, scaleY: 1, alpha: 1, guardPulse: 0, specialBloom: 0, attackSwing: 0, victoryPulse: 0, deathProgress: 0 };
+          neutralPose.x = fallbackStage.playerCenterX;
+          neutralPose.y = fallbackStage.actorCenterY;
+          drawBattleActor(battleCtx, fallbackBattle.player, "player", neutralPose, getBattlePlayerPalette(), fallbackStage, fallbackBattle);
+          neutralPose.x = fallbackStage.enemyCenterX;
+          neutralPose.y = fallbackStage.actorCenterY;
+          drawBattleActor(battleCtx, fallbackBattle.enemy, "enemy", neutralPose, getBattleEnemyPalette(fallbackBattle), fallbackStage, fallbackBattle);
+          const now = Date.now();
+          if (!drawBattleScene.lastErrorAt || now - drawBattleScene.lastErrorAt > 2000) {
+            drawBattleScene.lastErrorAt = now;
+            console.error("drawBattleScene error", error);
+          }
         }
       };
 
@@ -13478,15 +13553,17 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         refreshBattleChoiceMenu();
 
         if (state.battle) {
+          const battleView = getRenderableBattleState(state.battle);
+          const enemyView = battleView?.enemy ?? { name: "Enemy", hp: 0, maxHp: 1, boss: false };
           const undertale = ensureUndertaleBattleState(state.battle);
           const lastAction = state.battle.lastAction
             ? `${state.battle.lastAction.moveName ?? state.battle.lastAction.kind}${state.battle.lastAction.element ? ` (${state.battle.lastAction.element})` : ""}`
             : "none";
           const enemyMove = state.battleFx.lastMoveName.enemy || "awaiting counter";
-          const mercyThreshold = state.battle.enemy?.boss ? 8 : 6;
+          const mercyThreshold = enemyView?.boss ? 8 : 6;
           const mercyTag = undertale.mercyReady ? "MERCY READY" : `ACT ${undertale.actProgress}/${mercyThreshold}`;
           const selectedCommand = (UNDERTALE_COMMAND_ORDER[state.battleUi.commandIndex ?? 0] ?? "fight").toUpperCase();
-          dom.battleSummary.textContent = `Battle source: ${state.battleMode}. Command: ${selectedCommand}. Last Myco move: ${lastAction}. Enemy move: ${enemyMove}. Lane: ${state.battle.encounterLane}. ${mercyTag}. * ${undertale.mood}`;
+          dom.battleSummary.textContent = `Battle source: ${state.battleMode}. Command: ${selectedCommand}. Last Myco move: ${lastAction}. Enemy move: ${enemyMove}. Lane: ${battleView?.encounterLane ?? "tactical"}. ${mercyTag}. * ${undertale.mood}`;
           if (state.battle.battleLog?.length) {
             dom.battleLog.textContent = state.battle.battleLog.slice(-14).join("\n");
             const latestSpeech = state.battle.battleLog[state.battle.battleLog.length - 1];
@@ -13499,9 +13576,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             dom.encounterSpeechText.textContent = state.battleUi.speechVisibleText || state.battleUi.speechFullText;
           }
           if (dom.enemyMoodPanel && dom.enemyMoodText && dom.enemyMercyText) {
-            const hpText = `${Math.max(0, Math.round(state.battle.enemy.hp))}/${Math.max(1, Math.round(state.battle.enemy.maxHp))}`;
+            const hpText = `${Math.max(0, Math.round(enemyView.hp ?? 0))}/${Math.max(1, Math.round(enemyView.maxHp ?? 1))}`;
             dom.enemyMoodText.textContent = formatUndertaleScript([
-              `${state.battle.enemy.name} mood`,
+              `${enemyView.name ?? "Enemy"} mood`,
               undertale.mood,
               `HP ${hpText}`,
             ]);
@@ -13547,17 +13624,27 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (!frameLoop.last) frameLoop.last = timestamp;
         const dt = Math.min(0.05, (timestamp - frameLoop.last) / 1000);
         frameLoop.last = timestamp;
-        if (dom.titleScreen.classList.contains("active")) {
-          drawTitlePixelScene();
+        try {
+          if (dom.titleScreen.classList.contains("active")) {
+            drawTitlePixelScene();
+          }
+          await update(dt);
+          drawWorld();
+          drawBattleScene();
+          if (state.interior.active) {
+            drawInteriorScene();
+          }
+          renderHud();
+        } catch (error) {
+          const now = Date.now();
+          if (!frameLoop.lastErrorAt || now - frameLoop.lastErrorAt > 2200) {
+            frameLoop.lastErrorAt = now;
+            console.error("frameLoop error", error);
+          }
+          setStatus("Render recovered from a runtime hiccup. Battle view fallback is active.", true);
+        } finally {
+          requestAnimationFrame(frameLoop);
         }
-        await update(dt);
-        drawWorld();
-        drawBattleScene();
-        if (state.interior.active) {
-          drawInteriorScene();
-        }
-        renderHud();
-        requestAnimationFrame(frameLoop);
       };
       frameLoop.last = 0;
 
