@@ -153,6 +153,7 @@
         }
       }
       .canvas-shell {
+        min-height: 200px;
         position: relative;
         border: 2px solid #365285;
         border-radius: 10px;
@@ -162,20 +163,19 @@
       }
       canvas {
         width: 100%;
+        height: auto;
         display: block;
         image-rendering: pixelated;
         image-rendering: crisp-edges;
       }
       #worldCanvas {
-        height: min(74dvh, calc(100dvh - 132px));
+        height: min(74vh, calc(100vh - 132px));
         max-height: none;
-        min-height: 340px;
-        filter: saturate(1.08) contrast(1.15);
+        min-height: 260px;
       }
       #battleCanvas {
         image-rendering: pixelated;
         image-rendering: crisp-edges;
-        filter: saturate(1.06) contrast(1.12);
       }
       .hint {
         margin-top: 8px;
@@ -1163,7 +1163,7 @@
           font-size: 20px;
         }
         #worldCanvas {
-          height: min(70dvh, calc(100dvh - 152px));
+          height: min(70vh, calc(100vh - 152px));
           min-height: 300px;
         }
         .corner-menu {
@@ -1197,7 +1197,7 @@
           grid-template-columns: repeat(2, minmax(120px, 1fr));
         }
         #worldCanvas {
-          height: calc(100dvh - 150px);
+          height: calc(100vh - 150px);
           min-height: 220px;
         }
         .corner-menu {
@@ -1285,7 +1285,7 @@
       }
       @media (max-width: 950px) and (orientation: landscape) and (hover: none) and (pointer: coarse) {
         #worldCanvas {
-          height: calc(100dvh - 124px);
+          height: calc(100vh - 124px);
           min-height: 210px;
         }
         .corner-menu {
@@ -1309,10 +1309,10 @@
         }
       }
       body.force-landscape #worldCanvas {
-        height: min(78dvh, calc(100dvh - 114px));
+        height: min(78vh, calc(100vh - 114px));
       }
       body.force-portrait #worldCanvas {
-        height: min(64dvh, calc(100dvh - 182px));
+        height: min(64vh, calc(100vh - 182px));
       }
       body.force-portrait .corner-menu {
         width: min(46vw, 320px);
@@ -1804,7 +1804,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const BASE_MAX_HP = 126;
       const WORLD_CAMERA_ZOOM_DESKTOP = 1.7;
       const WORLD_CAMERA_ZOOM_MOBILE = 1.2;
-      const isMobileDevice = () => window.matchMedia("(hover: none) and (pointer: coarse)").matches || window.innerWidth <= 760;
+      const isMobileDevice = () => { try { return window.matchMedia("(hover: none) and (pointer: coarse)").matches || window.innerWidth <= 760; } catch(_e) { return window.innerWidth <= 760; } };
       const WORLD_CAMERA_ZOOM = isMobileDevice() ? WORLD_CAMERA_ZOOM_MOBILE : WORLD_CAMERA_ZOOM_DESKTOP;
       const PRESENTATION_PRESETS = {
         performance: {
@@ -5072,8 +5072,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           }
         }
         const worldRect = worldCanvas.getBoundingClientRect();
-        const worldW = Math.max(320, Math.round((worldRect.width * dpr) / (isMobileDevice() ? WORLD_CAMERA_ZOOM_MOBILE : WORLD_CAMERA_ZOOM_DESKTOP)));
-        const worldH = Math.max(220, Math.round((worldRect.height * dpr) / WORLD_CAMERA_ZOOM));
+        const effectiveWorldW = worldRect.width || window.innerWidth || 360;
+        const worldW = Math.max(320, Math.round((effectiveWorldW * dpr) / WORLD_CAMERA_ZOOM));
+        const effectiveWorldH = worldRect.height || Math.round((window.innerHeight || 640) * 0.6);
+        const worldH = Math.max(220, Math.round((effectiveWorldH * dpr) / WORLD_CAMERA_ZOOM));
         if (worldCanvas.width !== worldW || worldCanvas.height !== worldH) {
           worldCanvas.width = worldW;
           worldCanvas.height = worldH;
@@ -5085,7 +5087,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const popupWidthPx = Math.max(340, window.innerWidth - 22);
         const baseBattleWidth = popupActive
           ? popupWidthPx
-          : Math.max(260, battleRect.width || 0);
+          : Math.max(260, battleRect.width || window.innerWidth || 360);
         const baseBattleHeight = popupActive
           ? Math.max(260, window.innerHeight * 0.55)
           : Math.max(200, (battleRect.height || 200));
@@ -14027,7 +14029,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           }
           await update(dt);
           drawWorld();
-          if (state.mode === "battle" || state.pendingBattle || state.battle) drawBattleScene();
+          if (state.battle || state.pendingBattle) drawBattleScene();
           if (state.interior.active) {
             drawInteriorScene();
           }
