@@ -1063,10 +1063,7 @@
         opacity: 0;
         pointer-events: none;
       }
-      .title-screen.active ~ .mobile-controls {
-        display: none !important;
-        pointer-events: none !important;
-      }
+
       .hud-toggle-floating {
         position: fixed;
         top: max(8px, env(safe-area-inset-top));
@@ -1110,29 +1107,30 @@
         pointer-events: auto;
       }
       .mobile-joystick {
-        position: absolute;
-        left: 0;
-        bottom: 0;
-        width: 100%;
-        height: 100%;
-        border: none;
-        background: transparent;
+        position: relative;
+        width: 110px;
+        height: 110px;
+        border-radius: 999px;
+        border: 2px solid rgba(61, 95, 150, 0.5);
+        background: rgba(12, 23, 45, 0.4);
         touch-action: none;
       }
       .mobile-joystick::before {
-        display: none;
+        content: "";
+        position: absolute;
+        inset: 16px;
+        border-radius: 999px;
+        border: 1px dashed rgba(148, 197, 255, 0.3);
       }
       .mobile-stick {
         position: absolute;
         left: 50%;
         top: 50%;
-        width: 0;
-        height: 0;
-        margin-left: 0;
-        margin-top: 0;
+        width: 44px;
+        height: 44px;
+        margin-left: -22px;
+        margin-top: -22px;
         border-radius: 999px;
-        opacity: 0;
-        pointer-events: none;
         border: 2px solid #6ea2e8;
         background: rgba(38, 80, 146, 0.9);
         box-shadow: 0 4px 10px rgba(2, 6, 23, 0.5);
@@ -1704,7 +1702,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
     <button id="minimalHudFloating" class="hud-toggle-floating">Show HUD</button>
 
-    <section id="mobileControls" class="mobile-controls" style="display:none">
+    <section id="mobileControls" class="mobile-controls hidden">
       <div id="mobileJoystick" class="mobile-joystick" aria-label="Movement joystick">
         <div id="mobileStick" class="mobile-stick"></div>
       </div>
@@ -5141,27 +5139,26 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         };
         const resetJoystick = () => {
           applyJoystickKeys(new Set());
+          if (stickEl) stickEl.style.transform = "translate(0px, 0px)";
           joystickState.pointerId = null;
-          joystickState.originX = null;
-          joystickState.originY = null;
         };
         const updateJoystickFromPointer = (clientX, clientY) => {
-          if (!joystickEl) return;
-          if (!joystickState.originX) {
-            joystickState.originX = clientX;
-            joystickState.originY = clientY;
-          }
-          const dx = clientX - joystickState.originX;
-          const dy = clientY - joystickState.originY;
+          if (!joystickEl || !stickEl) return;
+          const rect = joystickEl.getBoundingClientRect();
+          const centerX = rect.left + rect.width * 0.5;
+          const centerY = rect.top + rect.height * 0.5;
+          const dx = clientX - centerX;
+          const dy = clientY - centerY;
           const distance = Math.hypot(dx, dy);
-          const deadzone = 8;
-          if (distance < deadzone) {
-            applyJoystickKeys(new Set());
-            return;
-          }
-          const normalizedX = dx / Math.max(distance, 1);
-          const normalizedY = dy / Math.max(distance, 1);
-          const threshold = 0.38;
+          const maxR = rect.width * 0.4;
+          const clamped = Math.min(maxR, distance);
+          const angle = distance > 0.001 ? Math.atan2(dy, dx) : 0;
+          const knobX = Math.round(Math.cos(angle) * clamped);
+          const knobY = Math.round(Math.sin(angle) * clamped);
+          stickEl.style.transform = `translate(${knobX}px, ${knobY}px)`;
+          const normalizedX = maxR > 0 ? knobX / maxR : 0;
+          const normalizedY = maxR > 0 ? knobY / maxR : 0;
+          const threshold = 0.3;
           const nextKeys = new Set();
           if (normalizedX <= -threshold) nextKeys.add("arrowleft");
           if (normalizedX >= threshold) nextKeys.add("arrowright");
@@ -5174,9 +5171,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             event.preventDefault();
             if (!state.audio.initialized) initAudio();
             joystickState.pointerId = event.pointerId;
-            joystickState.originX = event.clientX;
-            joystickState.originY = event.clientY;
             joystickEl.setPointerCapture(event.pointerId);
+            updateJoystickFromPointer(event.clientX, event.clientY);
           });
           joystickEl.addEventListener("pointermove", (event) => {
             if (joystickState.pointerId !== event.pointerId) return;
@@ -6838,7 +6834,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const isPortalTransfer = new URLSearchParams(window.location.search).has("portalTravel");
         if (!isPortalTransfer && !requireSignedInIdentity(true)) {
           dom.titleScreen.classList.add("active");
-          if (dom.mobileControls) dom.mobileControls.style.display = "none";
+          if (dom.mobileControls) dom.mobileControls.classList.add("hidden");
           refreshTitleScreen();
           return;
         }
