@@ -347,10 +347,10 @@
         color: #4ade80;
       }
       .battle-controls-layout {
-        margin-top: 8px;
+        margin-top: 3px;
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(210px, 260px);
-        gap: 8px;
+        grid-template-columns: minmax(0, 1fr) minmax(150px, 200px);
+        gap: 4px;
         align-items: start;
       }
       .battle-controls {
@@ -366,9 +366,11 @@
       .undertale-command {
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
         font-weight: 700;
-        letter-spacing: 0.08em;
+        font-size: 11px;
+        letter-spacing: 0.06em;
         border-radius: 2px;
         border-width: 2px;
+        padding: 3px 2px;
         border-color: #f8fafc;
         background: #05070a;
         color: #f8fafc;
@@ -379,15 +381,15 @@
         box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.34), inset 0 0 0 1px rgba(250, 204, 21, 0.22);
       }
       .battle-aux-controls {
-        margin-top: 6px;
+        margin-top: 3px;
         grid-template-columns: minmax(84px, 1fr) repeat(3, auto);
       }
       .undertale-choice-panel {
-        margin-top: 6px;
+        margin-top: 3px;
         border: 2px solid #f8fafc;
         border-radius: 2px;
         background: #05070a;
-        padding: 8px 10px;
+        padding: 4px 8px;
       }
       .undertale-choice-panel p {
         margin: 0 0 6px;
@@ -399,8 +401,9 @@
         list-style: none;
         margin: 0;
         padding: 0;
-        display: grid;
-        gap: 2px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1px 12px;
         max-height: 160px;
         overflow-y: auto;
         scrollbar-width: thin;
@@ -415,12 +418,12 @@
         color: #facc15;
       }
       .undertale-speech-box {
-        margin-top: 8px;
-        min-height: 72px;
-        border: 3px solid #f8fafc;
+        margin-top: 4px;
+        min-height: 32px;
+        border: 2px solid #f8fafc;
         border-radius: 2px;
         background: #05070a;
-        padding: 10px 12px;
+        padding: 4px 8px;
         box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.24);
       }
       .undertale-speech-box p {
@@ -432,11 +435,12 @@
         color: #f8fafc;
       }
       .undertale-mood-panel {
-        border: 2px solid #f8fafc;
+        border: 1px solid #94a3b8;
         border-radius: 2px;
         background: #05070a;
-        padding: 8px 9px;
-        min-height: 72px;
+        padding: 3px 6px;
+        min-height: 36px;
+        font-size: 10px;
       }
       .undertale-mood-panel h4 {
         margin-bottom: 4px;
@@ -469,16 +473,16 @@
         }
       }
       .log {
-        margin-top: 6px;
-        max-height: 90px;
+        margin-top: 4px;
+        max-height: 48px;
         overflow: auto;
         background: #0a1326;
         border: 1px solid #264170;
-        border-radius: 6px;
-        padding: 6px 8px;
+        border-radius: 4px;
+        padding: 3px 6px;
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-        font-size: 11px;
-        line-height: 1.3;
+        font-size: 10px;
+        line-height: 1.2;
         font-size: 12px;
         white-space: pre-wrap;
       }
@@ -1022,23 +1026,26 @@
         height: 100%;
       }
       #panelBattle.battle-popup-active #battleCanvas {
-        height: min(72vh, 720px);
-        min-height: 300px;
+        height: min(52vh, 480px);
+        min-height: 220px;
       }
       #panelBattle.battle-popup-active .battle-controls {
         margin-top: 0;
       }
       #panelBattle.battle-popup-active .battle-controls-layout {
-        margin-top: 0;
+        margin-top: 2px;
       }
       #panelBattle.battle-popup-active .undertale-speech-box {
         margin-top: 0;
+        min-height: 24px;
+        padding: 3px 8px;
       }
       #panelBattle.battle-popup-active .log {
         margin-top: 0;
-        max-height: min(12vh, 100px);
-        font-size: 11px;
-        line-height: 1.3;
+        max-height: 48px;
+        font-size: 10px;
+        line-height: 1.2;
+        padding: 3px 6px;
       }
       body.battle-popup-active .corner-menu,
       body.battle-popup-active .mobile-controls,
@@ -1444,7 +1451,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         <article class="panel">
           <h2 id="realmPageTitle">Realm Page // Loading</h2>
           <p class="subtle">Each region is now its own page. Use WASD/Arrow keys to move, E to interact, and enter structures for interior screens.</p>
-          <div class="canvas-shell" style="margin-top: 8px">
+          <div class="canvas-shell" style="margin-top: 2px">
             <div id="realmBanner" class="realm-header">Realm Syncing...</div>
             <canvas id="worldCanvas" width="960" height="540"></canvas>
           </div>
@@ -1593,11 +1600,11 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           </section>
 
           <section id="panelBattle" class="panel">
-            <h2>Turn Battle</h2>
+            <h2 style="font-size: 14px; margin-bottom: 2px">Turn Battle</h2>
             <div class="canvas-shell" style="margin-top: 8px">
               <canvas id="battleCanvas" width="640" height="360"></canvas>
             </div>
-            <p id="battleSummary" class="subtle" style="margin-top: 8px">No active battle. Touch an enemy in the overworld to engage.</p>
+            <p id="battleSummary" class="subtle" style="margin-top: 2px; font-size: 10px; line-height: 1.2">No active battle. Touch an enemy in the overworld to engage.</p>
             <div id="encounterSpeechBox" class="undertale-speech-box">
               <p id="encounterSpeechText">* Waiting for the next encounter...</p>
             </div>
@@ -5684,7 +5691,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const appendBattleLog = (message) => {
         const lines = dom.battleLog.textContent === "No combat logs yet." ? [] : dom.battleLog.textContent.split("\n").filter(Boolean);
         lines.push(message);
-        dom.battleLog.textContent = lines.slice(-8).join("\n");
+        dom.battleLog.textContent = lines.slice(-4).join("\n");
       };
 
       const resetBattleFx = () => {
