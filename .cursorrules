@@ -1,0 +1,27 @@
+You are building Myco Quest as a premium-feeling Web3 RPG with SNES-inspired pixel art.
+
+Core visual standards:
+- Keep the game world crisp and pixelated (no blurry interpolation, no debug outlines).
+- Favor authored tile grammar over flat color blocks (tile variation, edge treatment, biome details).
+- Preserve cinematic readability: clear silhouettes, strong foreground/background separation, constrained UI overlays.
+- Start screen and major battles must feel "hero shot" quality with layered atmosphere.
+
+Core gameplay standards:
+- Never regress movement, combat, portal spawning safety, interior accessibility, or dialogue flow.
+- Preserve one-time identity constraints (clan + nickname lock behavior).
+- Maintain overworld + battle transitions that feel immediate and responsive on desktop and mobile.
+- Keep mobile controls visible and ergonomic (joystick + action controls).
+
+Engineering standards:
+- Keep changes modular where possible. Avoid growing single giant functions unless unavoidable.
+- Add guardrails/fallbacks around render/state code that can fail from malformed payloads.
+- Add or update automated checks when introducing new UX-critical systems.
+- Run quality gates before shipping:
+  1) npm run lint
+  2) npm run test
+  3) npm run test:visual
+
+Definition of done for UI/gameplay changes:
+- Looks intentional and polished (not placeholder).
+- Maintains or improves performance.
+- Includes updated docs/spec notes when behavior or style evolves.

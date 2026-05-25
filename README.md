@@ -5,12 +5,14 @@ Myco Quest adaptive AI game-core + ecosystem backend for King Myco.
 ## Implemented capability tiers
 
 ### Tier 1 - Adaptive gameplay core
+
 - Player modeling (skill, playstyle, novelty, mastery)
 - Adaptive encounter sequencing
 - Per-run procedural tuning
 - Persistent RPG progression: morality, learned magic, and spores collected history
 
 ### Tier 2 - Ecosystem orchestration
+
 - Unified identity across:
   - `mycokingdom_bot`
   - `mycoai_bot`
@@ -21,6 +23,7 @@ Myco Quest adaptive AI game-core + ecosystem backend for King Myco.
 - Fraud scoring + quarantined leaderboard submissions
 
 ### Tier 3 - Production hardening + Web3
+
 - Source token auth with per-source scopes
 - Signed webhook verification (Telegram secret token + OpenClaw HMAC)
 - Event stream analytics summary endpoint
@@ -46,6 +49,7 @@ Myco Quest adaptive AI game-core + ecosystem backend for King Myco.
 ## API endpoints
 
 ### Health
+
 - `GET /health`
 - `GET /api/health` (health alias behind /api proxy)
 - `GET /dev/myco-quest` (interactive dev UI)
@@ -54,6 +58,7 @@ Myco Quest adaptive AI game-core + ecosystem backend for King Myco.
 - `GET /api/game/myco-quest` (playable view alias behind /api proxy)
 
 ### Identity and gameplay
+
 - `POST /api/identity/link`
 - `POST /api/run/generate`
 - `POST /api/session/record`
@@ -65,25 +70,28 @@ Myco Quest adaptive AI game-core + ecosystem backend for King Myco.
 - `GET /api/player/:playerId`
 
 ### Leaderboard and live ops
+
 - `GET /api/leaderboard/:mode`
 - `GET /api/liveops`
 - `POST /api/liveops` (admin key)
 
 ### Analytics
+
 - `GET /api/analytics/summary` (admin key)
 - `GET /api/ecosystem/communication` (admin key)
 - `POST /api/ecosystem/heartbeat/pulse` (admin key)
 - `GET /api/dev/hud/:playerId` (admin key)
 
 ### Webhooks
+
 - `POST /webhooks/mycokingdom_bot`
 - `POST /webhooks/mycoai_bot`
 - `POST /webhooks/openclaw`
 
-
 Proxy compatibility: if an upstream reverse proxy strips the `/api` prefix, the backend also accepts stripped gameplay/admin paths (for example `/run/generate`, `/session/record`, `/dev/hud/:playerId`) so deployments remain functional while proxy rules are being corrected.
 
 ### Solana (Web3)
+
 - `POST /api/solana/challenge`
 - `POST /api/solana/verify-link`
 - `GET /api/solana/wallet/:walletAddress`
@@ -103,6 +111,7 @@ Proxy compatibility: if an upstream reverse proxy strips the `/api` prefix, the 
 Challenges are one-time and expire automatically.
 
 Session telemetry can also include optional RPG fields:
+
 - `sporesCollected` (explicit in-game collection amount)
 - `morality.compassionateActions` / `morality.ruthlessActions`
 - `magic.castsByElement` and `magic.ritualsCompleted`
@@ -125,6 +134,7 @@ Session telemetry can also include optional RPG fields:
 Use `GET /api/ecosystem/communication` to confirm that all ecosystem surfaces are actively communicating.
 
 Optional query params:
+
 - `windowMinutes` (default `120`)
 - `minEventsPerSource` (default `1`)
 - `limit` (default `1000`, max `2000`)
@@ -132,30 +142,62 @@ Optional query params:
 The response includes per-source event counts, last-seen timestamps, observed event types, and a global `allSourcesActive` boolean.
 
 Manual heartbeat pulse example:
+
 - `POST /api/ecosystem/heartbeat/pulse` with optional `{ "sources": ["kingmyco.io", "openclaw"], "eventName": "ecosystem_heartbeat" }`
 
 ## Security model
 
 ### Source auth
+
 Provide `KINGMYCO_SOURCE_AUTH_JSON` to enforce per-source bearer tokens and scopes via `x-source-token`.
 
 Example:
 
 ```json
 {
-  "mycokingdom_bot": { "token": "token-a", "scopes": ["identity:write", "session:write", "webhook:ingest"] },
-  "mycoai_bot": { "token": "token-b", "scopes": ["coach:read", "identity:write", "webhook:ingest"] },
-  "kingmyco.io": { "token": "token-c", "scopes": ["identity:write", "run:generate", "session:write", "rpg:play", "solana:verify", "solana:reward:prepare"] },
-  "kingdom.kingmyco.com": { "token": "token-d", "scopes": ["identity:write", "run:generate", "session:write", "rpg:play"] },
-  "openclaw": { "token": "token-e", "scopes": ["session:write", "run:generate", "solana:reward:prepare", "solana:reward:update", "webhook:ingest"] }
+  "mycokingdom_bot": {
+    "token": "token-a",
+    "scopes": ["identity:write", "session:write", "webhook:ingest"]
+  },
+  "mycoai_bot": {
+    "token": "token-b",
+    "scopes": ["coach:read", "identity:write", "webhook:ingest"]
+  },
+  "kingmyco.io": {
+    "token": "token-c",
+    "scopes": [
+      "identity:write",
+      "run:generate",
+      "session:write",
+      "rpg:play",
+      "solana:verify",
+      "solana:reward:prepare"
+    ]
+  },
+  "kingdom.kingmyco.com": {
+    "token": "token-d",
+    "scopes": ["identity:write", "run:generate", "session:write", "rpg:play"]
+  },
+  "openclaw": {
+    "token": "token-e",
+    "scopes": [
+      "session:write",
+      "run:generate",
+      "solana:reward:prepare",
+      "solana:reward:update",
+      "webhook:ingest"
+    ]
+  }
 }
 ```
 
 ### Webhook verification
+
 - Telegram: `KINGMYCO_TELEGRAM_WEBHOOK_SECRET`
 - OpenClaw: `OPENCLAW_WEBHOOK_SECRET`
 
 ### Admin routes
+
 - `x-admin-key` must match `KINGMYCO_ADMIN_KEY`
 
 ## Solana configuration
@@ -213,16 +255,19 @@ Run `npm run start:settlement-worker` to continuously:
 2. reconcile submitted signatures (`submitted -> settled/failed`)
 
 Worker tuning env vars:
+
 - `KINGMYCO_SETTLEMENT_POLL_MS`
 - `KINGMYCO_SETTLEMENT_PREPARED_BATCH`
 - `KINGMYCO_SETTLEMENT_SUBMITTED_BATCH`
 - `KINGMYCO_SETTLEMENT_DRY_RUN`
 
 Operator helper endpoints:
+
 - `GET /api/solana/rewards/intents?status=prepared&limit=20`
 - `POST /api/solana/rewards/process`
 
 Claim request metadata (optional):
+
 - `clientIp` in body (otherwise inferred from proxy headers/remote address)
 - `x-client-fingerprint` header or `clientFingerprint` body field
 
@@ -231,6 +276,7 @@ Claim request metadata (optional):
 Run `npm run start:heartbeat-worker` to continuously emit ecosystem heartbeat events for communication health.
 
 Heartbeat worker env vars:
+
 - `KINGMYCO_HEARTBEAT_POLL_MS` (default `60000`)
 - `KINGMYCO_HEARTBEAT_SOURCES` (comma-separated source list, defaults to all ecosystem sources)
 - `KINGMYCO_HEARTBEAT_EVENT_NAME` (default `ecosystem_heartbeat`)
@@ -242,6 +288,7 @@ Heartbeat worker env vars:
 By default, state is persisted to local JSON via `KINGMYCO_STATE_PATH`.
 
 Optional adapter settings:
+
 - `KINGMYCO_PG_URL` - postgres connection string
 - `KINGMYCO_REDIS_URL` - redis connection string
 
@@ -250,7 +297,13 @@ When configured, snapshots and events are mirrored to Postgres/Redis.
 ## Scripts
 
 - `npm run demo` - adaptive behavior simulation
+- `npm run lint` - ESLint quality gate for TypeScript and tests
+- `npm run lint:fix` - auto-fix lint issues where safe
+- `npm run format` - Prettier format all tracked source/config/docs
+- `npm run format:check` - verify formatting without modifying files
 - `npm run test` - unit tests
+- `npm run test:visual` - Playwright visual smoke test for the game entry screen
+- `npm run test:visual:headed` - visual smoke test with browser UI
 - `npm run build` - TypeScript compile
 - `npm run start:api` - launch API server
 - `npm run start:api:prod` - run compiled API server
@@ -259,6 +312,14 @@ When configured, snapshots and events are mirrored to Postgres/Redis.
 - `npm run start:heartbeat-worker` - run ecosystem heartbeat loop
 - `npm run start:heartbeat-worker:prod` - run compiled heartbeat worker
 - `npm run playground` - start a live local dev playground loop (API + heartbeat + sample game sessions)
+- `npm run qa` - full local gate (lint + unit tests + visual smoke tests)
+
+## Professional quality docs
+
+- `docs/art-direction.md` - visual quality targets and scene composition standards
+- `docs/gameplay-spec.md` - gameplay quality baseline and interaction expectations
+- `docs/engineering-quality-gates.md` - release checklist and required verification commands
+- `.cursorrules` - Cursor agent guardrails to keep future changes aligned with quality goals
 
 ### Local dev playground (single command)
 
@@ -273,6 +334,7 @@ Then open `http://127.0.0.1:3000/dev/myco-quest` locally (or `https://<your-doma
 The dev UI includes built-in archetype presets (balanced, ruthless, compassionate, speedrunner) plus custom preset save/load/delete in browser localStorage. You can also export presets as JSON, import JSON by paste/upload, and download a shared preset pack for teammates.
 
 Useful playground env overrides:
+
 - `PLAYGROUND_PLAYER_ID` (default `dev-playground-player`)
 - `PLAYGROUND_SOURCE` (default `kingmyco.io`)
 - `PLAYGROUND_INTERVAL_SEC` (default `12`)
@@ -288,7 +350,6 @@ Run generation now includes `lastRun.objective` (lane target, perfect-action tar
 ```bash
 curl -H "x-admin-key: dev-admin-key" "http://127.0.0.1:3000/api/dev/hud/<player-id>?windowMinutes=30&minEventsPerSource=1"
 ```
-
 
 ## Production deployment (kingmyco.io)
 
@@ -327,6 +388,7 @@ bash scripts/ops/finalize-api-deploy.sh
 ```
 
 Optional overrides:
+
 - `BRANCH` (default `cursor/myco-quest-ai-core-ae3a`)
 - `PUBLIC_BASE_URL` (default `https://api.kingmyco.io`)
 - `EXPECTED_SHA` (fails if deployed commit hash differs)
@@ -334,15 +396,18 @@ Optional overrides:
 ### 3c) Hostinger one-click deploy via GitHub Actions
 
 To remove manual SSH/paste deployment commands, use:
+
 - `.github/workflows/hostinger-vps-deploy.yml`
 
 Workflow behavior:
+
 - Auto deploys when `main` is pushed (post-merge)
 - Supports manual **Run workflow** dispatch with custom branch/SHA/PM2 app/repo-dir inputs
 - Executes `scripts/ops/finalize-api-deploy.sh` over SSH on the VPS
 - For manual dispatch, `expected_sha` is optional and only enforced when provided
 
 Required GitHub configuration:
+
 - `VPS_SSH_KEY` as a **Repository Secret** (required)
 - `VPS_HOST` and `VPS_USER` as either **Repository Secrets** or **Repository Variables**
 - `VPS_PORT` as Secret/Variable (optional; defaults to `22`)
@@ -357,10 +422,10 @@ Set host policy/rules so only `https://kingmyco.io` is publicly exposed.
 ### CI/deploy stub
 
 A starter GitHub Actions workflow is provided at:
+
 - `.github/workflows/ci-deploy-stub.yml`
 
 It runs tests/build/docker build on PRs and main pushes, then optionally calls a deploy webhook if `KINGMYCO_DEPLOY_WEBHOOK_URL` secret is set.
-
 
 ## Provider-specific deployment blueprints (all included)
 
@@ -410,6 +475,7 @@ It runs tests/build/docker build on PRs and main pushes, then optionally calls a
 Workflow file: `.github/workflows/deploy-providers-stub.yml`
 
 Behavior:
+
 - Triggers on pushes to `main` and manual dispatch.
 - Runs provider-specific deploy jobs only when the required secrets/vars are present.
 - Safely no-ops for providers not yet configured.

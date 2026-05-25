@@ -6,8 +6,14 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "lint": "eslint src tests playwright.config.ts eslint.config.mjs --max-warnings=0",
+    "lint:fix": "eslint src tests playwright.config.ts eslint.config.mjs --fix",
+    "format": "prettier \"{README.md,eslint.config.mjs,playwright.config.ts,.prettierrc.json,docs/**/*.md,tests/visual/**/*.ts,.vscode/**/*.json,scripts/qa/**/*.cjs}\" --write",
+    "format:check": "prettier \"{README.md,eslint.config.mjs,playwright.config.ts,.prettierrc.json,docs/**/*.md,tests/visual/**/*.ts,.vscode/**/*.json,scripts/qa/**/*.cjs}\" --check",
+    "test": "vitest run --exclude tests/visual/**",
+    "test:watch": "vitest --exclude tests/visual/**",
+    "test:visual": "playwright test",
+    "test:visual:headed": "playwright test --headed",
     "demo": "tsx src/demo.ts",
     "start:api": "tsx src/server.ts",
     "start:api:prod": "node dist/server.js",
@@ -15,7 +21,8 @@
     "start:settlement-worker:prod": "node dist/workers/solanaSettlementWorker.js",
     "start:heartbeat-worker": "tsx src/workers/ecosystemHeartbeatWorker.ts",
     "start:heartbeat-worker:prod": "node dist/workers/ecosystemHeartbeatWorker.js",
-    "playground": "bash scripts/dev-playground.sh"
+    "playground": "bash scripts/dev-playground.sh",
+    "qa": "npm run lint && npm run test && npm run test:visual"
   },
   "repository": {
     "type": "git",
@@ -33,10 +40,16 @@
   },
   "homepage": "https://github.com/dookbrah/king-myco-runner#readme",
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.60.0",
     "@types/node": "^25.9.1",
     "@types/pg": "^8.20.0",
+    "eslint": "^10.4.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.8.3",
     "tsx": "^4.22.3",
     "typescript": "^6.0.3",
+    "typescript-eslint": "^8.59.4",
     "vitest": "^4.1.7"
   },
   "dependencies": {

@@ -5,3 +5,5 @@ coverage/
 data/
 .env
 .env.local
+playwright-report/
+test-results/
