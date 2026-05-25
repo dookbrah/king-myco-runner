@@ -4,7 +4,7 @@
 
 ### Overview
 
-**king-myco-runner** is a Node.js 22 / TypeScript backend for the "Myco Quest" adaptive AI game engine. It uses a vanilla `node:http` server (no Express/Fastify). There is no ESLint/Prettier config; TypeScript strict-mode compilation (`tsc`) is the lint check.
+**king-myco-runner** is a Node.js 22 / TypeScript backend for the "Myco Quest" adaptive AI game engine. It uses a vanilla `node:http` server (no Express/Fastify). ESLint (`eslint.config.mjs`) and Prettier (`.prettierrc.json`) are configured; `npm run lint` runs ESLint and `npm run build` runs `tsc` for type-checking.
 
 ### Key commands
 
@@ -13,7 +13,8 @@ See `package.json` scripts for the full list. The most important ones:
 | Command | Purpose |
 |---|---|
 | `npm install` | Install dependencies |
-| `npm run build` | TypeScript compile (`tsc`) — also serves as lint check |
+| `npm run build` | TypeScript compile (`tsc`) — type-checking |
+| `npm run lint` | ESLint quality gate (strict, zero warnings) |
 | `npm run test` | Vitest unit tests (28 tests across 3 files) |
 | `npm run start:api` | Start API server in dev mode (port 3000, uses `tsx`) |
 | `npm run playground` | Full local dev loop (API + heartbeat + mock game sessions) |
