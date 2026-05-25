@@ -30,9 +30,26 @@ See `package.json` scripts for the full list. The most important ones:
 - `http://127.0.0.1:3000/dev/myco-quest` — interactive dev playground + HUD
 - `http://127.0.0.1:3000/game/myco-quest` — visual game-style view
 
+### Ecosystem surfaces
+
+All 5 surfaces connect through the hub's identity graph:
+
+| Surface | Integration | Webhook route |
+|---|---|---|
+| `kingmyco.io` | Primary web client (game HTML) — REST API | N/A (CORS origin) |
+| `mycokingdom_bot` | Telegram bot | `POST /webhooks/mycokingdom_bot` |
+| `mycoai_bot` | Telegram AI coach bot | `POST /webhooks/mycoai_bot` |
+| `kingdom.kingmyco.com` | Kingdom web app | `POST /webhooks/kingdom` |
+| `openclaw` | OpenClaw platform (HMAC) | `POST /webhooks/openclaw` |
+
+Webhook handlers parse user data and call `hub.linkIdentity()` to resolve/create players. Cross-surface merging happens via shared `claims` (e.g. same `walletAddress` or `telegramUserId` from different sources merges into one player).
+
 ### Gotchas
 
 - The `SessionTelemetry.magic.ritualsCompleted` field is a `string[]` (ritual names), not a number.
 - The `/api/session/record` endpoint expects a `telemetry` object (of type `SessionTelemetry`) nested inside the body, not flat fields.
 - The `/api/run/generate` endpoint requires `externalId` in addition to `playerId` and `source`.
 - No hot-reload is built into `tsx`; restart the process after code changes.
+- Game HTML lanes (`speed`, `precision`, `tactical`, `survival`, `puzzle`) map to backend `ChallengeLane` values (`mobility`, `swarm`, `tactics`, `boss`, `puzzle`). The mapping is done client-side via `mapLaneToBackend()`.
+- `requestBase()` in the game HTML puts `walletAddress` inside `claims` (not at top-level). All API calls that extend `IdentityLinkRequest` expect `claims.walletAddress`.
+- Player-facing Solana reward intent status is at `GET /api/solana/rewards/my-intents?source=...&externalId=...` (no admin key required, scoped by player identity).

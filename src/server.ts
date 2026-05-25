@@ -533,6 +533,42 @@ const start = async (): Promise<void> => {
         return sendJson(response, 200, { intents });
       }
 
+      if (method === "GET" && routePath === "/api/solana/rewards/my-intents") {
+        const rawParams = parsedUrl.searchParams;
+        const mySource = parseSource(rawParams.get("source"));
+        authorizeSource(request, mySource, "solana:reward:prepare");
+
+        const myExternalId = rawParams.get("externalId");
+        if (!myExternalId || myExternalId.trim().length === 0) {
+          return sendJson(response, 400, {
+            error: "bad_request",
+            message: "Expected non-empty query parameter: externalId",
+          });
+        }
+
+        const myPlayerId = hub.resolvePlayerId(mySource, myExternalId.trim());
+        if (!myPlayerId) {
+          return sendJson(response, 200, { intents: [] });
+        }
+
+        const myStatusRaw = rawParams.get("status");
+        const myStatus =
+          myStatusRaw === "prepared" ||
+          myStatusRaw === "submitted" ||
+          myStatusRaw === "settled" ||
+          myStatusRaw === "failed"
+            ? myStatusRaw
+            : undefined;
+        const myLimitRaw = rawParams.get("limit");
+        const myLimit =
+          myLimitRaw && Number.isFinite(Number(myLimitRaw))
+            ? Math.min(Number(myLimitRaw), 50)
+            : 20;
+
+        const myIntents = hub.getTransferIntents({ status: myStatus, playerId: myPlayerId, limit: myLimit });
+        return sendJson(response, 200, { intents: myIntents });
+      }
+
       if (method === "POST" && routePath === "/api/solana/rewards/claim") {
         const rawBody = await readRawBody(request);
         const body = parseJsonBody<Record<string, unknown>>(rawBody);
