@@ -1101,6 +1101,15 @@
         align-items: flex-end;
         padding: 0 12px;
         pointer-events: none;
+        transition: opacity 0.15s ease;
+      }
+      .mobile-controls.controls-suppressed {
+        opacity: 0.15;
+        pointer-events: none !important;
+      }
+      .mobile-controls.controls-suppressed .mobile-joystick,
+      .mobile-controls.controls-suppressed .mobile-actions {
+        pointer-events: none !important;
       }
       .mobile-joystick,
       .mobile-actions {
@@ -1114,6 +1123,7 @@
         border: 2px solid rgba(61, 95, 150, 0.5);
         background: rgba(12, 23, 45, 0.4);
         touch-action: none;
+        will-change: transform;
       }
       .mobile-joystick::before {
         content: "";
@@ -1135,7 +1145,7 @@
         background: rgba(38, 80, 146, 0.9);
         box-shadow: 0 4px 10px rgba(2, 6, 23, 0.5);
         pointer-events: none;
-        transition: transform 60ms linear;
+        will-change: transform;
       }
       .mobile-actions {
         position: relative;
@@ -1153,9 +1163,14 @@
         font-weight: 700;
         touch-action: none;
         min-height: 48px;
+        transition: background 0.08s ease, transform 0.06s ease;
+        -webkit-tap-highlight-color: transparent;
+        user-select: none;
       }
+      .touch-btn:active,
       .touch-btn.active {
         background: #1d4ed8;
+        transform: scale(0.93);
       }
       @media (max-width: 1024px) {
         h1 {
@@ -5129,8 +5144,19 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const joystickState = {
           pointerId: null,
           activeKeys: new Set(),
-          radius: 42,
+          cachedRect: null,
+          rafId: null,
+          pendingX: 0,
+          pendingY: 0,
+          dirty: false,
         };
+
+        const cacheJoystickRect = () => {
+          if (joystickEl) joystickState.cachedRect = joystickEl.getBoundingClientRect();
+        };
+        window.addEventListener("resize", cacheJoystickRect);
+        window.addEventListener("orientationchange", cacheJoystickRect);
+
         const applyJoystickKeys = (nextKeys) => {
           for (const key of ["arrowup", "arrowdown", "arrowleft", "arrowright"]) {
             const shouldBeDown = nextKeys.has(key);
@@ -5146,26 +5172,31 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         };
         const resetJoystick = () => {
           applyJoystickKeys(new Set());
-          if (stickEl) stickEl.style.transform = "translate(0px, 0px)";
+          if (stickEl) stickEl.style.transform = "translate3d(0px, 0px, 0px)";
           joystickState.pointerId = null;
+          joystickState.dirty = false;
         };
-        const updateJoystickFromPointer = (clientX, clientY) => {
-          if (!joystickEl || !stickEl) return;
-          const rect = joystickEl.getBoundingClientRect();
+
+        const flushJoystick = () => {
+          joystickState.rafId = null;
+          if (!joystickState.dirty || !stickEl) return;
+          joystickState.dirty = false;
+          const rect = joystickState.cachedRect;
+          if (!rect) return;
           const centerX = rect.left + rect.width * 0.5;
           const centerY = rect.top + rect.height * 0.5;
-          const dx = clientX - centerX;
-          const dy = clientY - centerY;
+          const dx = joystickState.pendingX - centerX;
+          const dy = joystickState.pendingY - centerY;
           const distance = Math.hypot(dx, dy);
           const maxR = rect.width * 0.4;
           const clamped = Math.min(maxR, distance);
           const angle = distance > 0.001 ? Math.atan2(dy, dx) : 0;
-          const knobX = Math.round(Math.cos(angle) * clamped);
-          const knobY = Math.round(Math.sin(angle) * clamped);
-          stickEl.style.transform = `translate(${knobX}px, ${knobY}px)`;
+          const knobX = Math.cos(angle) * clamped;
+          const knobY = Math.sin(angle) * clamped;
+          stickEl.style.transform = `translate3d(${knobX.toFixed(1)}px, ${knobY.toFixed(1)}px, 0px)`;
           const normalizedX = maxR > 0 ? knobX / maxR : 0;
           const normalizedY = maxR > 0 ? knobY / maxR : 0;
-          const threshold = 0.3;
+          const threshold = 0.25;
           const nextKeys = new Set();
           if (normalizedX <= -threshold) nextKeys.add("arrowleft");
           if (normalizedX >= threshold) nextKeys.add("arrowright");
@@ -5173,19 +5204,30 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           if (normalizedY >= threshold) nextKeys.add("arrowdown");
           applyJoystickKeys(nextKeys);
         };
+
+        const scheduleJoystickUpdate = (clientX, clientY) => {
+          joystickState.pendingX = clientX;
+          joystickState.pendingY = clientY;
+          joystickState.dirty = true;
+          if (!joystickState.rafId) {
+            joystickState.rafId = requestAnimationFrame(flushJoystick);
+          }
+        };
+
         if (joystickEl) {
           joystickEl.addEventListener("pointerdown", (event) => {
             event.preventDefault();
             if (!state.audio.initialized) initAudio();
             joystickState.pointerId = event.pointerId;
             joystickEl.setPointerCapture(event.pointerId);
-            updateJoystickFromPointer(event.clientX, event.clientY);
-          });
+            cacheJoystickRect();
+            scheduleJoystickUpdate(event.clientX, event.clientY);
+          }, { passive: false });
           joystickEl.addEventListener("pointermove", (event) => {
             if (joystickState.pointerId !== event.pointerId) return;
             event.preventDefault();
-            updateJoystickFromPointer(event.clientX, event.clientY);
-          });
+            scheduleJoystickUpdate(event.clientX, event.clientY);
+          }, { passive: false });
           const release = (event) => {
             if (joystickState.pointerId !== event.pointerId) return;
             event.preventDefault();
@@ -5204,25 +5246,21 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         actionButtons.forEach((button) => {
           const action = button.getAttribute("data-action");
           if (!action) return;
-          button.addEventListener("pointerdown", () => button.classList.add("active"));
-          const clearButtonState = () => button.classList.remove("active");
-          button.addEventListener("pointerup", clearButtonState);
-          button.addEventListener("pointercancel", clearButtonState);
-          button.addEventListener("pointerleave", clearButtonState);
-          button.addEventListener("click", (event) => {
-            event.preventDefault();
-            if (!state.audio.initialized) {
-              initAudio();
-            }
+          button.addEventListener("pointerdown", (e) => {
+            e.preventDefault();
+            button.classList.add("active");
+            if (!state.audio.initialized) initAudio();
+          }, { passive: false });
+          const clearAndFire = (e) => {
+            button.classList.remove("active");
+            if (!e.isTrusted) return;
             if (action === "interact") {
               if (state.mode === "battle" && state.battle?.status === "active") {
                 executeSelectedBattleCommand();
               } else {
                 interact();
               }
-              return;
-            }
-            if (action === "strike") {
+            } else if (action === "strike") {
               if (state.mode === "battle" && state.battle?.status === "active") {
                 setBattleCommandIndex(UNDERTALE_COMMAND_ORDER.indexOf("fight"));
                 refreshUndertaleCommandButtons();
@@ -5230,10 +5268,24 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
               } else {
                 performOverworldAttack();
               }
-              return;
             }
-          });
+          };
+          button.addEventListener("pointerup", clearAndFire);
+          button.addEventListener("pointercancel", () => button.classList.remove("active"));
+          button.addEventListener("pointerleave", () => button.classList.remove("active"));
         });
+
+        const suppressWhenMenuOpen = () => {
+          if (!dom.mobileControls) return;
+          const anyBottomMenuOpen =
+            dom.mobileControls.closest("body")?.querySelector(".corner-menu.bottom-left details[open], .corner-menu.bottom-right details[open]");
+          const dialogueVisible = document.getElementById("dialoguePanel")?.classList.contains("visible");
+          const cutsceneVisible = document.getElementById("cutscenePanel")?.classList.contains("visible");
+          const shouldSuppress = !!(anyBottomMenuOpen || dialogueVisible || cutsceneVisible);
+          dom.mobileControls.classList.toggle("controls-suppressed", shouldSuppress);
+        };
+        const observer = new MutationObserver(suppressWhenMenuOpen);
+        observer.observe(document.body, { subtree: true, attributes: true, attributeFilter: ["open", "class"] });
       };
 
       const buildGain = (ctx, gainValue, destination) => {
