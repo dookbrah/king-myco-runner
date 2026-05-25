@@ -1373,13 +1373,16 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           </label>
           <label>
             Solana Wallet
-            <input id="titleWalletInput" placeholder="Paste wallet or use Phantom" />
+            <input id="titleWalletInput" placeholder="Wallet (optional — connect later)" />
           </label>
+        </div>
+        <div style="margin: 10px 0">
+          <input id="titleNicknameInput" type="text" placeholder="Choose your nickname" style="width: 100%; box-sizing: border-box; font-size: 15px; padding: 10px 12px; border-radius: 6px; border: 2px solid #facc15; background: #0a1326; color: #f8fafc" />
         </div>
         <div class="actions">
           <button id="titleWalletConnectBtn" class="primary">Connect Solana Wallet</button>
         </div>
-        <p id="titleWalletStatus" class="subtle" style="margin-top: 6px">Sign in requires nickname + wallet.</p>
+        <p id="titleWalletStatus" class="subtle" style="margin-top: 6px">Choose a nickname and clan to begin. Wallet is optional.</p>
         <div class="title-actions">
           <button id="continueAdventureBtn" class="primary">Start From Beginning</button>
           <button id="newAdventureBtn">Reset Save + Start Over</button>
@@ -1854,6 +1857,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         titleLore: document.getElementById("titleLore"),
         titleHint: document.getElementById("titleHint"),
         titleNickname: document.getElementById("titleNickname"),
+        titleNicknameInput: document.getElementById("titleNicknameInput"),
         titleWalletInput: document.getElementById("titleWalletInput"),
         titleWalletConnectBtn: document.getElementById("titleWalletConnectBtn"),
         titleWalletStatus: document.getElementById("titleWalletStatus"),
@@ -5479,23 +5483,19 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const requireSignedInIdentity = (setUiStatus = true) => {
         const nickname = getSignedInNickname();
-        const wallet = getSignedInWallet();
         if (!nickname) {
           if (setUiStatus) {
-            setStatus("Add a nickname before starting your adventure.", true);
-            if (dom.titleWalletStatus) dom.titleWalletStatus.textContent = "Nickname is required.";
+            setStatus("Choose a nickname before starting your adventure.", true);
+            if (dom.titleWalletStatus) dom.titleWalletStatus.textContent = "Nickname is required to begin.";
           }
           return false;
         }
-        if (!isValidSolanaWalletAddress(wallet)) {
-          if (setUiStatus) {
-            setStatus("Connect a valid Solana wallet to sign in.", true);
-            if (dom.titleWalletStatus) dom.titleWalletStatus.textContent = "Connect Solana wallet to continue.";
-          }
-          return false;
-        }
+        const wallet = getSignedInWallet();
+        const hasWallet = isValidSolanaWalletAddress(wallet);
         if (setUiStatus && dom.titleWalletStatus) {
-          dom.titleWalletStatus.textContent = `Signed in as ${nickname} // ${shortWallet(wallet)}`;
+          dom.titleWalletStatus.textContent = hasWallet
+            ? `Signed in as ${nickname} // ${shortWallet(wallet)}`
+            : `Playing as ${nickname} (wallet optional)`;
         }
         return true;
       };
@@ -6834,10 +6834,15 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (!state.intro.active) return;
         applyClanSelectionFromUi();
         syncIdentityInputs();
-        if (!requireSignedInIdentity(true)) {
+        const isPortalTransfer = new URLSearchParams(window.location.search).has("portalTravel");
+        if (!isPortalTransfer && !requireSignedInIdentity(true)) {
           dom.titleScreen.classList.add("active");
           refreshTitleScreen();
           return;
+        }
+        if (dom.titleNicknameInput) {
+          const titleNick = dom.titleNicknameInput.value.trim();
+          if (titleNick && dom.externalId) dom.externalId.value = titleNick;
         }
         lockNicknameForCurrentIdentity();
         lockClanForCurrentIdentity();
@@ -14347,6 +14352,20 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         refreshTitleScreen();
         renderHud();
       });
+      if (dom.titleNicknameInput) {
+        const savedNick = dom.externalId?.value || "";
+        if (savedNick && savedNick !== "myco-player-01") {
+          dom.titleNicknameInput.value = savedNick;
+        }
+        dom.titleNicknameInput.addEventListener("input", () => {
+          const nick = dom.titleNicknameInput.value.trim();
+          if (nick && dom.externalId) {
+            dom.externalId.value = nick;
+            syncIdentityInputs();
+          }
+          refreshTitleScreen();
+        });
+      }
       dom.titleWalletConnectBtn.addEventListener("click", async () => {
         await connectWallet();
         refreshTitleScreen();
@@ -14496,6 +14515,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       updateAudioUi();
       resizeCanvases();
       updateCamera();
+      if (dom.realmBanner) {
+        const bootRealm = getCurrentRealm();
+        dom.realmBanner.textContent = bootRealm?.name ?? "Myco Kingdom";
+      }
       renderHud();
       renderLeaderboard();
       drawWorld();
