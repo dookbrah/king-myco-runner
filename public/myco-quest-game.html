@@ -3738,8 +3738,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         hero: {
           x: 280,
           y: 500,
-          w: 30,
-          h: 34,
+          w: 18,
+          h: 22,
           speed: 188,
           hp: BASE_MAX_HP,
           maxHp: BASE_MAX_HP,
@@ -4986,7 +4986,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (!state.contactLatch) return;
         if (state.contactLatch.type === "npc") {
           const npc = NPCS.find((entry) => entry.id === state.contactLatch.id);
-          if (!npc || dist(state.hero.x, state.hero.y, npc.x, npc.y) > 58) {
+          if (!npc || dist(state.hero.x, state.hero.y, npc.x, npc.y) > 42) {
             state.contactLatch = null;
           }
           return;
@@ -5002,7 +5002,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           const portal = PORTALS.find((entry) => entry.id === state.contactLatch.id);
           if (
             !portal ||
-            dist(state.hero.x, state.hero.y, portal.x + portal.w / 2, portal.y + portal.h / 2) > 70
+            dist(state.hero.x, state.hero.y, portal.x + portal.w / 2, portal.y + portal.h / 2) > 48
           ) {
             state.contactLatch = null;
           }
@@ -10171,7 +10171,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const now = Date.now();
         if (now < state.contactLockUntil) return;
 
-        const bumpNpc = NPCS.find((npc) => isInCurrentRealm(npc) && dist(state.hero.x, state.hero.y, npc.x, npc.y) < 34);
+        const bumpNpc = NPCS.find((npc) => isInCurrentRealm(npc) && dist(state.hero.x, state.hero.y, npc.x, npc.y) < 28);
         if (bumpNpc) {
           if (state.contactLatch?.type === "npc" && state.contactLatch.id === bumpNpc.id) {
             return;
@@ -10184,7 +10184,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
 
         const bumpPortal = PORTALS.find(
-          (portal) => portalSourceRealmId(portal) === state.currentRealmId && dist(state.hero.x, state.hero.y, portal.x + portal.w / 2, portal.y + portal.h / 2) < 34,
+          (portal) => portalSourceRealmId(portal) === state.currentRealmId && dist(state.hero.x, state.hero.y, portal.x + portal.w / 2, portal.y + portal.h / 2) < 28,
         );
         if (bumpPortal) {
           if (state.contactLatch?.type === "portal" && state.contactLatch.id === bumpPortal.id) {
@@ -10250,7 +10250,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           return;
         }
 
-        const nearbyNpc = NPCS.find((npc) => isInCurrentRealm(npc) && dist(state.hero.x, state.hero.y, npc.x, npc.y) < 82);
+        const nearbyNpc = NPCS.find((npc) => isInCurrentRealm(npc) && dist(state.hero.x, state.hero.y, npc.x, npc.y) < 56);
         if (nearbyNpc) {
           const alreadySpoken = state.progress.interactedNpcs.has(nearbyNpc.id);
           openDialogue(buildNpcEncounter(nearbyNpc, alreadySpoken));
@@ -10275,7 +10275,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
 
         const nearbyPortal = PORTALS.find(
-          (portal) => portalSourceRealmId(portal) === state.currentRealmId && dist(state.hero.x, state.hero.y, portal.x + portal.w / 2, portal.y + portal.h / 2) < 92,
+          (portal) => portalSourceRealmId(portal) === state.currentRealmId && dist(state.hero.x, state.hero.y, portal.x + portal.w / 2, portal.y + portal.h / 2) < 58,
         );
         if (nearbyPortal) {
           activatePortal(nearbyPortal);
@@ -10543,7 +10543,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             state.overworldCombat.enemyProjectiles.splice(index, 1);
             continue;
           }
-          const inHeroRange = dist(projectile.x, projectile.y, state.hero.x, state.hero.y) <= projectile.radius + Math.max(heroRect.w, heroRect.h) * 0.35;
+          const inHeroRange = dist(projectile.x, projectile.y, state.hero.x, state.hero.y) <= projectile.radius * 0.85 + Math.max(heroRect.w, heroRect.h) * 0.28;
           if (!inHeroRange) continue;
           applyOverworldHeroDamage(projectile.damage, `${projectile.kind} barrage`);
           state.overworldCombat.enemyProjectiles.splice(index, 1);
@@ -10726,7 +10726,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         for (const pickup of PICKUPS) {
           if (!isInCurrentRealm(pickup)) continue;
           if (state.progress.collectedPickups.has(pickup.id)) continue;
-          const pickupRect = { x: pickup.x - 10, y: pickup.y - 10, w: 20, h: 20 };
+          const pickupRect = { x: pickup.x - 14, y: pickup.y - 14, w: 28, h: 28 };
           if (!intersectsRect(heroRect, pickupRect)) continue;
           state.progress.collectedPickups.add(pickup.id);
           claimPickup(pickup, false);
@@ -10735,7 +10735,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         for (let index = state.roamingSpores.active.length - 1; index >= 0; index -= 1) {
           const pickup = state.roamingSpores.active[index];
           if (pickup.region !== state.currentRealmId) continue;
-          const pickupRect = { x: pickup.x - 10, y: pickup.y - 10, w: 20, h: 20 };
+          const pickupRect = { x: pickup.x - 14, y: pickup.y - 14, w: 28, h: 28 };
           if (!intersectsRect(heroRect, pickupRect)) continue;
           state.roamingSpores.active.splice(index, 1);
           claimPickup(pickup, true);
@@ -10853,7 +10853,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         for (const enemy of state.enemies) {
           if (enemy.region !== state.currentRealmId) continue;
           if (!enemy.active) continue;
-          if (dist(state.hero.x, state.hero.y, enemy.x, enemy.y) < (enemy.boss ? 32 : 27)) {
+          if (dist(state.hero.x, state.hero.y, enemy.x, enemy.y) < (enemy.boss ? 28 : 22)) {
             await engageEnemy(enemy);
             return;
           }
