@@ -5091,6 +5091,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const baseBattleHeight = popupActive
           ? Math.max(260, window.innerHeight * 0.55)
           : Math.max(200, (battleRect.height || 200));
+        const battleW = Math.max(260, Math.round(baseBattleWidth * dpr));
         const battleH = Math.max(240, Math.round(baseBattleHeight * dpr));
         if (battleCanvas.width !== battleW || battleCanvas.height !== battleH) {
           battleCanvas.width = battleW;
