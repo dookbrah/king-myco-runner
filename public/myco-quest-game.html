@@ -1467,7 +1467,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           <p class="subtle">Each region is now its own page. Use WASD/Arrow keys to move, E to interact, and enter structures for interior screens.</p>
           <div class="canvas-shell" style="margin-top: 2px">
             <div id="realmBanner" class="realm-header">Realm Syncing...</div>
-            <canvas id="worldCanvas" width="960" height="540"></canvas>
+            <canvas id="worldCanvas" width="960" height="540" style="min-height: 200px; background: #040913"></canvas>
           </div>
           <p id="regionHint" class="hint">Booting world...</p>
         </article>
@@ -5072,9 +5072,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           }
         }
         const worldRect = worldCanvas.getBoundingClientRect();
-        const effectiveWorldW = worldRect.width || window.innerWidth || 360;
+        const effectiveWorldW = Math.max(worldRect.width, 320, Math.min(window.innerWidth || 360, 960));
         const worldW = Math.max(320, Math.round((effectiveWorldW * dpr) / WORLD_CAMERA_ZOOM));
-        const effectiveWorldH = worldRect.height || Math.round((window.innerHeight || 640) * 0.6);
+        const effectiveWorldH = Math.max(worldRect.height, 200, Math.round((window.innerHeight || 640) * 0.55));
         const worldH = Math.max(220, Math.round((effectiveWorldH * dpr) / WORLD_CAMERA_ZOOM));
         if (worldCanvas.width !== worldW || worldCanvas.height !== worldH) {
           worldCanvas.width = worldW;
@@ -12693,6 +12693,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       };
 
       const drawWorld = () => {
+        if (worldCanvas.width < 100 || worldCanvas.height < 100) {
+          resizeCanvases();
+        }
         worldCtx.fillStyle = "#040913";
         worldCtx.fillRect(0, 0, worldCanvas.width, worldCanvas.height);
 
@@ -14043,6 +14046,13 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           setStatus("Render recovered from a runtime hiccup. Battle view fallback is active.", true);
         } finally {
           requestAnimationFrame(frameLoop);
+      setTimeout(() => {
+        resizeCanvases();
+        state.camera.x = state.hero.x - (worldCanvas.width / 2);
+        state.camera.y = state.hero.y - (worldCanvas.height / 2);
+        updateCamera();
+        drawWorld();
+      }, 300);
         }
       };
       frameLoop.last = 0;
@@ -14521,12 +14531,21 @@ dom.titleWalletConnectBtn.addEventListener("click", async () => {
       applyScreenOrientationMode();
       applyHudMode();
       updateAudioUi();
-      resizeCanvases();
-      updateCamera();
+      const bootRealm = getCurrentRealm();
+      if (bootRealm) {
+        if (state.hero.x < bootRealm.x || state.hero.x > bootRealm.x + bootRealm.w ||
+            state.hero.y < bootRealm.y || state.hero.y > bootRealm.y + bootRealm.h) {
+          state.hero.x = bootRealm.x + Math.round(bootRealm.w * 0.15);
+          state.hero.y = bootRealm.y + Math.round(bootRealm.h * 0.3);
+        }
+      }
       if (dom.realmBanner) {
-        const bootRealm = getCurrentRealm();
         dom.realmBanner.textContent = bootRealm?.name ?? "Myco Kingdom";
       }
+      resizeCanvases();
+      state.camera.x = state.hero.x - (worldCanvas.width / 2);
+      state.camera.y = state.hero.y - (worldCanvas.height / 2);
+      updateCamera();
       renderHud();
       renderLeaderboard();
       drawWorld();
