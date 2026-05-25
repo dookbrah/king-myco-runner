@@ -1368,16 +1368,14 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         <div class="title-signin-grid">
           <label>
             Nickname
-            <input id="titleNickname" placeholder="Enter nickname" maxlength="24" />
+            <input id="titleNickname" placeholder="Choose your nickname" maxlength="24" style="font-size: 16px; padding: 10px; border: 2px solid #facc15; border-radius: 6px; background: #0a1326; color: #f8fafc" />
           </label>
           <label>
             Solana Wallet
             <input id="titleWalletInput" placeholder="Wallet (optional — connect later)" />
           </label>
         </div>
-        <div style="margin: 10px 0">
-          <input id="titleNicknameInput" type="text" placeholder="Choose your nickname" style="width: 100%; box-sizing: border-box; font-size: 15px; padding: 10px 12px; border-radius: 6px; border: 2px solid #facc15; background: #0a1326; color: #f8fafc" />
-        </div>
+
         <div class="actions">
           <button id="titleWalletConnectBtn" class="primary">Connect Solana Wallet</button>
         </div>
@@ -1860,7 +1858,6 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         titleLore: document.getElementById("titleLore"),
         titleHint: document.getElementById("titleHint"),
         titleNickname: document.getElementById("titleNickname"),
-        titleNicknameInput: document.getElementById("titleNicknameInput"),
         titleWalletInput: document.getElementById("titleWalletInput"),
         titleWalletConnectBtn: document.getElementById("titleWalletConnectBtn"),
         titleWalletStatus: document.getElementById("titleWalletStatus"),
@@ -4455,7 +4452,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         return true;
       };
 
-      const hasSignedInIdentity = () => Boolean(getSignedInNickname()) && isValidSolanaWalletAddress(getSignedInWallet());
+      const hasSignedInIdentity = () => Boolean(getSignedInNickname());
 
       const calculateLeaderboardScore = () => {
         const profileBonus = {
@@ -6841,10 +6838,6 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           if (dom.mobileControls) dom.mobileControls.classList.add("hidden");
           refreshTitleScreen();
           return;
-        }
-        if (dom.titleNicknameInput) {
-          const titleNick = dom.titleNicknameInput.value.trim();
-          if (titleNick && dom.externalId) dom.externalId.value = titleNick;
         }
         lockNicknameForCurrentIdentity();
         lockClanForCurrentIdentity();
@@ -14356,20 +14349,6 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         refreshTitleScreen();
         renderHud();
       });
-      if (dom.titleNicknameInput) {
-        const savedNick = dom.externalId?.value || "";
-        if (savedNick && savedNick !== "myco-player-01") {
-          dom.titleNicknameInput.value = savedNick;
-        }
-        dom.titleNicknameInput.addEventListener("input", () => {
-          const nick = dom.titleNicknameInput.value.trim();
-          if (nick && dom.externalId) {
-            dom.externalId.value = nick;
-            syncIdentityInputs();
-          }
-          refreshTitleScreen();
-        });
-      }
             const orientToggleBtn = document.getElementById("orientationToggleBtn");
       if (orientToggleBtn) {
         const updateOrientLabel = () => {
