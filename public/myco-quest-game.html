@@ -1403,6 +1403,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
     <main>
       <section id="panelCommand" class="panel top-config-panel">
         <div class="top-config-panel-body">
+          <div style="display: flex; gap: 8px; margin-bottom: 6px">
+            <button id="orientationToggleBtn" style="flex: 1; padding: 8px; font-size: 12px; font-weight: 700; border: 2px solid #facc15; border-radius: 6px; background: rgba(250, 204, 21, 0.12); color: #facc15; cursor: pointer">🔄 Landscape / Portrait</button>
+            <button id="minimalHudBtn2" style="flex: 1; padding: 8px; font-size: 12px; font-weight: 700; border: 2px solid #60a5fa; border-radius: 6px; background: rgba(96, 165, 250, 0.12); color: #60a5fa; cursor: pointer">👁 Toggle HUD</button>
+          </div>
           <h1>Myco Quest - Nexus Legends Web3 RPG</h1>
           <p class="tiny" style="margin-top: 6px">
             Inspiration blend: exploration adventure + creature encounters + turn RPG strategy. Explore one massive overworld,
@@ -14366,7 +14370,30 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           refreshTitleScreen();
         });
       }
-      dom.titleWalletConnectBtn.addEventListener("click", async () => {
+            const orientToggleBtn = document.getElementById("orientationToggleBtn");
+      if (orientToggleBtn) {
+        const updateOrientLabel = () => {
+          const mode = state.ui.screenOrientationMode === "portrait" ? "portrait" : "landscape";
+          orientToggleBtn.textContent = mode === "landscape" ? "🔄 Switch to Portrait" : "🔄 Switch to Landscape";
+        };
+        updateOrientLabel();
+        orientToggleBtn.addEventListener("click", () => {
+          state.ui.screenOrientationMode = state.ui.screenOrientationMode === "portrait" ? "landscape" : "portrait";
+          applyScreenOrientationMode();
+          resizeCanvases();
+          updateCamera();
+          saveConfig();
+          updateOrientLabel();
+          setStatus("View: " + state.ui.screenOrientationMode);
+        });
+      }
+      const minHudBtn2 = document.getElementById("minimalHudBtn2");
+      if (minHudBtn2) {
+        minHudBtn2.addEventListener("click", () => {
+          toggleMinimalHud();
+        });
+      }
+dom.titleWalletConnectBtn.addEventListener("click", async () => {
         await connectWallet();
         refreshTitleScreen();
         renderHud();
