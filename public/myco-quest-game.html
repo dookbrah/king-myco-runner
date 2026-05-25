@@ -1063,6 +1063,10 @@
         opacity: 0;
         pointer-events: none;
       }
+      .title-screen.active ~ .mobile-controls {
+        display: none !important;
+        pointer-events: none !important;
+      }
       .hud-toggle-floating {
         position: fixed;
         top: max(8px, env(safe-area-inset-top));
@@ -1109,8 +1113,8 @@
         position: fixed;
         left: 0;
         bottom: 0;
-        width: 50vw;
-        height: 40vh;
+        width: 45vw;
+        height: 28vh;
         border: none;
         background: transparent;
         touch-action: none;
@@ -1280,8 +1284,8 @@
         min-height: 160px;
       }
         .mobile-joystick {
-          width: 50vw;
-          height: 40vh;
+          width: 45vw;
+          height: 28vh;
         }
       }
       @media (max-width: 950px) and (orientation: landscape) and (hover: none) and (pointer: coarse) {
@@ -6837,6 +6841,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const isPortalTransfer = new URLSearchParams(window.location.search).has("portalTravel");
         if (!isPortalTransfer && !requireSignedInIdentity(true)) {
           dom.titleScreen.classList.add("active");
+          if (dom.mobileControls) dom.mobileControls.style.display = "none";
           refreshTitleScreen();
           return;
         }
@@ -6860,6 +6865,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           state.story.lastBeatAt = Date.now();
         }
         dom.titleScreen.classList.remove("active");
+        if (dom.mobileControls) dom.mobileControls.style.pointerEvents = "";
         setStatus(`${profile.name} chronicle (${avatarName}) initialized in ${getCurrentRealm().name}. ${profile.storyThread}`);
         evaluateOnchainMilestones();
         updateLeaderboardEntry();
@@ -14527,6 +14533,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const autoRegionTransfer = Boolean(realmEntry?.portalTravel);
       if (!autoRegionTransfer) {
         dom.titleScreen.classList.add("active");
+        if (dom.mobileControls) dom.mobileControls.style.display = "none";
       }
       if (autoFreshStart || autoRegionTransfer) {
         startAdventure();
