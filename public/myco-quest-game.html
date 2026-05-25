@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Myco Quest - Nexus Legends RPG</title>
     <style>
       :root {
@@ -11,6 +11,9 @@
       }
       * {
         box-sizing: border-box;
+      }
+      html, body {
+        overflow: hidden;
       }
       body {
         margin: 0;
@@ -466,6 +469,10 @@
         }
         .battle-controls {
           grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .undertale-command {
+          min-height: 44px;
+          font-size: 13px;
         }
         .undertale-command-strip {
           grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1142,7 +1149,7 @@
         font-size: 13px;
         font-weight: 700;
         touch-action: none;
-        min-height: 40px;
+        min-height: 48px;
       }
       .touch-btn.active {
         background: #1d4ed8;
@@ -1295,7 +1302,7 @@
           padding: 0 6px;
         }
         .touch-btn {
-          min-height: 34px;
+          min-height: 44px;
           font-size: 12px;
           padding: 6px 8px;
         }
@@ -1792,7 +1799,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const WORLD_WIDTH = 6200;
       const WORLD_HEIGHT = 4200;
       const BASE_MAX_HP = 126;
-      const WORLD_CAMERA_ZOOM = 1.7;
+      const WORLD_CAMERA_ZOOM_DESKTOP = 1.7;
+      const WORLD_CAMERA_ZOOM_MOBILE = 1.2;
+      const isMobileDevice = () => window.matchMedia("(hover: none) and (pointer: coarse)").matches || window.innerWidth <= 760;
+      const WORLD_CAMERA_ZOOM = isMobileDevice() ? WORLD_CAMERA_ZOOM_MOBILE : WORLD_CAMERA_ZOOM_DESKTOP;
       const PRESENTATION_PRESETS = {
         performance: {
           worldFilter: "saturate(1.12) contrast(1.08) brightness(1.01)",
@@ -5059,7 +5069,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           }
         }
         const worldRect = worldCanvas.getBoundingClientRect();
-        const worldW = Math.max(320, Math.round((worldRect.width * dpr) / WORLD_CAMERA_ZOOM));
+        const worldW = Math.max(320, Math.round((worldRect.width * dpr) / (isMobileDevice() ? WORLD_CAMERA_ZOOM_MOBILE : WORLD_CAMERA_ZOOM_DESKTOP)));
         const worldH = Math.max(220, Math.round((worldRect.height * dpr) / WORLD_CAMERA_ZOOM));
         if (worldCanvas.width !== worldW || worldCanvas.height !== worldH) {
           worldCanvas.width = worldW;
@@ -5687,6 +5697,15 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
         if (manualWallet) {
           setConnectedWallet(manualWallet, "manual");
+          return;
+        }
+        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        if (isMobile) {
+          const currentUrl = encodeURIComponent(window.location.href);
+          const phantomUrl = "https://phantom.app/ul/browse/" + currentUrl;
+          setStatus("Opening Phantom wallet...", false);
+          if (dom.titleWalletStatus) dom.titleWalletStatus.textContent = "Redirecting to Phantom...";
+          window.open(phantomUrl, "_blank");
           return;
         }
         setStatus("No wallet detected. Install Phantom or paste a Solana wallet.", true);
@@ -10311,7 +10330,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           return;
         }
 
-        const nearbyNpc = NPCS.find((npc) => isInCurrentRealm(npc) && dist(state.hero.x, state.hero.y, npc.x, npc.y) < 56);
+        const nearbyNpc = NPCS.find((npc) => isInCurrentRealm(npc) && dist(state.hero.x, state.hero.y, npc.x, npc.y) < 64);
         if (nearbyNpc) {
           const alreadySpoken = state.progress.interactedNpcs.has(nearbyNpc.id);
           openDialogue(buildNpcEncounter(nearbyNpc, alreadySpoken));
@@ -10336,7 +10355,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
 
         const nearbyPortal = PORTALS.find(
-          (portal) => portalSourceRealmId(portal) === state.currentRealmId && dist(state.hero.x, state.hero.y, portal.x + portal.w / 2, portal.y + portal.h / 2) < 58,
+          (portal) => portalSourceRealmId(portal) === state.currentRealmId && dist(state.hero.x, state.hero.y, portal.x + portal.w / 2, portal.y + portal.h / 2) < 68,
         );
         if (nearbyPortal) {
           activatePortal(nearbyPortal);
@@ -10787,7 +10806,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         for (const pickup of PICKUPS) {
           if (!isInCurrentRealm(pickup)) continue;
           if (state.progress.collectedPickups.has(pickup.id)) continue;
-          const pickupRect = { x: pickup.x - 14, y: pickup.y - 14, w: 28, h: 28 };
+          const pickupRect = { x: pickup.x - 18, y: pickup.y - 18, w: 36, h: 36 };
           if (!intersectsRect(heroRect, pickupRect)) continue;
           state.progress.collectedPickups.add(pickup.id);
           claimPickup(pickup, false);
@@ -10796,7 +10815,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         for (let index = state.roamingSpores.active.length - 1; index >= 0; index -= 1) {
           const pickup = state.roamingSpores.active[index];
           if (pickup.region !== state.currentRealmId) continue;
-          const pickupRect = { x: pickup.x - 14, y: pickup.y - 14, w: 28, h: 28 };
+          const pickupRect = { x: pickup.x - 18, y: pickup.y - 18, w: 36, h: 36 };
           if (!intersectsRect(heroRect, pickupRect)) continue;
           state.roamingSpores.active.splice(index, 1);
           claimPickup(pickup, true);
@@ -10914,7 +10933,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         for (const enemy of state.enemies) {
           if (enemy.region !== state.currentRealmId) continue;
           if (!enemy.active) continue;
-          if (dist(state.hero.x, state.hero.y, enemy.x, enemy.y) < (enemy.boss ? 28 : 22)) {
+          if (dist(state.hero.x, state.hero.y, enemy.x, enemy.y) < (enemy.boss ? 38 : 32)) {
             await engageEnemy(enemy);
             return;
           }
@@ -14007,7 +14026,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           }
           await update(dt);
           drawWorld();
-          drawBattleScene();
+          if (state.mode === "battle" || state.pendingBattle || state.battle) drawBattleScene();
           if (state.interior.active) {
             drawInteriorScene();
           }
