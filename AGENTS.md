@@ -16,8 +16,14 @@ See `package.json` scripts for the full list. The most important ones:
 | `npm run build` | TypeScript compile (`tsc`) — type-checking |
 | `npm run lint` | ESLint quality gate (strict, zero warnings) |
 | `npm run test` | Vitest unit tests (28 tests across 3 files) |
+| `npm run test:visual` | Playwright visual smoke test (requires chromium) |
+| `npm run qa` | Full gate: lint + unit tests + visual tests |
 | `npm run start:api` | Start API server in dev mode (port 3000, uses `tsx`) |
 | `npm run playground` | Full local dev loop (API + heartbeat + mock game sessions) |
+
+### QA environment
+
+The update script runs `npx playwright install chromium` on startup so `npm run qa` (which includes `npm run test:visual`) has browsers available. System deps for Chromium are pre-installed in the VM image.
 
 ### Running the API server
 
