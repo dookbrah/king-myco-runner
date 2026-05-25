@@ -7164,13 +7164,13 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           renderMiniGamesPanel();
           return;
         }
-        if (state.hero.spores < contract.entryCost) {
-          setStatus(`${contract.title} entry requires ${contract.entryCost} spores.`, true);
+        if (state.hero.goldenSpores < contract.entryCost) {
+          setStatus(`${contract.title} entry requires ${contract.entryCost} golden spores.`, true);
           playSfx("error");
           return;
         }
 
-        state.hero.spores -= contract.entryCost;
+        state.hero.goldenSpores -= contract.entryCost;
         const heroPower =
           state.hero.attack * 8 +
           state.hero.defense * 7 +
@@ -7276,7 +7276,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const now = Date.now();
         dom.miniGameList.innerHTML = MINI_GAME_CONTRACTS.map((contract) => {
           const cooldown = getMiniGameCooldownRemainingMs(contract.id, now);
-          const canAfford = state.hero.spores >= contract.entryCost;
+          const canAfford = state.hero.goldenSpores >= contract.entryCost;
           const lastScore = Number(state.minigames.bestScoreById[contract.id] ?? 0);
           const lastResult = state.minigames.lastResultById[contract.id];
           const resultLabel = lastResult
@@ -7341,22 +7341,22 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
 
       const getOverworldEnemyBaseHp = (enemy) => {
         const laneScale = {
-          survival: 56,
-          tactical: 50,
-          precision: 46,
-          speed: 42,
-          puzzle: 44,
+          survival: 62,
+          tactical: 54,
+          precision: 48,
+          speed: 38,
+          puzzle: 46,
         };
         const regionScale = {
           "myco-kingdom": 1,
-          "rougarou-fen": 1.08,
-          "tri-drake-peaks": 1.12,
-          "crimson-tide": 1.14,
-          "solana-chainlands": 1.2,
-          "verdant-commons": 1.06,
-          "obsidian-wilds": 1.17,
+          "rougarou-fen": 1.2,
+          "tri-drake-peaks": 1.45,
+          "crimson-tide": 1.35,
+          "solana-chainlands": 1.7,
+          "verdant-commons": 1.1,
+          "obsidian-wilds": 1.55,
         };
-        const base = enemy.boss ? 182 : (laneScale[enemy.lane] ?? 46);
+        const base = enemy.boss ? 220 : (laneScale[enemy.lane] ?? 46);
         return Math.round(base * (regionScale[enemy.region] ?? 1));
       };
 
@@ -10347,29 +10347,33 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         return { x: aimX / mag, y: aimY / mag, lockTarget: null };
       };
 
+      const REGION_PROJECTILE_PROFILES = {
+        "myco-kingdom": { kind: "spore", color: "#84cc16", radius: 5, damage: 12, bossRadius: 7, bossDamage: 22 },
+        "rougarou-fen": { kind: "venom", color: "#a855f7", radius: 6, damage: 16, bossRadius: 8, bossDamage: 28 },
+        "tri-drake-peaks": { kind: "flame", color: "#f97316", radius: 6, damage: 18, bossRadius: 9, bossDamage: 32 },
+        "crimson-tide": { kind: "brine", color: "#06b6d4", radius: 6, damage: 15, bossRadius: 8, bossDamage: 26 },
+        "solana-chainlands": { kind: "hash", color: "#6366f1", radius: 7, damage: 22, bossRadius: 10, bossDamage: 38 },
+        "verdant-commons": { kind: "thorn", color: "#22c55e", radius: 5, damage: 14, bossRadius: 7, bossDamage: 24 },
+        "obsidian-wilds": { kind: "slag", color: "#78716c", radius: 7, damage: 20, bossRadius: 9, bossDamage: 34 },
+      };
       const getEnemyProjectileProfile = (enemy) => {
-        if (enemy.lane === "survival" || enemy.kind.includes("crab") || enemy.kind.includes("boar")) {
-          return {
-            kind: "rock",
-            color: "#94a3b8",
-            radius: enemy.boss ? 8 : 6,
-            damage: enemy.boss ? 30 : 18,
-          };
-        }
-        if (enemy.lane === "puzzle" || enemy.kind.includes("wraith") || enemy.kind.includes("specter")) {
-          return {
-            kind: "spell",
-            color: Math.random() < 0.5 ? "#a855f7" : "#22c55e",
-            radius: enemy.boss ? 9 : 7,
-            damage: enemy.boss ? 32 : 20,
-          };
-        }
-        return {
-          kind: "flame",
-          color: OVERWORLD_FLAME_COLORS[Math.floor(Math.random() * OVERWORLD_FLAME_COLORS.length)],
-          radius: enemy.boss ? 8 : 6,
-          damage: enemy.boss ? 28 : 17,
+        const regionBase = REGION_PROJECTILE_PROFILES[enemy.region] || REGION_PROJECTILE_PROFILES["myco-kingdom"];
+        const profile = {
+          kind: regionBase.kind,
+          color: regionBase.color,
+          radius: enemy.boss ? regionBase.bossRadius : regionBase.radius,
+          damage: enemy.boss ? regionBase.bossDamage : regionBase.damage,
         };
+        if (enemy.lane === "survival" || enemy.kind.includes("crab")) {
+          profile.kind = "rock";
+          profile.color = "#94a3b8";
+          profile.damage = Math.round(profile.damage * 1.15);
+        } else if (enemy.lane === "puzzle" || enemy.kind.includes("wraith")) {
+          profile.kind = "spell";
+          profile.color = Math.random() < 0.5 ? "#a855f7" : "#22c55e";
+          profile.radius += 1;
+        }
+        return profile;
       };
 
       const resetOverworldProjectiles = () => {
@@ -10974,17 +10978,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
                 pushStoryEntry(`You executed ${defeatedName} after battle.`, "morality");
                 setStatus(`${defeatedName} was executed. +${executionBonus} spores, morality decreased.`, true);
               };
-              openDialogue({
-                title: "Enemy Defeated",
-                portrait: { glyph: "⚖️", subtitle: "Moral Decision" },
-                body: `${defeatedName} lies defeated. Your next choice shifts the chronicle tone for this run.`,
-                mycoLabel: "Let Enemy Go (+morality)",
-                darkLabel: "Kill Enemy (-morality)",
-                closeLabel: "Leave Conversation",
-                onMyco: () => resolveOutcome("spare"),
-                onDark: () => resolveOutcome("kill"),
-                onClose: () => resolveOutcome("spare"),
-              });
+              setStatus(`${defeatedName} is defeated. Use UP/DOWN + ENTER in battle log to SPARE or EXECUTE.`);
             };
           }
           triggerBattleOutcomeFx("won");
@@ -11657,17 +11651,15 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           ctx.fillStyle = "#020617";
           ctx.fillRect(-8, -11, 16, 11);
           ctx.fillRect(-6, -13, 12, 2);
-          ctx.fillStyle = eyeColor;
+          ctx.fillStyle = "rgba(134, 239, 172, 0.18)";
+          ctx.fillRect(-7, -10, 6, 6);
+          ctx.fillRect(1, -10, 6, 6);
+          ctx.fillStyle = "#86efac";
           ctx.fillRect(-5, -9, 3, 3);
           ctx.fillRect(2, -9, 3, 3);
-          ctx.fillStyle = "#f8fafc";
+          ctx.fillStyle = "#4ade80";
           ctx.fillRect(-4, -8, 1, 1);
           ctx.fillRect(3, -8, 1, 1);
-          ctx.fillStyle = "#86efac";
-          ctx.fillRect(-5, -7, 1, 1);
-          ctx.fillRect(2, -7, 1, 1);
-          ctx.fillStyle = "#475569";
-          ctx.fillRect(-2, -5, 4, 1);
 
           ctx.fillStyle = robeColor;
           ctx.fillRect(-11, 0, 22, 15);
