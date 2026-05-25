@@ -688,7 +688,7 @@
         display: none;
         align-items: center;
         justify-content: center;
-        background: #070b18;
+        background: #050512;
         overflow: hidden;
         image-rendering: pixelated;
       }
@@ -719,7 +719,10 @@
         content: "";
         position: absolute;
         inset: 0;
-        background: linear-gradient(180deg, rgba(2, 6, 23, 0.22), rgba(2, 6, 23, 0.8));
+        background:
+          linear-gradient(180deg, rgba(3, 7, 24, 0.14), rgba(3, 7, 24, 0.72)),
+          radial-gradient(circle at 20% 22%, rgba(168, 85, 247, 0.2), transparent 42%),
+          radial-gradient(circle at 78% 24%, rgba(45, 212, 191, 0.16), transparent 45%);
         pointer-events: none;
       }
       .title-screen.active {
@@ -729,12 +732,14 @@
         position: relative;
         z-index: 1;
         width: min(860px, calc(100% - 24px));
-        border: 4px solid #4f658f;
+        border: 4px solid #6650b0;
         border-radius: 0;
         padding: 18px;
-        background: rgba(7, 12, 24, 0.9);
+        background: rgba(8, 9, 27, 0.88);
         box-shadow:
           0 0 0 3px rgba(8, 13, 27, 0.95),
+          0 0 18px rgba(147, 51, 234, 0.34),
+          0 0 26px rgba(45, 212, 191, 0.2),
           0 16px 34px rgba(2, 6, 23, 0.65);
       }
       .title-logo {
@@ -12445,121 +12450,159 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         const ctx = titlePixelCtx;
         const width = titlePixelCanvas.width;
         const height = titlePixelCanvas.height;
-        const nowTick = Math.floor(Date.now() / 140);
-        const tile = Math.max(8, Math.round(Math.min(width, height) / 92));
-        const horizon = Math.round(height * 0.52);
-        const groundY = Math.round(height * 0.72);
+        const nowTick = Math.floor(Date.now() / 120);
+        const tile = Math.max(8, Math.round(Math.min(width, height) / 90));
+        const horizon = Math.round(height * 0.56);
+        const groundY = Math.round(height * 0.74);
+        const pulseA = nowTick % 8 <= 3 ? 1 : 0;
+        const pulseB = nowTick % 10 <= 4 ? 1 : 0;
 
-        const skyBands = ["#0a1022", "#121a34", "#1a2648", "#213260", "#2a3f72"];
+        const skyBands = ["#050510", "#0b0f24", "#1a1640", "#2b2157", "#35286a", "#2f3058"];
         const bandHeight = Math.ceil(horizon / skyBands.length);
         for (let idx = 0; idx < skyBands.length; idx += 1) {
           ctx.fillStyle = skyBands[idx];
           ctx.fillRect(0, idx * bandHeight, width, bandHeight + 1);
         }
 
-        for (let idx = 0; idx < 84; idx += 1) {
-          const sx = (idx * 173 + (idx % 5) * 23) % width;
-          const sy = (idx * 97 + (idx % 7) * 11) % Math.max(12, horizon - tile);
-          const twinkle = (nowTick + idx) % 10 === 0 ? 2 : 1;
-          ctx.fillStyle = twinkle > 1 ? "#e4eefb" : "#b8c8ea";
+        const moonSize = tile * 5;
+        const moonX = Math.round(width * 0.82);
+        const moonY = Math.round(height * 0.18);
+        ctx.fillStyle = "#7a5bf4";
+        ctx.fillRect(moonX - moonSize / 2, moonY - moonSize / 2, moonSize, moonSize);
+        ctx.fillStyle = "#9c82ff";
+        ctx.fillRect(moonX - moonSize / 2 + 2, moonY - moonSize / 2 + 2, moonSize - 4, moonSize - 4);
+        ctx.fillStyle = "#b7a7ff";
+        ctx.fillRect(moonX - moonSize / 2 + 6, moonY - moonSize / 2 + 4, moonSize - 12, moonSize - 12);
+
+        for (let idx = 0; idx < 128; idx += 1) {
+          const sx = (idx * 139 + (idx % 7) * 23) % width;
+          const sy = (idx * 83 + (idx % 11) * 7) % Math.max(12, horizon - tile);
+          const twinkle = (nowTick + idx) % 13 === 0 ? 2 : 1;
+          ctx.fillStyle = twinkle > 1 ? "#e9ddff" : "#a8a0df";
           ctx.fillRect(sx, sy, twinkle, twinkle);
         }
 
-        const drawMountainBand = (baseY, shadeA, shadeB, seed, maxSteps) => {
-          const colWidth = tile * 2;
-          const cols = Math.ceil(width / colWidth);
-          for (let col = 0; col <= cols; col += 1) {
-            const steps = 2 + ((col * seed + seed * 5) % maxSteps);
-            const x = col * colWidth;
-            const y = baseY - steps * tile;
+        const drawCanopyLayer = (baseY, shadeA, shadeB, stride, variance) => {
+          const block = tile * 2;
+          const cols = Math.ceil(width / block) + 1;
+          for (let col = 0; col < cols; col += 1) {
+            const wave = (col * stride + nowTick) % variance;
+            const h = tile * (4 + wave);
+            const x = col * block;
+            const y = baseY - h;
             ctx.fillStyle = col % 2 === 0 ? shadeA : shadeB;
-            ctx.fillRect(x, y, colWidth, steps * tile);
-            ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
-            ctx.fillRect(x + 1, y + 1, Math.max(1, colWidth - 2), 2);
+            ctx.fillRect(x, y, block + 1, h + tile);
           }
         };
-        drawMountainBand(groundY - tile * 3, "#24395c", "#2f4b6f", 3, 6);
-        drawMountainBand(groundY - tile, "#1b2d4d", "#24395c", 5, 8);
+        drawCanopyLayer(horizon + tile * 2, "#1b193a", "#221f49", 2, 4);
+        drawCanopyLayer(horizon + tile * 5, "#12142d", "#171a34", 3, 5);
 
         for (let y = groundY; y < height; y += tile) {
           for (let x = 0; x < width; x += tile) {
             const checker = ((x / tile) + (y / tile)) % 2 === 0;
-            ctx.fillStyle = checker ? "#4a6e36" : "#3e5f2d";
+            ctx.fillStyle = checker ? "#203a2f" : "#1a2f27";
             ctx.fillRect(x, y, tile, tile);
-            if (((x + y) / tile) % 7 === 0) {
-              ctx.fillStyle = "#87b16b";
-              ctx.fillRect(x + 2, y + 2, 3, 3);
+            ctx.fillStyle = checker ? "#2e5b47" : "#27503d";
+            ctx.fillRect(x, y, tile, 1);
+            ctx.fillRect(x, y, 1, tile);
+            if (((x * 7 + y * 5) >> 4) % 9 === 0) {
+              ctx.fillStyle = pulseA ? "#45e3c0" : "#2fc9a8";
+              ctx.fillRect(x + 2, y + 2, 2, 2);
             }
           }
         }
 
-        const waterY = groundY - tile * 4;
-        const waterH = tile * 3;
-        for (let y = 0; y < waterH; y += tile) {
-          for (let x = 0; x < width; x += tile) {
-            const checker = ((x / tile) + (y / tile)) % 2 === 0;
-            ctx.fillStyle = checker ? "#366488" : "#2a5476";
-            ctx.fillRect(x, waterY + y, tile, tile);
+        const drawGlowCloud = (y, color, alphaScale) => {
+          ctx.globalAlpha = alphaScale;
+          for (let x = -tile * 6; x < width + tile * 6; x += tile * 8) {
+            const offset = ((nowTick + x) % (tile * 7)) - tile * 3;
+            ctx.fillStyle = color;
+            ctx.fillRect(x + offset, y, tile * 6, tile * 2);
           }
-        }
-        ctx.fillStyle = "#d9ebf7";
-        for (let x = 0; x < width; x += tile * 2) {
-          ctx.fillRect(x + 1, waterY + 1, 4, 1);
-          ctx.fillRect(x + 2, waterY + waterH - 2, 3, 1);
-        }
-
-        const castleW = Math.max(tile * 24, Math.round(width * 0.24));
-        const castleH = Math.max(tile * 12, Math.round(height * 0.21));
-        const castleX = Math.round(width * 0.5 - castleW * 0.5);
-        const castleY = waterY - castleH + tile;
-        ctx.fillStyle = "#4a5668";
-        ctx.fillRect(castleX, castleY + tile * 2, castleW, castleH - tile * 2);
-        ctx.fillStyle = "#5d6a7f";
-        ctx.fillRect(castleX + tile, castleY + tile * 3, castleW - tile * 2, castleH - tile * 4);
-        ctx.fillStyle = "#2b3445";
-        const battlementW = tile * 2;
-        for (let x = 0; x < castleW; x += battlementW + 2) {
-          ctx.fillRect(castleX + x, castleY + tile, battlementW, tile);
-        }
-        const towerW = tile * 4;
-        ctx.fillStyle = "#4f5c70";
-        ctx.fillRect(castleX - towerW + tile, castleY + tile * 2, towerW, castleH - tile);
-        ctx.fillRect(castleX + castleW - tile, castleY + tile * 2, towerW, castleH - tile);
-        ctx.fillStyle = "#2b3445";
-        ctx.fillRect(castleX + Math.round(castleW * 0.5) - tile, castleY + castleH - tile * 4, tile * 2, tile * 4);
-        ctx.fillStyle = "#89a9cf";
-        ctx.fillRect(castleX + tile * 3, castleY + tile * 5, tile * 2, tile * 2);
-        ctx.fillRect(castleX + castleW - tile * 5, castleY + tile * 5, tile * 2, tile * 2);
-
-        const drawMushroom = (x, y, cap, spot) => {
-          ctx.fillStyle = "#ddd7c1";
-          ctx.fillRect(x - 3, y - 2, 6, 10);
-          ctx.fillStyle = cap;
-          ctx.fillRect(x - 11, y - 9, 22, 8);
-          ctx.fillStyle = spot;
-          ctx.fillRect(x - 6, y - 7, 3, 2);
-          ctx.fillRect(x + 2, y - 7, 3, 2);
+          ctx.globalAlpha = 1;
         };
-        for (let idx = 0; idx < 10; idx += 1) {
-          const mx = Math.round((idx + 0.5) * (width / 10));
-          const my = groundY + tile * (1 + ((idx * 3) % 3));
-          drawMushroom(mx, my, idx % 2 === 0 ? "#8f3458" : "#6f5aa3", "#eed7e5");
+        drawGlowCloud(groundY - tile * 7, "#2bd5b0", 0.12);
+        drawGlowCloud(groundY - tile * 5, "#9d6dff", 0.12);
+
+        const drawGiantMushroom = (cx, baseY, size, capA, capB, stemA, glow) => {
+          const stemW = Math.max(6, Math.round(tile * 0.8 * size));
+          const stemH = Math.max(tile * 3, Math.round(tile * 4.6 * size));
+          const capW = Math.max(tile * 5, Math.round(tile * 7.4 * size));
+          const capH = Math.max(tile * 2, Math.round(tile * 3.1 * size));
+
+          const stemX = Math.round(cx - stemW / 2);
+          const stemY = Math.round(baseY - stemH);
+          const capX = Math.round(cx - capW / 2);
+          const capY = Math.round(stemY - capH + tile);
+
+          ctx.fillStyle = stemA;
+          ctx.fillRect(stemX, stemY, stemW, stemH);
+          ctx.fillStyle = "#f3eaf8";
+          ctx.fillRect(stemX + 1, stemY + 2, Math.max(1, stemW - 2), 2);
+          ctx.fillStyle = "#b9a5c8";
+          ctx.fillRect(stemX + stemW - 2, stemY + 2, 1, stemH - 3);
+
+          ctx.fillStyle = capA;
+          ctx.fillRect(capX, capY, capW, capH);
+          ctx.fillStyle = capB;
+          for (let sx = 0; sx < capW; sx += Math.max(4, tile)) {
+            if ((sx / tile) % 2 === 0) {
+              ctx.fillRect(capX + sx, capY + 1, Math.max(2, Math.round(tile * 0.7)), capH - 2);
+            }
+          }
+          ctx.fillStyle = "#f6ebff";
+          ctx.fillRect(capX + Math.round(capW * 0.22), capY + 2, Math.max(2, Math.round(tile * 0.85)), 2);
+          ctx.fillRect(capX + Math.round(capW * 0.62), capY + 3, Math.max(2, Math.round(tile * 0.85)), 2);
+          ctx.fillStyle = glow;
+          ctx.fillRect(capX - 2, capY + 1, capW + 4, 1);
+          if (pulseB) ctx.fillRect(capX + 1, capY - 1, capW - 2, 1);
+          ctx.fillStyle = "#090712";
+          ctx.fillRect(capX, capY + capH, capW, 1);
+        };
+
+        const midBase = groundY + tile;
+        drawGiantMushroom(Math.round(width * 0.16), midBase, 1.35, "#4f2f9f", "#6f4ed0", "#d8c8e3", "#7ce2ff");
+        drawGiantMushroom(Math.round(width * 0.35), midBase + tile, 1.1, "#18499a", "#2e67c0", "#d6c8de", "#45f8ce");
+        drawGiantMushroom(Math.round(width * 0.58), midBase, 1.42, "#8e296f", "#af3f93", "#dbc6de", "#d87dff");
+        drawGiantMushroom(Math.round(width * 0.82), midBase + tile, 1.18, "#1f5d72", "#2b7f9a", "#d0c6d8", "#68f5d7");
+
+        for (let idx = 0; idx < 22; idx += 1) {
+          const px = (idx * 181 + (idx % 4) * 31 + nowTick * 2) % width;
+          const py = groundY - tile * 6 + ((idx * 67) % (tile * 8));
+          const glowColor = idx % 2 === 0 ? "#47f2ca" : "#b98cff";
+          ctx.fillStyle = glowColor;
+          ctx.fillRect(px, py, 2, 2);
+          if ((idx + nowTick) % 3 === 0) ctx.fillRect(px + 1, py + 2, 1, 1);
         }
 
         const heroX = Math.round(width * 0.5);
-        const heroY = groundY + tile * 1.2;
-        ctx.fillStyle = "#0a1020";
-        ctx.fillRect(heroX - 11, heroY - 8, 22, 18);
-        ctx.fillStyle = "#6d2a42";
-        ctx.fillRect(heroX - 13, heroY - 15, 26, 8);
-        ctx.fillStyle = "#f2d67b";
-        ctx.fillRect(heroX - 7, heroY - 20, 14, 5);
-        ctx.fillStyle = "#3f7a49";
-        ctx.fillRect(heroX + 14, heroY - 10, 3, 22);
-        ctx.fillStyle = nowTick % 3 === 0 ? "#f5e68d" : "#8ad56b";
-        ctx.fillRect(heroX + 12, heroY - 14, 7, 5);
-        ctx.fillStyle = "#0e1d33";
-        ctx.fillRect(0, height - 12, width, 12);
+        const heroY = groundY + tile * 1.35;
+        ctx.fillStyle = "#09080f";
+        ctx.fillRect(heroX - 12, heroY - 9, 24, 20);
+        ctx.fillStyle = "#622645";
+        ctx.fillRect(heroX - 14, heroY - 16, 28, 8);
+        ctx.fillStyle = "#eccf7b";
+        ctx.fillRect(heroX - 7, heroY - 21, 14, 5);
+        ctx.fillStyle = "#346f4d";
+        ctx.fillRect(heroX + 15, heroY - 10, 3, 22);
+        ctx.fillStyle = pulseA ? "#cbff7a" : "#8eea5c";
+        ctx.fillRect(heroX + 13, heroY - 14, 7, 5);
+        ctx.fillStyle = "#15212a";
+        ctx.fillRect(heroX - 4, heroY + 4, 8, 2);
+
+        const cinematicBar = Math.max(14, Math.round(height * 0.08));
+        ctx.fillStyle = "#03030a";
+        ctx.fillRect(0, 0, width, cinematicBar);
+        ctx.fillRect(0, height - cinematicBar, width, cinematicBar);
+        ctx.fillStyle = "#53eed0";
+        ctx.fillRect(0, cinematicBar, width, 1);
+        ctx.fillStyle = "#9f72ff";
+        ctx.fillRect(0, height - cinematicBar - 1, width, 1);
+
+        ctx.fillStyle = "rgba(10, 12, 28, 0.24)";
+        for (let y = 0; y < height; y += 4) {
+          ctx.fillRect(0, y, width, 1);
+        }
       };
 
       const drawWorld = () => {
