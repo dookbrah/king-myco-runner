@@ -400,6 +400,10 @@
         padding: 0;
         display: grid;
         gap: 2px;
+        max-height: 160px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: #4365a2 transparent;
       }
       .undertale-choice-panel li {
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -883,6 +887,8 @@
         width: min(300px, 24vw);
         max-height: 44vh;
         overflow: visible;
+        scrollbar-width: thin;
+        scrollbar-color: #4365a2 transparent;
       }
       .corner-menu.top-left {
         top: max(10px, env(safe-area-inset-top));
@@ -905,6 +911,16 @@
         background: rgba(8, 15, 32, 0.95);
         border-radius: 10px;
         overflow: hidden;
+      }
+      .corner-menu .corner-root[open] > .menu-dropdown-body {
+        max-height: min(38vh, 420px);
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: #4365a2 transparent;
+      }
+      .corner-menu .corner-root.dropup[open] > .menu-dropdown-body {
+        max-height: min(38vh, 420px);
+        overflow-y: auto;
       }
       .corner-menu .corner-root.dropup {
         display: flex;
@@ -929,6 +945,12 @@
         overflow: hidden;
         background: rgba(11, 20, 39, 0.94);
       }
+      .corner-menu .menu-stack details[open] > .menu-dropdown-body {
+        max-height: min(32vh, 360px);
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: #4365a2 transparent;
+      }
       .corner-menu .menu-stack details > summary {
         cursor: pointer;
         font-size: 12px;
@@ -941,12 +963,20 @@
       }
       .corner-menu .menu-stack .panel {
         margin: 0;
+        max-height: min(30vh, 340px);
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: #4365a2 transparent;
       }
       .menu-dropdown-body {
         padding: 8px;
       }
       .menu-dropdown-body .panel {
         margin: 0;
+      }
+      select {
+        max-height: 200px;
+        overflow-y: auto;
       }
       .hidden {
         display: none !important;
@@ -1109,6 +1139,15 @@
           width: min(42vw, 296px);
           max-height: 41vh;
         }
+        .corner-menu .corner-root[open] > .menu-dropdown-body {
+          max-height: min(34vh, 360px);
+        }
+        .corner-menu .menu-stack details[open] > .menu-dropdown-body {
+          max-height: min(28vh, 300px);
+        }
+        .corner-menu .menu-stack .panel {
+          max-height: min(26vh, 280px);
+        }
       }
       @media (hover: none) and (pointer: coarse) {
         .mobile-controls {
@@ -1133,6 +1172,15 @@
         .corner-menu {
           width: min(46vw, 280px);
           max-height: 38vh;
+        }
+        .corner-menu .corner-root[open] > .menu-dropdown-body {
+          max-height: min(32vh, 340px);
+        }
+        .corner-menu .menu-stack details[open] > .menu-dropdown-body {
+          max-height: min(26vh, 280px);
+        }
+        .corner-menu .menu-stack .panel {
+          max-height: min(24vh, 260px);
         }
         .corner-menu.top-left {
           top: max(6px, env(safe-area-inset-top));
@@ -1250,6 +1298,19 @@
       }
       a {
         color: #93c5fd;
+      }
+      .corner-menu ::-webkit-scrollbar {
+        width: 6px;
+      }
+      .corner-menu ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .corner-menu ::-webkit-scrollbar-thumb {
+        background: #4365a2;
+        border-radius: 3px;
+      }
+      .corner-menu ::-webkit-scrollbar-thumb:hover {
+        background: #5a82c4;
       }
     </style>
   </head>
@@ -3520,6 +3581,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           mintedRelics: [],
           unlockedMilestones: [],
           lastSyncedAt: 0,
+          hubPlayerId: null,
+          hubSpores: null,
+          walletVerified: false,
         },
         season: {
           weekKey: "",
@@ -4569,6 +4633,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         saveGame();
         setStatus(`Season reward claimed: ${rewardTier.title}. +${rewardTier.spores} spores, +${rewardTier.goldenSpores} golden spores.`);
         playSfx("coin");
+        if (state.web3.walletVerified && rewardTier.spores >= 100) {
+          claimSolanaReward(rewardTier.spores).catch(function(){});
+        }
       };
 
       const renderLeaderboard = () => {
@@ -5377,7 +5444,145 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         setStatus(`Wallet linked (${sourceLabel}): ${shortWallet(trimmed)}.`);
         if (dom.titleWalletStatus) dom.titleWalletStatus.textContent = `Wallet connected: ${shortWallet(trimmed)}`;
         playSfx("coin");
+        linkIdentityToHub().catch(() => {});
         return true;
+      };
+
+      const linkIdentityToHub = async () => {
+        try {
+          const base = requestBase();
+          if (!base.externalId || base.externalId === "myco-player-01") return;
+          const result = await callApi("/api/identity/link", base);
+          if (result && result.playerId) {
+            state.web3.hubPlayerId = result.playerId;
+            if (result.wallet && typeof result.wallet.spores === "number") {
+              state.web3.hubSpores = result.wallet.spores;
+            }
+          }
+        } catch (_e) { /* hub unavailable */ }
+      };
+
+      const solanaVerifyWallet = async () => {
+        const wallet = getSignedInWallet();
+        if (!wallet || !isValidSolanaWalletAddress(wallet)) return;
+        if (state.web3.walletVerified) return;
+        try {
+          const challengeRes = await callApi("/api/solana/challenge", {
+            ...requestBase(),
+            walletAddress: wallet,
+          });
+          if (!challengeRes || !challengeRes.message) return;
+          const provider = window.solana;
+          if (!provider || !provider.isPhantom || !provider.signMessage) {
+            setStatus("Phantom wallet required for on-chain verification.", true);
+            return;
+          }
+          const encoded = new TextEncoder().encode(challengeRes.message);
+          const signed = await provider.signMessage(encoded, "utf8");
+          const sigBase64 = "base64:" + btoa(String.fromCharCode.apply(null, signed.signature));
+          const verifyRes = await callApi("/api/solana/verify-link", {
+            ...requestBase(),
+            walletAddress: wallet,
+            message: challengeRes.message,
+            signature: sigBase64,
+          });
+          if (verifyRes && verifyRes.verified) {
+            state.web3.walletVerified = true;
+            setStatus("Wallet verified on-chain. Solana rewards unlocked.");
+            playSfx("portal");
+          }
+        } catch (e) {
+          console.warn("Solana wallet verification failed:", e);
+        }
+      };
+
+      const claimSolanaReward = async (sporesToRedeem) => {
+        const wallet = getSignedInWallet();
+        if (!wallet || !state.web3.walletVerified) {
+          setStatus("Verify your wallet first to claim Solana rewards.", true);
+          return null;
+        }
+        if (!sporesToRedeem || sporesToRedeem <= 0) {
+          setStatus("No spores to redeem.", true);
+          return null;
+        }
+        try {
+          const receipt = await callApi("/api/solana/rewards/claim", {
+            ...requestBase(),
+            destinationWallet: wallet,
+            sporesToRedeem: sporesToRedeem,
+          });
+          if (receipt && receipt.sporesDebited) {
+            state.web3.hubSpores = receipt.wallet ? receipt.wallet.spores : 0;
+            setStatus("Claimed " + receipt.sporesDebited + " spores -> " + receipt.lamports + " lamports. MYCO burned: " + receipt.mycoBurned + ".");
+            playSfx("coin");
+            return receipt;
+          }
+          if (receipt && receipt.error) {
+            setStatus("Claim failed: " + (receipt.message || receipt.error), true);
+          }
+          return receipt;
+        } catch (e) {
+          setStatus("Reward claim error: " + (e.message || e), true);
+          return null;
+        }
+      };
+
+      const fetchMyRewardIntents = async () => {
+        try {
+          const base = requestBase();
+          const params = new URLSearchParams({ source: base.source, externalId: base.externalId, limit: "20" });
+          const token = dom.sourceToken && dom.sourceToken.value ? dom.sourceToken.value.trim() : "";
+          const headers = { "content-type": "application/json" };
+          if (token) headers["x-source-token"] = token;
+          const apiBase = getApiBase();
+          const res = await fetch(apiBase + "/api/solana/rewards/my-intents?" + params, { headers: headers });
+          return await res.json();
+        } catch (_e) {
+          return { intents: [] };
+        }
+      };
+
+      const recordSessionToHub = async (battle, result) => {
+        try {
+          const base = requestBase();
+          if (!base.externalId || base.externalId === "myco-player-01") return;
+          var usedElements = [];
+          if (battle.player && battle.player.element) usedElements.push(battle.player.element);
+          var moralityActions = { compassionateActions: 0, ruthlessActions: 0 };
+          if (state.hero.morality > 0) moralityActions.compassionateActions = 1;
+          if (state.hero.morality < 0) moralityActions.ruthlessActions = 1;
+          var telemetry = {
+            playerId: state.web3.hubPlayerId || base.externalId,
+            completedEncounters: result === "won" ? 1 : 0,
+            failedEncounters: result === "lost" ? 1 : 0,
+            damageTaken: Math.max(0, ((battle.player && battle.player.maxHp) || 100) - ((battle.player && battle.player.hp) || 0)),
+            perfectActions: battle.turnNumber <= 3 && result === "won" ? 1 : 0,
+            discoveryActions: 0,
+            riskyActions: 0,
+            sessionLengthSec: Math.max(10, (battle.turnNumber || 1) * 8),
+            usedElements: usedElements,
+            abandoned: false,
+            sporesCollected: result === "won" ? (battle.rewardSpores || 0) : 0,
+            morality: moralityActions,
+            magic: { castsByElement: {}, ritualsCompleted: [] },
+            laneOutcomes: {},
+          };
+          if (battle.encounterLane) {
+            telemetry.laneOutcomes[battle.encounterLane] = {
+              completed: result === "won",
+              perfectClears: telemetry.perfectActions,
+            };
+          }
+          var receipt = await callApi("/api/session/record", {
+            ...base,
+            score: result === "won" ? Math.round(500 + (battle.rewardSpores || 0) * 0.8) : 120,
+            telemetry: telemetry,
+          });
+          if (receipt && receipt.wallet) {
+            state.web3.hubSpores = receipt.wallet.spores;
+          }
+        } catch (_e) { /* hub unavailable */ }
       };
 
       const computeChainTier = (score) => {
@@ -5397,6 +5602,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             const walletAddress =
               response?.publicKey?.toBase58?.() ?? response?.publicKey?.toString?.() ?? "";
             if (setConnectedWallet(walletAddress, "Phantom")) {
+              solanaVerifyWallet().catch(function(){});
               return;
             }
           } catch (_error) {
@@ -5417,7 +5623,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         playSfx("error");
       };
 
-      const syncWeb3Profile = () => {
+      const syncWeb3Profile = async () => {
         if (!requireSignedInIdentity(true)) {
           setStatus("Connect wallet and nickname first to sync chain profile.", true);
           playSfx("error");
@@ -5433,7 +5639,13 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         state.web3.chainRank = computeChainTier(score);
         state.web3.lastSyncedAt = Date.now();
         evaluateOnchainMilestones(true);
-        setStatus(`Chain sync complete. Rank: ${state.web3.chainRank}.`);
+        await linkIdentityToHub().catch(function(){});
+        if (!state.web3.walletVerified) {
+          await solanaVerifyWallet().catch(function(){});
+        }
+        const hubStatus = state.web3.walletVerified ? " Wallet verified." : "";
+        const hubSpores = typeof state.web3.hubSpores === "number" ? " Hub spores: " + state.web3.hubSpores + "." : "";
+        setStatus("Chain sync complete. Rank: " + state.web3.chainRank + "." + hubStatus + hubSpores);
         playSfx("portal");
       };
 
@@ -6585,10 +6797,21 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         return `${trimmed}${path}`;
       };
 
+      const LANE_MAP_TO_BACKEND = {
+        speed: "mobility",
+        precision: "swarm",
+        tactical: "tactics",
+        survival: "boss",
+        puzzle: "puzzle",
+      };
+      const mapLaneToBackend = (lane) => LANE_MAP_TO_BACKEND[lane] || lane;
+
       const requestBase = () => ({
         source: dom.source.value.trim() || "kingmyco.io",
         externalId: normalizeNickname(dom.externalId.value.trim()) || "myco-player-01",
-        walletAddress: getSignedInWallet(),
+        claims: {
+          walletAddress: getSignedInWallet() || undefined,
+        },
         clanId: state.playerClan,
         avatarId: state.playerAvatar,
       });
@@ -10505,7 +10728,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
       };
 
-      const laneForEnemy = (enemy) => enemy.lane ?? "tactical";
+      const laneForEnemy = (enemy) => mapLaneToBackend(enemy.lane ?? "tactical");
 
       const createLocalBattle = (enemy) => {
         const heroHpPool = Math.max(74, state.hero.maxHp + state.hero.defense * 8 + state.hero.armorTier * 10);
@@ -10823,6 +11046,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             setStatus(`You fled from ${escapedName}.`, true);
             playSfx("error");
           }
+        }
+        if (battle.status === "won" || battle.status === "lost") {
+          recordSessionToHub(battle, battle.status).catch(function(){});
         }
         window.setTimeout(() => {
           state.mode = "explore";

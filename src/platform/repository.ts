@@ -100,6 +100,14 @@ export class KingMycoRepository {
     );
   }
 
+  lookupPlayerId(
+    source: EcosystemSource,
+    externalId: string,
+  ): string | undefined {
+    const key = `source:${source}:${externalId.trim().toLowerCase()}`;
+    return this.state.identityByKey[key];
+  }
+
   resolveOrCreatePlayer(
     source: EcosystemSource,
     externalId: string,

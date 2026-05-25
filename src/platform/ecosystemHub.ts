@@ -1475,6 +1475,13 @@ export class KingMycoEcosystemHub {
     };
   }
 
+  resolvePlayerId(
+    source: EcosystemSource,
+    externalId: string,
+  ): string | undefined {
+    return this.repository.lookupPlayerId(source, externalId);
+  }
+
   getPlayerSnapshot(playerId: string): PlayerSnapshot {
     return {
       playerId,
