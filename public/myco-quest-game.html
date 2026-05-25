@@ -1106,30 +1106,30 @@
         pointer-events: auto;
       }
       .mobile-joystick {
-        position: relative;
-        width: 124px;
-        height: 124px;
-        border-radius: 999px;
-        border: 2px solid #3d5f96;
-        background: radial-gradient(circle at 35% 30%, rgba(35, 57, 95, 0.84), rgba(12, 23, 45, 0.92));
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        width: 50vw;
+        height: 40vh;
+        border: none;
+        background: transparent;
         touch-action: none;
+        z-index: 25;
       }
       .mobile-joystick::before {
-        content: "";
-        position: absolute;
-        inset: 18px;
-        border-radius: 999px;
-        border: 1px dashed rgba(148, 197, 255, 0.4);
+        display: none;
       }
       .mobile-stick {
         position: absolute;
         left: 50%;
         top: 50%;
-        width: 52px;
-        height: 52px;
-        margin-left: -26px;
-        margin-top: -26px;
+        width: 0;
+        height: 0;
+        margin-left: 0;
+        margin-top: 0;
         border-radius: 999px;
+        opacity: 0;
+        pointer-events: none;
         border: 2px solid #6ea2e8;
         background: rgba(38, 80, 146, 0.9);
         box-shadow: 0 4px 10px rgba(2, 6, 23, 0.5);
@@ -1137,9 +1137,14 @@
         transition: transform 60ms linear;
       }
       .mobile-actions {
+        position: fixed;
+        right: 12px;
+        bottom: max(12px, env(safe-area-inset-bottom));
         display: grid;
-        grid-template-columns: repeat(2, minmax(72px, 90px));
+        grid-template-columns: 1fr 1fr;
         gap: 8px;
+        z-index: 25;
+        pointer-events: auto;
       }
       .touch-btn {
         border: 1px solid #3e639a;
@@ -1275,14 +1280,8 @@
         min-height: 160px;
       }
         .mobile-joystick {
-          width: 110px;
-          height: 110px;
-        }
-        .mobile-stick {
-          width: 46px;
-          height: 46px;
-          margin-left: -23px;
-          margin-top: -23px;
+          width: 50vw;
+          height: 40vh;
         }
       }
       @media (max-width: 950px) and (orientation: landscape) and (hover: none) and (pointer: coarse) {
@@ -5137,28 +5136,27 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         };
         const resetJoystick = () => {
           applyJoystickKeys(new Set());
-          if (stickEl) {
-            stickEl.style.transform = "translate(0px, 0px)";
-          }
           joystickState.pointerId = null;
+          joystickState.originX = null;
+          joystickState.originY = null;
         };
         const updateJoystickFromPointer = (clientX, clientY) => {
-          if (!joystickEl || !stickEl) return;
-          const rect = joystickEl.getBoundingClientRect();
-          const centerX = rect.left + rect.width * 0.5;
-          const centerY = rect.top + rect.height * 0.5;
-          const dx = clientX - centerX;
-          const dy = clientY - centerY;
+          if (!joystickEl) return;
+          if (!joystickState.originX) {
+            joystickState.originX = clientX;
+            joystickState.originY = clientY;
+          }
+          const dx = clientX - joystickState.originX;
+          const dy = clientY - joystickState.originY;
           const distance = Math.hypot(dx, dy);
-          const clamped = Math.min(joystickState.radius, distance);
-          const angle = distance > 0.001 ? Math.atan2(dy, dx) : 0;
-          const knobX = Math.round(Math.cos(angle) * clamped);
-          const knobY = Math.round(Math.sin(angle) * clamped);
-          stickEl.style.transform = `translate(${knobX}px, ${knobY}px)`;
-
-          const normalizedX = joystickState.radius > 0 ? knobX / joystickState.radius : 0;
-          const normalizedY = joystickState.radius > 0 ? knobY / joystickState.radius : 0;
-          const threshold = 0.3;
+          const deadzone = 8;
+          if (distance < deadzone) {
+            applyJoystickKeys(new Set());
+            return;
+          }
+          const normalizedX = dx / Math.max(distance, 1);
+          const normalizedY = dy / Math.max(distance, 1);
+          const threshold = 0.38;
           const nextKeys = new Set();
           if (normalizedX <= -threshold) nextKeys.add("arrowleft");
           if (normalizedX >= threshold) nextKeys.add("arrowright");
@@ -5171,8 +5169,9 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             event.preventDefault();
             if (!state.audio.initialized) initAudio();
             joystickState.pointerId = event.pointerId;
+            joystickState.originX = event.clientX;
+            joystickState.originY = event.clientY;
             joystickEl.setPointerCapture(event.pointerId);
-            updateJoystickFromPointer(event.clientX, event.clientY);
           });
           joystickEl.addEventListener("pointermove", (event) => {
             if (joystickState.pointerId !== event.pointerId) return;
