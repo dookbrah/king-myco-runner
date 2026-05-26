@@ -2197,6 +2197,20 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         return REALMS.some((realm) => realm.id === requested) ? requested : "myco-kingdom";
       };
 
+      const NPC_TASKS = ["gathering spores", "scouting path", "guarding shrine", "tending mushrooms", "reading scrolls", "crafting potions"];
+      for (const npc of NPCS) {
+        npc.wanderX = npc.x;
+        npc.wanderY = npc.y;
+        npc.homeX = npc.x;
+        npc.homeY = npc.y;
+        npc.wanderDirX = 0;
+        npc.wanderDirY = 0;
+        npc.wanderShiftAt = Date.now() + Math.random() * 3000;
+        npc.walkDist = 0;
+        npc.task = NPC_TASKS[Math.floor(Math.random() * NPC_TASKS.length)];
+        npc.taskChangeAt = Date.now() + 15000 + Math.random() * 30000;
+      }
+
       const PORTALS = [
         {
           id: "portal-fen",
@@ -3792,6 +3806,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           w: 14,
           h: 16,
           speed: 188,
+          walkFrame: 0,
+          walkDistance: 0,
+          facingX: 0,
+          facingY: 1,
           hp: BASE_MAX_HP,
           maxHp: BASE_MAX_HP,
           attack: 1,
@@ -10805,6 +10823,46 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         state.aiDirective = options[Math.floor(Math.random() * options.length)];
       };
 
+      const updateNpcs = (dt) => {
+        const now = Date.now();
+        const realm = getCurrentRealm();
+        for (const npc of NPCS) {
+          if (!isInCurrentRealm(npc)) continue;
+          if (now >= npc.wanderShiftAt) {
+            const angle = Math.random() * Math.PI * 2;
+            npc.wanderDirX = Math.cos(angle) * 0.6;
+            npc.wanderDirY = Math.sin(angle) * 0.6;
+            npc.wanderShiftAt = now + 2000 + Math.random() * 4000;
+            if (Math.random() < 0.15) {
+              npc.wanderDirX = 0;
+              npc.wanderDirY = 0;
+            }
+          }
+          if (now >= npc.taskChangeAt) {
+            npc.task = NPC_TASKS[Math.floor(Math.random() * NPC_TASKS.length)];
+            npc.taskChangeAt = now + 15000 + Math.random() * 30000;
+          }
+          const homeDistX = npc.homeX - npc.x;
+          const homeDistY = npc.homeY - npc.y;
+          const homeDist = Math.hypot(homeDistX, homeDistY);
+          let dirX = npc.wanderDirX;
+          let dirY = npc.wanderDirY;
+          if (homeDist > 80) {
+            dirX += (homeDistX / homeDist) * 0.5;
+            dirY += (homeDistY / homeDist) * 0.5;
+          }
+          const speed = 22;
+          const nx = npc.x + dirX * speed * dt;
+          const ny = npc.y + dirY * speed * dt;
+          if (nx > realm.x + 10 && nx < realm.x + realm.w - 10 &&
+              ny > realm.y + 10 && ny < realm.y + realm.h - 10) {
+            npc.x = nx;
+            npc.y = ny;
+            npc.walkDist = (npc.walkDist ?? 0) + Math.abs(dirX * speed * dt) + Math.abs(dirY * speed * dt);
+          }
+        }
+      };
+
       const updateEnemies = (dt) => {
         const now = Date.now();
         const profile = getNarrativeProfile();
@@ -10858,6 +10916,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
             enemy.wanderDirX *= -1;
             enemy.wanderDirY *= -1;
           } else {
+            enemy.walkDist = (enemy.walkDist ?? 0) + speed * dt;
             enemy.x = nextX;
             enemy.y = nextY;
           }
@@ -11685,6 +11744,10 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
         state.overworldCombat.heroAimX = xAxis / mag;
         state.overworldCombat.heroAimY = yAxis / mag;
+        state.hero.facingX = xAxis / mag;
+        state.hero.facingY = yAxis / mag;
+        state.hero.walkDistance += travel;
+        state.hero.walkFrame = Math.floor(state.hero.walkDistance / 14) % 4;
       };
 
       const update = async (dt) => {
@@ -11711,6 +11774,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           return;
         }
         moveHero(dt);
+        updateNpcs(dt);
         updateEnemies(dt);
         updateOverworldCombat(dt);
         updatePickups();
@@ -11846,9 +11910,18 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           ctx.fillStyle = "rgba(15, 23, 42, 0.25)";
           ctx.fillRect(-11, 0, 2, 15);
           ctx.fillRect(9, 0, 2, 15);
+          const wf = state.hero.walkFrame ?? 0;
           ctx.fillStyle = clan.colors.primary;
-          ctx.fillRect(-9, 14, 4, 2);
-          ctx.fillRect(5, 14, 4, 2);
+          if (wf === 0 || wf === 2) {
+            ctx.fillRect(-9, 14, 4, 2);
+            ctx.fillRect(5, 14, 4, 2);
+          } else if (wf === 1) {
+            ctx.fillRect(-10, 14, 5, 3);
+            ctx.fillRect(6, 13, 4, 2);
+          } else {
+            ctx.fillRect(-9, 13, 4, 2);
+            ctx.fillRect(5, 14, 5, 3);
+          }
 
           ctx.fillStyle = "#713f12";
           ctx.fillRect(13, -12, 3, 24);
@@ -11906,6 +11979,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
       const drawNpc = (ctx, npc, screenX, screenY) => {
         const x = Math.round(screenX);
         const y = Math.round(screenY);
+        const nwf = Math.floor((npc.walkDist ?? 0) / 12) % 4;
         const tone = npc.id.split("").reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % 3;
         const palettes = [
           ["#0f172a", "#059669", "#ecfeff"],
@@ -11928,6 +12002,14 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           ctx.fillRect(2, -5, 2, 2);
           ctx.fillStyle = "#94a3b8";
           ctx.fillRect(-1, -1, 2, 6);
+          ctx.fillStyle = cloak;
+          if (nwf === 1) {
+            ctx.fillRect(-8, 7, 5, 3);
+            ctx.fillRect(4, 6, 4, 2);
+          } else if (nwf === 3) {
+            ctx.fillRect(-7, 6, 4, 2);
+            ctx.fillRect(3, 7, 5, 3);
+          }
           ctx.fillStyle = "#d8cba8";
           ctx.fillRect(-5, -17, 10, 2);
           ctx.fillStyle = "rgba(15, 23, 42, 0.55)";
@@ -11986,9 +12068,18 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           ctx.fillRect(-10, -10, 20, 10);
           ctx.fillStyle = "rgba(0,0,0,0.15)";
           ctx.fillRect(-12, 8, 24, 4);
+          const ewf = Math.floor((enemy.walkDist ?? 0) / 12) % 4;
           ctx.fillStyle = base;
-          ctx.fillRect(-10, 10, 8, 3);
-          ctx.fillRect(2, 10, 8, 3);
+          if (ewf === 0 || ewf === 2) {
+            ctx.fillRect(-10, 10, 8, 3);
+            ctx.fillRect(2, 10, 8, 3);
+          } else if (ewf === 1) {
+            ctx.fillRect(-11, 10, 9, 4);
+            ctx.fillRect(3, 9, 7, 3);
+          } else {
+            ctx.fillRect(-10, 9, 7, 3);
+            ctx.fillRect(2, 10, 9, 4);
+          }
 
           if (enemy.kind.includes("drake")) {
             ctx.fillStyle = accent;
@@ -13048,6 +13139,13 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
           if (!isInCurrentRealm(npc)) continue;
           if (!visible(npc.x - 14, npc.y - 16, 28, 30)) continue;
           drawNpc(worldCtx, npc, npc.x - state.camera.x, npc.y - state.camera.y);
+          if (npc.task) {
+            worldCtx.fillStyle = "rgba(148, 163, 184, 0.7)";
+            worldCtx.font = "8px ui-monospace, SFMono-Regular, Menlo, monospace";
+            worldCtx.textAlign = "center";
+            worldCtx.fillText(npc.task, npc.x - state.camera.x, npc.y - state.camera.y - 24);
+            worldCtx.textAlign = "start";
+          }
         }
 
         for (const enemy of state.enemies) {
