@@ -496,16 +496,18 @@
       }
       .dialogue {
         position: fixed;
-        left: 50%;
-        transform: translateX(-50%);
-        bottom: 18px;
-        width: min(860px, calc(100% - 24px));
-        border-radius: 12px;
-        border: 1px solid #3f5e97;
-        background: rgba(8, 14, 30, 0.96);
-        padding: 12px;
+        left: 8px;
+        right: 8px;
+        bottom: 8px;
+        width: auto;
+        transform: none;
+        border-radius: 4px;
+        border: 3px solid #f8fafc;
+        background: #05070a;
+        padding: 14px 16px;
         z-index: 20;
         display: none;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       }
       .dialogue.active {
         display: block;
@@ -535,7 +537,11 @@
       #dialogueBody {
         white-space: pre-wrap;
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-        letter-spacing: 0.01em;
+        letter-spacing: 0.02em;
+        font-size: 15px;
+        line-height: 1.5;
+        color: #f8fafc;
+        min-height: 48px;
       }
       #dialogueBody.revealing::after {
         content: " ▌";
@@ -1733,25 +1739,28 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
     </section>
 
     <section id="dialoguePanel" class="dialogue">
-      <div class="dialogue-head">
-        <div id="dialoguePortrait" class="dialogue-portrait">?</div>
-        <div>
-          <h3 id="dialogueTitle">Dialogue</h3>
-          <p id="dialogueSubtitle" class="subtle">Speaker profile</p>
+      <div class="dialogue-head" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 2px">
+          <div style="width: 40px; height: 40px; border-radius: 4px; border: 2px solid #86efac; background: #020617; display: flex; align-items: center; justify-content: center; font-size: 22px">👑</div>
+          <span style="font-size: 9px; color: #86efac; font-family: monospace">MYCO</span>
+        </div>
+        <div style="flex: 1">
+          <h3 id="dialogueTitle" style="margin: 0; font-size: 14px">Dialogue</h3>
+          <p id="dialogueSubtitle" class="subtle" style="margin: 2px 0 0; font-size: 11px">Speaker profile</p>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 2px">
+          <div id="dialoguePortrait" class="dialogue-portrait" style="width: 40px; height: 40px; border-radius: 4px; border: 2px solid #f8fafc; background: #020617; display: flex; align-items: center; justify-content: center; font-size: 22px">?</div>
+          <span id="dialoguePortraitLabel" style="font-size: 9px; color: #94a3b8; font-family: monospace">NPC</span>
         </div>
       </div>
-      <p id="dialogueBody">...</p>
-      <div id="dialogueQaWrap" class="dialogue-qa" hidden>
-        <p class="subtle">Questions &amp; Answers</p>
-        <ul id="dialogueQaList"></ul>
-        <p id="dialogueQaAnswer" class="subtle"></p>
-      </div>
-      <div class="dialogue-actions">
-        <button id="nextDialogueBtn">Next Banter</button>
-        <button id="choiceMycoBtn" class="primary">Mycoside Choice</button>
-        <button id="choiceDarkBtn" class="warn">Darkside Choice</button>
-        <button id="choiceTradeBtn">Trade</button>
-        <button id="closeDialogueBtn">Close</button>
+      <p id="dialogueBody" style="border: 2px solid #334155; border-radius: 2px; background: #0a0e1a; padding: 10px 12px; margin: 0">...</p>
+      <div id="dialogueQaWrap" class="dialogue-qa" hidden style="display:none !important"></div>
+      <div class="dialogue-actions" style="display: flex; gap: 8px; margin-top: 8px">
+        <button id="nextDialogueBtn" style="display:none">Next</button>
+        <button id="choiceMycoBtn" class="primary" style="flex: 1; font-family: monospace; font-size: 13px; border: 2px solid #facc15; border-radius: 2px; padding: 8px">Mycoside Choice</button>
+        <button id="choiceDarkBtn" class="warn" style="flex: 1; font-family: monospace; font-size: 13px; border: 2px solid #ef4444; border-radius: 2px; padding: 8px">Darkside Choice</button>
+        <button id="choiceTradeBtn" style="display:none">Trade</button>
+        <button id="closeDialogueBtn" style="flex: 0 0 auto; font-family: monospace; font-size: 13px; border: 2px solid #94a3b8; border-radius: 2px; padding: 8px">Close</button>
       </div>
     </section>
 
@@ -5021,12 +5030,7 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         }
       };
 
-      const triggerCameraShake = (baseStrength = 5, durationMs = 110) => {
-        const tuning = getPresentationTuning();
-        const strength = clamp(baseStrength * tuning.shakeScale, 0, 20);
-        state.visualFx.cameraShakeStrength = Math.max(state.visualFx.cameraShakeStrength ?? 0, strength);
-        state.visualFx.cameraShakeUntil = Math.max(state.visualFx.cameraShakeUntil ?? 0, Date.now() + durationMs);
-      };
+      const triggerCameraShake = () => {};
 
       const triggerHitStop = (durationMs = 22) => {
         const tuning = getPresentationTuning();
@@ -6085,15 +6089,34 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         if (!state.dialogueUi.nextAt) {
           state.dialogueUi.nextAt = now;
         }
+        let playedBlip = false;
         while (state.dialogueUi.revealIndex < full.length && now >= state.dialogueUi.nextAt) {
           state.dialogueUi.revealIndex += 1;
           state.dialogueUi.visibleText = full.slice(0, state.dialogueUi.revealIndex);
           const char = full[state.dialogueUi.revealIndex - 1];
-          let delay = 15;
-          if (char === " ") delay = 7;
-          if (char === "," || char === ";") delay = 52;
-          if (char === "." || char === "!" || char === "?" || char === "\n") delay = 88;
+          let delay = 18;
+          if (char === " ") delay = 8;
+          if (char === "," || char === ";") delay = 58;
+          if (char === "." || char === "!" || char === "?" || char === "\n") delay = 96;
           state.dialogueUi.nextAt += delay;
+          if (!playedBlip && char !== " " && state.dialogueUi.revealIndex % 2 === 0) {
+            playedBlip = true;
+            if (state.audio.initialized && state.audio.sfxOn && state.audio.context?.state === "running") {
+              const ctx = state.audio.context;
+              const t = ctx.currentTime + 0.002;
+              const osc = ctx.createOscillator();
+              const amp = ctx.createGain();
+              osc.type = "square";
+              osc.frequency.setValueAtTime(380 + (state.dialogueUi.revealIndex % 5) * 40, t);
+              amp.gain.setValueAtTime(0.0001, t);
+              amp.gain.exponentialRampToValueAtTime(0.018, t + 0.005);
+              amp.gain.exponentialRampToValueAtTime(0.0001, t + 0.035);
+              osc.connect(amp);
+              amp.connect(state.audio.sfxGain);
+              osc.start(t);
+              osc.stop(t + 0.04);
+            }
+          }
         }
         if (dom.dialogueBody) {
           dom.dialogueBody.textContent = state.dialogueUi.visibleText;
@@ -8162,6 +8185,8 @@ Learn forgotten magic, gather allies, and reclaim the kingdom one chapter at a t
         dom.dialogueTitle.textContent = payload.title;
         dom.dialogueSubtitle.textContent = portrait.subtitle;
         dom.dialoguePortrait.textContent = portrait.glyph;
+        const portraitLabel = document.getElementById("dialoguePortraitLabel");
+        if (portraitLabel) portraitLabel.textContent = payload.title ? payload.title.slice(0, 8) : "NPC";
         resetDialogueReveal(payload.body);
         dom.choiceMycoBtn.textContent = payload.mycoLabel ?? "Mycoside Choice";
         dom.choiceDarkBtn.textContent = payload.darkLabel ?? "Darkside Choice";
