@@ -9,6 +9,8 @@ import type { GameState } from "../systems/GameState";
 import { saveGameState } from "../systems/GameState";
 import { AudioManager } from "../systems/AudioManager";
 import { linkIdentity } from "../systems/ApiClient";
+import type { DialoguePayload } from "./DialogueScene";
+import type { StructureDef } from "../data/structures";
 
 interface RuntimeEnemy {
   def: (typeof BASE_ENEMIES)[0];
@@ -109,6 +111,8 @@ export class WorldScene extends Phaser.Scene {
     this.updateEnemies(state, dt);
     this.updateNpcs(dt);
     this.checkPortals(state);
+    this.checkNpcInteraction(state);
+    this.checkStructureInteraction(state);
     this.animateHeroFeet(state);
   }
 
@@ -367,6 +371,58 @@ export class WorldScene extends Phaser.Scene {
       }).setOrigin(0.5).setDepth(3);
     }
     gfx.setDepth(2);
+  }
+
+  private checkNpcInteraction(state: GameState): void {
+    if (!this.wasd?.e?.isDown) return;
+    if (this.wasd.e.getDuration() > 100) return;
+    for (const npc of this.npcs) {
+      if (Phaser.Math.Distance.Between(state.hero.x, state.hero.y, npc.container.x, npc.container.y) < 56) {
+        this.audio.playSfx("talk");
+        state.mode = "dialogue" as GameState["mode"];
+        this.scene.pause();
+        this.scene.launch("DialogueScene", {
+          title: npc.def.name,
+          portrait: "🧙",
+          body: npc.def.intro,
+          choices: [
+            { id: "myco", label: "Mycoside", color: "#22c55e" },
+            { id: "dark", label: "Darkside", color: "#ef4444" },
+            { id: "close", label: "Leave", color: "#94a3b8" },
+          ],
+          onChoice: (id: string) => {
+            if (id === "myco") state.hero.morality += 3;
+            else if (id === "dark") state.hero.morality -= 3;
+            state.progress.interactedNpcs.add(npc.def.id);
+          },
+          onClose: () => { state.mode = "explore"; },
+        } satisfies DialoguePayload);
+        return;
+      }
+    }
+  }
+
+  private checkStructureInteraction(state: GameState): void {
+    if (!this.wasd?.e?.isDown) return;
+    if (this.wasd.e.getDuration() > 100) return;
+    const realm = REALMS.find((r) => r.id === state.currentRealmId) ?? REALMS[0];
+    for (const s of STRUCTURES.filter((st) => st.region === realm.id)) {
+      const cx = s.x + s.w / 2;
+      const cy = s.y + s.h / 2;
+      if (Phaser.Math.Distance.Between(state.hero.x, state.hero.y, cx, cy) < 50) {
+        this.audio.playSfx("portal");
+        if (s.type === "burn-pit" || s.type === "shrine") {
+          state.mode = "burn-pit" as GameState["mode"];
+          this.scene.pause();
+          this.scene.launch("BurnPitScene");
+          return;
+        }
+        state.mode = "interior" as GameState["mode"];
+        this.scene.pause();
+        this.scene.launch("InteriorScene", { structure: s });
+        return;
+      }
+    }
   }
 
   private addMobileControls(): void {
