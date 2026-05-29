@@ -1,16 +1,18 @@
 import Phaser from "phaser";
 import { REALMS, TILE_SIZE, REALM_DEFAULT_SPAWNS } from "../data/realms";
 import { BASE_ENEMIES, ENEMY_PALETTES } from "../data/enemies";
+import { NPCS, NPC_TASKS, NPC_PALETTES } from "../data/npcs";
+import { PORTALS } from "../data/portals";
+import { STRUCTURES } from "../data/structures";
 import { CLAN_PROFILES } from "../data/clans";
 import type { GameState } from "../systems/GameState";
 import { saveGameState } from "../systems/GameState";
+import { AudioManager } from "../systems/AudioManager";
+import { linkIdentity } from "../systems/ApiClient";
 
 interface RuntimeEnemy {
-  def: typeof BASE_ENEMIES[0];
-  sprite: Phaser.GameObjects.Rectangle;
-  accent: Phaser.GameObjects.Rectangle;
-  eyes: Phaser.GameObjects.Rectangle[];
-  label?: Phaser.GameObjects.Text;
+  def: (typeof BASE_ENEMIES)[0];
+  container: Phaser.GameObjects.Container;
   active: boolean;
   walkDist: number;
   wanderDirX: number;
@@ -20,21 +22,30 @@ interface RuntimeEnemy {
   maxHp: number;
 }
 
+interface RuntimeNpc {
+  def: (typeof NPCS)[0];
+  container: Phaser.GameObjects.Container;
+  label: Phaser.GameObjects.Text;
+  walkDist: number;
+  wanderDirX: number;
+  wanderDirY: number;
+  wanderShiftAt: number;
+  task: string;
+  taskChangeAt: number;
+  homeX: number;
+  homeY: number;
+}
+
 export class WorldScene extends Phaser.Scene {
   private hero!: Phaser.GameObjects.Container;
-  private heroBody!: Phaser.GameObjects.Rectangle;
-  private heroCrown!: Phaser.GameObjects.Rectangle;
-  private heroEyeL!: Phaser.GameObjects.Rectangle;
-  private heroEyeR!: Phaser.GameObjects.Rectangle;
-  private heroRobe!: Phaser.GameObjects.Rectangle;
-  private heroStaff!: Phaser.GameObjects.Rectangle;
-  private heroShadow!: Phaser.GameObjects.Rectangle;
   private heroFeetL!: Phaser.GameObjects.Rectangle;
   private heroFeetR!: Phaser.GameObjects.Rectangle;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: Record<string, Phaser.Input.Keyboard.Key>;
   private enemies: RuntimeEnemy[] = [];
-  private realmLabel!: Phaser.GameObjects.Text;
+  private npcs: RuntimeNpc[] = [];
+  private audio!: AudioManager;
+  private realmGfx!: Phaser.GameObjects.Graphics;
 
   constructor() {
     super({ key: "WorldScene" });
@@ -45,37 +56,28 @@ export class WorldScene extends Phaser.Scene {
     const realm = REALMS.find((r) => r.id === state.currentRealmId) ?? REALMS[0];
     const spawn = REALM_DEFAULT_SPAWNS[realm.id] ?? { x: realm.x + 100, y: realm.y + 100 };
 
-    if (state.hero.x < realm.x || state.hero.x > realm.x + realm.w) {
+    if (state.hero.x < realm.x || state.hero.x > realm.x + realm.w || state.hero.y < realm.y || state.hero.y > realm.y + realm.h) {
       state.hero.x = spawn.x;
       state.hero.y = spawn.y;
     }
 
+    this.audio = new AudioManager();
+    this.audio.init();
+    this.audio.setMode("overworld");
+    this.registry.set("audio", this.audio);
+
     this.drawTerrain(realm);
-
-    const clan = CLAN_PROFILES[state.playerClan] ?? CLAN_PROFILES.myco;
-
-    this.heroShadow = this.add.rectangle(0, 14, 24, 5, 0x020617, 0.3);
-    this.heroCrown = this.add.rectangle(0, -22, 14, 4, 0xfacc15);
-    this.heroBody = this.add.rectangle(0, -6, 16, 11, Phaser.Display.Color.HexStringToColor(clan.colors.cap).color);
-    this.heroEyeL = this.add.rectangle(-4, -7, 3, 3, 0x86efac);
-    this.heroEyeR = this.add.rectangle(3, -7, 3, 3, 0x86efac);
-    this.heroRobe = this.add.rectangle(0, 7, 20, 14, Phaser.Display.Color.HexStringToColor(clan.colors.robe).color);
-    this.heroStaff = this.add.rectangle(13, -2, 3, 22, 0x713f12);
-    this.heroFeetL = this.add.rectangle(-6, 14, 4, 2, Phaser.Display.Color.HexStringToColor(clan.colors.primary).color);
-    this.heroFeetR = this.add.rectangle(6, 14, 4, 2, Phaser.Display.Color.HexStringToColor(clan.colors.primary).color);
-
-    this.hero = this.add.container(state.hero.x, state.hero.y, [
-      this.heroShadow, this.heroRobe, this.heroBody, this.heroCrown,
-      this.heroEyeL, this.heroEyeR, this.heroStaff, this.heroFeetL, this.heroFeetR,
-    ]);
-    this.hero.setDepth(10);
-
+    this.drawStructures(realm);
+    this.drawPortals(realm);
+    this.createHero(state);
     this.spawnEnemies(state, realm);
+    this.spawnNpcs(realm);
 
-    this.realmLabel = this.add.text(realm.x + 20, realm.y + 20, realm.name, {
+    this.add.text(realm.x + 20, realm.y + 14, realm.name + " // " + realm.label, {
       fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-      fontSize: "14px",
-      color: "#94a3b8",
+      fontSize: "11px",
+      color: "#64748b",
+      wordWrap: { width: realm.w - 40 },
     }).setDepth(1);
 
     this.cameras.main.startFollow(this.hero, true, 0.12, 0.12);
@@ -90,35 +92,55 @@ export class WorldScene extends Phaser.Scene {
         a: this.input.keyboard.addKey("A"),
         s: this.input.keyboard.addKey("S"),
         d: this.input.keyboard.addKey("D"),
+        e: this.input.keyboard.addKey("E"),
       };
     }
 
     this.addMobileControls();
     state.mode = "explore";
-    state.audio.musicMode = "overworld";
+    linkIdentity(state).catch(() => {});
   }
 
   update(_time: number, delta: number): void {
     const state = this.registry.get("gameState") as GameState;
     if (state.mode !== "explore") return;
-
     const dt = delta / 1000;
     this.moveHero(state, dt);
     this.updateEnemies(state, dt);
+    this.updateNpcs(dt);
+    this.checkPortals(state);
     this.animateHeroFeet(state);
   }
 
-  private moveHero(state: GameState, dt: number): void {
-    let xAxis = 0;
-    let yAxis = 0;
+  private createHero(state: GameState): void {
+    const clan = CLAN_PROFILES[state.playerClan] ?? CLAN_PROFILES.myco;
+    const c = (hex: string) => Phaser.Display.Color.HexStringToColor(hex).color;
 
+    const shadow = this.add.rectangle(0, 14, 24, 5, 0x020617, 0.3);
+    const crown = this.add.rectangle(0, -22, 14, 4, 0xfacc15);
+    const body = this.add.rectangle(0, -6, 16, 11, c(clan.colors.cap));
+    const eyeL = this.add.rectangle(-4, -7, 3, 3, 0x86efac);
+    const eyeR = this.add.rectangle(3, -7, 3, 3, 0x86efac);
+    const robe = this.add.rectangle(0, 7, 20, 14, c(clan.colors.robe));
+    const staff = this.add.rectangle(13, -2, 3, 22, 0x713f12);
+    this.heroFeetL = this.add.rectangle(-6, 14, 4, 2, c(clan.colors.primary));
+    this.heroFeetR = this.add.rectangle(6, 14, 4, 2, c(clan.colors.primary));
+    const staffGem = this.add.rectangle(13, -14, 6, 4, 0x22c55e);
+
+    this.hero = this.add.container(state.hero.x, state.hero.y, [
+      shadow, robe, body, crown, eyeL, eyeR, staff, staffGem,
+      this.heroFeetL, this.heroFeetR,
+    ]).setDepth(10);
+  }
+
+  private moveHero(state: GameState, dt: number): void {
+    let xAxis = 0, yAxis = 0;
     if (this.cursors) {
       if (this.cursors.up.isDown || this.wasd?.w?.isDown) yAxis -= 1;
       if (this.cursors.down.isDown || this.wasd?.s?.isDown) yAxis += 1;
       if (this.cursors.left.isDown || this.wasd?.a?.isDown) xAxis -= 1;
       if (this.cursors.right.isDown || this.wasd?.d?.isDown) xAxis += 1;
     }
-
     if (xAxis === 0 && yAxis === 0) return;
 
     const mag = Math.hypot(xAxis, yAxis) || 1;
@@ -128,67 +150,59 @@ export class WorldScene extends Phaser.Scene {
     const vy = (yAxis / mag) * speed * dt;
 
     const realm = REALMS.find((r) => r.id === state.currentRealmId) ?? REALMS[0];
-    const nx = Phaser.Math.Clamp(state.hero.x + vx, realm.x + 20, realm.x + realm.w - 20);
-    const ny = Phaser.Math.Clamp(state.hero.y + vy, realm.y + 20, realm.y + realm.h - 20);
+    let nx = state.hero.x + vx;
+    let ny = state.hero.y + vy;
 
-    state.hero.x = nx;
-    state.hero.y = ny;
+    const blocked = STRUCTURES.filter((s) => s.solid && s.region === realm.id).some((s) =>
+      nx - 7 < s.x + s.w && nx + 7 > s.x && ny - 8 < s.y + s.h && ny + 8 > s.y);
+
+    if (!blocked) {
+      nx = Phaser.Math.Clamp(nx, realm.x + 20, realm.x + realm.w - 20);
+      ny = Phaser.Math.Clamp(ny, realm.y + 20, realm.y + realm.h - 20);
+      state.hero.x = nx;
+      state.hero.y = ny;
+    }
+
     state.hero.facingX = xAxis / mag;
     state.hero.facingY = yAxis / mag;
     state.hero.walkFrame = (state.hero.walkFrame + dt * 8) % 4;
-
-    this.hero.setPosition(nx, ny);
+    this.hero.setPosition(state.hero.x, state.hero.y);
   }
 
   private animateHeroFeet(state: GameState): void {
-    const frame = Math.floor(state.hero.walkFrame) % 4;
-    if (frame === 1) {
-      this.heroFeetL.setPosition(-7, 15);
-      this.heroFeetR.setPosition(6, 13);
-    } else if (frame === 3) {
-      this.heroFeetL.setPosition(-6, 13);
-      this.heroFeetR.setPosition(7, 15);
-    } else {
-      this.heroFeetL.setPosition(-6, 14);
-      this.heroFeetR.setPosition(6, 14);
-    }
+    const f = Math.floor(state.hero.walkFrame) % 4;
+    this.heroFeetL.setPosition(f === 1 ? -7 : -6, f === 1 ? 15 : 14);
+    this.heroFeetR.setPosition(f === 3 ? 7 : 6, f === 3 ? 15 : 14);
   }
 
-  private spawnEnemies(state: GameState, realm: typeof REALMS[0]): void {
-    const realmEnemies = BASE_ENEMIES.filter((e) => e.region === realm.id);
+  private spawnEnemies(state: GameState, realm: (typeof REALMS)[0]): void {
+    for (const def of BASE_ENEMIES.filter((e) => e.region === realm.id)) {
+      const [baseHex, accentHex] = ENEMY_PALETTES[def.kind] ?? ["#f97316", "#7c2d12"];
+      const base = Phaser.Display.Color.HexStringToColor(baseHex).color;
+      const accent = Phaser.Display.Color.HexStringToColor(accentHex).color;
 
-    for (const def of realmEnemies) {
-      const [baseColor, accentColor] = ENEMY_PALETTES[def.kind] ?? ["#f97316", "#7c2d12"];
-      const base = Phaser.Display.Color.HexStringToColor(baseColor).color;
-      const accent = Phaser.Display.Color.HexStringToColor(accentColor).color;
+      const body = this.add.rectangle(0, 0, 24, 24, base);
+      const acc = this.add.rectangle(0, -2, 20, 10, accent);
+      const eyeL = this.add.rectangle(-4, 0, 3, 3, 0x020617);
+      const eyeR = this.add.rectangle(4, 0, 3, 3, 0x020617);
+      const shadow = this.add.rectangle(0, 14, 22, 4, 0x020617, 0.25);
+      const parts: Phaser.GameObjects.GameObject[] = [shadow, body, acc, eyeL, eyeR];
 
-      const body = this.add.rectangle(def.x, def.y, 24, 24, base).setDepth(5);
-      const accentRect = this.add.rectangle(def.x, def.y - 2, 20, 10, accent).setDepth(6);
-      const eyeL = this.add.rectangle(def.x - 4, def.y, 3, 3, 0x020617).setDepth(7);
-      const eyeR = this.add.rectangle(def.x + 4, def.y, 3, 3, 0x020617).setDepth(7);
-
-      let label: Phaser.GameObjects.Text | undefined;
       if (def.boss) {
-        label = this.add.text(def.x, def.y - 20, "★ BOSS", {
-          fontFamily: "monospace",
-          fontSize: "10px",
-          color: "#facc15",
-        }).setOrigin(0.5).setDepth(8);
+        const ring = this.add.rectangle(0, 0, 36, 36).setStrokeStyle(2, 0xfacc15);
+        parts.push(ring);
       }
 
+      const container = this.add.container(def.x, def.y, parts).setDepth(5);
+      const regionScale: Record<string, number> = { "myco-kingdom": 1, "rougarou-fen": 1.2, "tri-drake-peaks": 1.45, "crimson-tide": 1.35, "solana-chainlands": 1.7, "verdant-commons": 1.1, "obsidian-wilds": 1.55 };
+      const hp = Math.round((def.boss ? 220 : 60) * (regionScale[def.region] ?? 1));
+
       this.enemies.push({
-        def,
-        sprite: body,
-        accent: accentRect,
-        eyes: [eyeL, eyeR],
-        label,
-        active: true,
-        walkDist: 0,
+        def, container, active: true, walkDist: 0,
         wanderDirX: Phaser.Math.FloatBetween(-1, 1),
         wanderDirY: Phaser.Math.FloatBetween(-1, 1),
         directionShiftAt: this.time.now + Phaser.Math.Between(1000, 3000),
-        hp: def.boss ? 220 : 60,
-        maxHp: def.boss ? 220 : 60,
+        hp, maxHp: hp,
       });
     }
   }
@@ -196,89 +210,201 @@ export class WorldScene extends Phaser.Scene {
   private updateEnemies(state: GameState, dt: number): void {
     const now = this.time.now;
     const realm = REALMS.find((r) => r.id === state.currentRealmId) ?? REALMS[0];
-
-    for (const enemy of this.enemies) {
-      if (!enemy.active) continue;
-
-      if (now >= enemy.directionShiftAt) {
-        enemy.wanderDirX = Phaser.Math.FloatBetween(-1, 1);
-        enemy.wanderDirY = Phaser.Math.FloatBetween(-1, 1);
-        enemy.directionShiftAt = now + Phaser.Math.Between(1000, 3200);
+    for (const e of this.enemies) {
+      if (!e.active) continue;
+      if (now >= e.directionShiftAt) {
+        e.wanderDirX = Phaser.Math.FloatBetween(-1, 1);
+        e.wanderDirY = Phaser.Math.FloatBetween(-1, 1);
+        e.directionShiftAt = now + Phaser.Math.Between(1000, 3200);
       }
-
-      const speed = enemy.def.boss ? 26 : 36;
-      const nx = enemy.sprite.x + enemy.wanderDirX * speed * dt;
-      const ny = enemy.sprite.y + enemy.wanderDirY * speed * dt;
-
-      if (nx > realm.x + 20 && nx < realm.x + realm.w - 20 &&
-          ny > realm.y + 20 && ny < realm.y + realm.h - 20) {
-        enemy.sprite.setPosition(nx, ny);
-        enemy.accent.setPosition(nx, ny - 2);
-        enemy.eyes[0].setPosition(nx - 4, ny);
-        enemy.eyes[1].setPosition(nx + 4, ny);
-        if (enemy.label) enemy.label.setPosition(nx, ny - 20);
-        enemy.walkDist += speed * dt;
+      const speed = e.def.boss ? 26 : 36;
+      const nx = e.container.x + e.wanderDirX * speed * dt;
+      const ny = e.container.y + e.wanderDirY * speed * dt;
+      if (nx > realm.x + 20 && nx < realm.x + realm.w - 20 && ny > realm.y + 20 && ny < realm.y + realm.h - 20) {
+        e.container.setPosition(nx, ny);
+        e.walkDist += speed * dt;
       } else {
-        enemy.wanderDirX *= -1;
-        enemy.wanderDirY *= -1;
+        e.wanderDirX *= -1;
+        e.wanderDirY *= -1;
       }
-
-      const heroDistSq = Phaser.Math.Distance.Squared(state.hero.x, state.hero.y, enemy.sprite.x, enemy.sprite.y);
-      if (heroDistSq < (enemy.def.boss ? 38 * 38 : 32 * 32)) {
+      if (Phaser.Math.Distance.Between(state.hero.x, state.hero.y, e.container.x, e.container.y) < (e.def.boss ? 38 : 32)) {
         state.mode = "battle";
-        state.audio.musicMode = enemy.def.boss ? "boss" : "battle";
-        this.scene.launch("BattleScene", { enemy: enemy.def });
+        this.audio.setMode(e.def.boss ? "boss" : "battle");
+        this.audio.playSfx("battle");
+        this.scene.launch("BattleScene", { enemy: e.def });
         this.scene.pause();
         break;
       }
     }
   }
 
-  private drawTerrain(realm: typeof REALMS[0]): void {
+  private spawnNpcs(realm: (typeof REALMS)[0]): void {
+    for (const def of NPCS.filter((n) => n.region === realm.id)) {
+      const palette = NPC_PALETTES[def.id.split("").reduce((s, c) => s + c.charCodeAt(0), 0) % NPC_PALETTES.length];
+      const cloak = Phaser.Display.Color.HexStringToColor(palette[0]).color;
+      const accent = Phaser.Display.Color.HexStringToColor(palette[1]).color;
+
+      const body = this.add.rectangle(0, 0, 20, 22, cloak);
+      const acc = this.add.rectangle(0, -3, 14, 8, accent);
+      const eyeL = this.add.rectangle(-3, -1, 2, 2, 0xf8fafc);
+      const eyeR = this.add.rectangle(3, -1, 2, 2, 0xf8fafc);
+      const shadow = this.add.rectangle(0, 12, 18, 4, 0x020617, 0.25);
+
+      const container = this.add.container(def.x, def.y, [shadow, body, acc, eyeL, eyeR]).setDepth(8);
+      const task = NPC_TASKS[Math.floor(Math.random() * NPC_TASKS.length)];
+      const label = this.add.text(def.x, def.y - 20, task, {
+        fontFamily: "monospace", fontSize: "8px", color: "#94a3b8",
+      }).setOrigin(0.5).setDepth(9);
+
+      this.npcs.push({
+        def, container, label, walkDist: 0,
+        wanderDirX: 0, wanderDirY: 0,
+        wanderShiftAt: this.time.now + Math.random() * 3000,
+        task, taskChangeAt: this.time.now + 15000 + Math.random() * 30000,
+        homeX: def.x, homeY: def.y,
+      });
+    }
+  }
+
+  private updateNpcs(dt: number): void {
+    const now = this.time.now;
+    const realm = REALMS.find((r) => r.id === (this.registry.get("gameState") as GameState).currentRealmId) ?? REALMS[0];
+    for (const npc of this.npcs) {
+      if (now >= npc.wanderShiftAt) {
+        const angle = Math.random() * Math.PI * 2;
+        npc.wanderDirX = Math.cos(angle) * 0.6;
+        npc.wanderDirY = Math.sin(angle) * 0.6;
+        npc.wanderShiftAt = now + 2000 + Math.random() * 4000;
+        if (Math.random() < 0.15) { npc.wanderDirX = 0; npc.wanderDirY = 0; }
+      }
+      if (now >= npc.taskChangeAt) {
+        npc.task = NPC_TASKS[Math.floor(Math.random() * NPC_TASKS.length)];
+        npc.taskChangeAt = now + 15000 + Math.random() * 30000;
+        npc.label.setText(npc.task);
+      }
+      const homeDist = Phaser.Math.Distance.Between(npc.container.x, npc.container.y, npc.homeX, npc.homeY);
+      let dx = npc.wanderDirX, dy = npc.wanderDirY;
+      if (homeDist > 80) {
+        dx += (npc.homeX - npc.container.x) / homeDist * 0.5;
+        dy += (npc.homeY - npc.container.y) / homeDist * 0.5;
+      }
+      const nx = npc.container.x + dx * 22 * dt;
+      const ny = npc.container.y + dy * 22 * dt;
+      if (nx > realm.x + 10 && nx < realm.x + realm.w - 10 && ny > realm.y + 10 && ny < realm.y + realm.h - 10) {
+        npc.container.setPosition(nx, ny);
+        npc.label.setPosition(nx, ny - 20);
+        npc.walkDist += Math.abs(dx * 22 * dt) + Math.abs(dy * 22 * dt);
+      }
+    }
+  }
+
+  private checkPortals(state: GameState): void {
+    const realm = REALMS.find((r) => r.id === state.currentRealmId) ?? REALMS[0];
+    for (const portal of PORTALS) {
+      const px = portal.x + portal.w / 2;
+      const py = portal.y + portal.h / 2;
+      if (portal.destRealm === realm.id) continue;
+      if (Phaser.Math.Distance.Between(state.hero.x, state.hero.y, px, py) < 36) {
+        this.audio.playSfx("portal");
+        state.currentRealmId = portal.destRealm;
+        state.hero.x = portal.destX;
+        state.hero.y = portal.destY;
+        saveGameState(state);
+        this.scene.restart();
+        break;
+      }
+    }
+  }
+
+  private drawTerrain(realm: (typeof REALMS)[0]): void {
     const gfx = this.add.graphics();
     const tile = TILE_SIZE;
     const colorA = Phaser.Display.Color.HexStringToColor(realm.colorA).color;
     const colorB = Phaser.Display.Color.HexStringToColor(realm.colorB).color;
-
     for (let y = realm.y; y < realm.y + realm.h; y += tile) {
       for (let x = realm.x; x < realm.x + realm.w; x += tile) {
-        const checker = ((Math.floor(x / tile) + Math.floor(y / tile)) % 2) === 0;
-        gfx.fillStyle(checker ? colorA : colorB);
+        gfx.fillStyle(((Math.floor(x / tile) + Math.floor(y / tile)) % 2) === 0 ? colorA : colorB);
         gfx.fillRect(x, y, tile, tile);
       }
     }
-
     gfx.lineStyle(2, 0x2f4678);
     gfx.strokeRect(realm.x, realm.y, realm.w, realm.h);
     gfx.setDepth(0);
   }
 
+  private drawStructures(realm: (typeof REALMS)[0]): void {
+    const gfx = this.add.graphics();
+    const colors: Record<string, number> = {
+      house: 0x92400e, castle: 0x1e3a5f, "mushroom-shop": 0x7c2d12, tower: 0x1f2937,
+      cave: 0x374151, dungeon: 0x1e1b4b, "burn-pit": 0x451a03, shrine: 0x4c1d95,
+    };
+    for (const s of STRUCTURES.filter((st) => st.region === realm.id)) {
+      gfx.fillStyle(colors[s.type] ?? 0x374151);
+      gfx.fillRect(s.x, s.y, s.w, s.h);
+      gfx.fillStyle(colors[s.type] ? colors[s.type] + 0x222222 : 0x555555);
+      gfx.fillRect(s.x + 4, s.y - 6, s.w - 8, 8);
+      this.add.text(s.x + s.w / 2, s.y - 10, s.name, {
+        fontFamily: "monospace", fontSize: "8px", color: "#94a3b8",
+      }).setOrigin(0.5).setDepth(3);
+    }
+    gfx.setDepth(2);
+  }
+
+  private drawPortals(realm: (typeof REALMS)[0]): void {
+    const gfx = this.add.graphics();
+    for (const p of PORTALS.filter((pt) => {
+      const cx = pt.x + pt.w / 2;
+      const cy = pt.y + pt.h / 2;
+      return cx >= realm.x && cx <= realm.x + realm.w && cy >= realm.y && cy <= realm.y + realm.h;
+    })) {
+      gfx.fillStyle(0x22d3ee, 0.5);
+      gfx.fillRect(p.x, p.y, p.w, p.h);
+      gfx.fillStyle(0xf8fafc);
+      gfx.fillRect(p.x + p.w / 2 - 1, p.y + 4, 2, p.h - 8);
+      gfx.fillRect(p.x + 4, p.y + p.h / 2 - 1, p.w - 8, 2);
+      this.add.text(p.x + p.w / 2, p.y + p.h + 6, p.name, {
+        fontFamily: "monospace", fontSize: "7px", color: "#7dd3fc",
+      }).setOrigin(0.5).setDepth(3);
+    }
+    gfx.setDepth(2);
+  }
+
   private addMobileControls(): void {
     if (!("ontouchstart" in window)) return;
-
     const cam = this.cameras.main;
-    const btnStyle = {
-      fontFamily: "monospace",
-      fontSize: "14px",
-      color: "#f8fafc",
-      backgroundColor: "rgba(12, 25, 49, 0.85)",
-      padding: { x: 16, y: 10 },
-    };
 
-    const attackBtn = this.add.text(0, 0, "Attack", btnStyle)
-      .setScrollFactor(0)
-      .setDepth(100)
-      .setInteractive()
-      .on("pointerdown", () => { /* overworld attack */ });
+    const attackBtn = this.add.text(cam.width - 140, cam.height - 50, "Attack", {
+      fontFamily: "monospace", fontSize: "13px", color: "#f8fafc",
+      backgroundColor: "rgba(12, 25, 49, 0.85)", padding: { x: 14, y: 10 },
+    }).setScrollFactor(0).setDepth(100).setInteractive();
 
-    const engageBtn = this.add.text(0, 0, "Engage", btnStyle)
-      .setScrollFactor(0)
-      .setDepth(100)
-      .setInteractive()
-      .on("pointerdown", () => { /* interact */ });
+    const engageBtn = this.add.text(cam.width - 68, cam.height - 50, "Engage", {
+      fontFamily: "monospace", fontSize: "13px", color: "#f8fafc",
+      backgroundColor: "rgba(12, 25, 49, 0.85)", padding: { x: 14, y: 10 },
+    }).setScrollFactor(0).setDepth(100).setInteractive();
 
-    const padding = 12;
-    attackBtn.setPosition(cam.width - attackBtn.width - engageBtn.width - padding * 3, cam.height - 50);
-    engageBtn.setPosition(cam.width - engageBtn.width - padding, cam.height - 50);
+    attackBtn.on("pointerdown", () => this.audio?.playSfx("strike"));
+    engageBtn.on("pointerdown", () => this.audio?.playSfx("talk"));
+
+    this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      if (pointer.x < cam.width * 0.5 && pointer.y > cam.height * 0.6) {
+        (this as unknown as { _touchOrigin: { x: number; y: number } })._touchOrigin = { x: pointer.x, y: pointer.y };
+      }
+    });
+    this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
+      const origin = (this as unknown as { _touchOrigin?: { x: number; y: number } })._touchOrigin;
+      if (!origin || !pointer.isDown) return;
+      const dx = pointer.x - origin.x;
+      const dy = pointer.y - origin.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 8) return;
+      const state = this.registry.get("gameState") as GameState;
+      const norm = Math.max(dist, 1);
+      state.hero.facingX = dx / norm;
+      state.hero.facingY = dy / norm;
+    });
+    this.input.on("pointerup", () => {
+      (this as unknown as { _touchOrigin?: null })._touchOrigin = null;
+    });
   }
 }
