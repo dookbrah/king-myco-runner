@@ -35,59 +35,76 @@ export function generateTerrainTile(scene: Phaser.Scene, colorA: number, colorB:
   return key;
 }
 
-export function generateHeroSprites(scene: Phaser.Scene, colors: { cap: number; robe: number; primary: number }): void {
+export function generateHeroSprites(scene: Phaser.Scene, _colors: { cap: number; robe: number; primary: number }): void {
   const dirs = ["down", "up", "left", "right"];
-  const w = 16, h = 22;
+  const w = 16, h = 24;
 
-  dirs.forEach((dir, di) => {
+  dirs.forEach((dir) => {
     for (let frame = 0; frame < 4; frame++) {
       const key = `hero-${dir}-${frame}`;
       if (scene.textures.exists(key)) continue;
       const gfx = scene.make.graphics({ x: 0, y: 0 });
 
       // Shadow
-      gfx.fillStyle(0x000000, 0.2); gfx.fillRect(2, 19, 12, 3);
+      gfx.fillStyle(0x000000, 0.25); gfx.fillRect(2, 21, 12, 3);
 
-      // Body/robe
-      gfx.fillStyle(colors.robe); gfx.fillRect(2, 10, 12, 10);
-      gfx.fillStyle(colors.primary); gfx.fillRect(3, 12, 10, 7);
+      // Purple robe
+      gfx.fillStyle(0x7c3aed); gfx.fillRect(2, 12, 12, 10);
+      gfx.fillStyle(0x6d28d9); gfx.fillRect(3, 14, 10, 7);
+      gfx.fillStyle(0x5b21b6, 0.4); gfx.fillRect(2, 12, 1, 10); gfx.fillRect(13, 12, 1, 10);
 
-      // Head
-      gfx.fillStyle(colors.cap); gfx.fillRect(2, 2, 12, 8);
-      gfx.fillStyle(0xfacc15); gfx.fillRect(4, 0, 8, 3); // crown
+      // Red mushroom cap (rounded top)
+      gfx.fillStyle(0xdc2626); gfx.fillRect(2, 2, 12, 6);
+      gfx.fillStyle(0xef4444); gfx.fillRect(3, 1, 10, 2);
+      gfx.fillStyle(0xb91c1c); gfx.fillRect(2, 7, 12, 1);
+      // White spots on cap
+      gfx.fillStyle(0xfecaca); gfx.fillRect(4, 2, 2, 2); gfx.fillRect(9, 3, 2, 2); gfx.fillRect(6, 1, 2, 1);
 
-      // Eyes (direction-based)
-      gfx.fillStyle(0x020617);
+      // Black blank face
+      gfx.fillStyle(0x020617); gfx.fillRect(3, 8, 10, 5);
+
+      // Green glowing eye (direction-based)
+      gfx.fillStyle(0x86efac);
       if (dir === "down") {
-        gfx.fillRect(4, 6, 3, 3); gfx.fillRect(9, 6, 3, 3);
-        gfx.fillStyle(0x86efac); gfx.fillRect(5, 7, 1, 1); gfx.fillRect(10, 7, 1, 1);
+        gfx.fillRect(5, 9, 2, 2); gfx.fillRect(9, 9, 2, 2);
+        gfx.fillStyle(0x4ade80); gfx.fillRect(5, 10, 1, 1); gfx.fillRect(9, 10, 1, 1);
+        gfx.fillStyle(0x86efac, 0.3); gfx.fillRect(4, 8, 4, 4); gfx.fillRect(8, 8, 4, 4);
       } else if (dir === "up") {
-        gfx.fillRect(4, 4, 3, 2); gfx.fillRect(9, 4, 3, 2);
+        gfx.fillRect(5, 8, 2, 2); gfx.fillRect(9, 8, 2, 2);
       } else if (dir === "left") {
-        gfx.fillRect(3, 6, 3, 3);
-        gfx.fillStyle(0x86efac); gfx.fillRect(3, 7, 1, 1);
+        gfx.fillRect(4, 9, 2, 2);
+        gfx.fillStyle(0x4ade80); gfx.fillRect(4, 10, 1, 1);
+        gfx.fillStyle(0x86efac, 0.3); gfx.fillRect(3, 8, 4, 4);
       } else {
-        gfx.fillRect(10, 6, 3, 3);
-        gfx.fillStyle(0x86efac); gfx.fillRect(12, 7, 1, 1);
+        gfx.fillRect(10, 9, 2, 2);
+        gfx.fillStyle(0x4ade80); gfx.fillRect(11, 10, 1, 1);
+        gfx.fillStyle(0x86efac, 0.3); gfx.fillRect(9, 8, 4, 4);
       }
 
-      // Staff (right side)
+      // Magic staff with green flame
+      const staffSide = dir === "left" ? 0 : 13;
       if (dir !== "left") {
-        gfx.fillStyle(0x713f12); gfx.fillRect(14, 4, 2, 14);
-        gfx.fillStyle(0x22c55e); gfx.fillRect(13, 2, 3, 3);
+        gfx.fillStyle(0x713f12); gfx.fillRect(staffSide + 1, 6, 2, 16);
+        gfx.fillStyle(0x22c55e); gfx.fillRect(staffSide, 3, 3, 4);
+        gfx.fillStyle(0x86efac); gfx.fillRect(staffSide + 1, 2, 1, 2);
+        gfx.fillStyle(0x4ade80, 0.5); gfx.fillRect(staffSide - 1, 1, 5, 2);
+      } else {
+        gfx.fillStyle(0x713f12); gfx.fillRect(0, 6, 2, 16);
+        gfx.fillStyle(0x22c55e); gfx.fillRect(0, 3, 3, 4);
+        gfx.fillStyle(0x86efac); gfx.fillRect(1, 2, 1, 2);
       }
 
-      // Feet with walk frame
-      gfx.fillStyle(colors.primary);
+      // Feet with walk animation
+      gfx.fillStyle(0x4c1d95);
       const step = frame % 4;
       if (dir === "left" || dir === "right") {
         const off = step === 1 ? -2 : step === 3 ? 2 : 0;
-        gfx.fillRect(3, 19 + Math.abs(off), 4, 2);
-        gfx.fillRect(9, 19 - Math.abs(off), 4, 2);
+        gfx.fillRect(3, 21 + Math.abs(off) * 0.3, 4, 2);
+        gfx.fillRect(9, 21 - Math.abs(off) * 0.3, 4, 2);
       } else {
         const off = step === 1 ? -1 : step === 3 ? 1 : 0;
-        gfx.fillRect(3 + off, 19, 4, 2);
-        gfx.fillRect(9 - off, 19, 4, 2);
+        gfx.fillRect(3 + off, 21, 4, 2);
+        gfx.fillRect(9 - off, 21, 4, 2);
       }
 
       gfx.generateTexture(key, w, h);

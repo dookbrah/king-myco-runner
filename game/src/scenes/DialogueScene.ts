@@ -51,34 +51,42 @@ export class DialogueScene extends Phaser.Scene {
     this.boxH = Math.min(200, Math.round(height * 0.35));
     this.boxY = height - this.boxH - 8;
 
+    this.add.rectangle(width / 2, height / 2, width, height, 0x020617, 0.6).setDepth(90);
     this.add.rectangle(width / 2, this.boxY + this.boxH / 2, width - 12, this.boxH, 0x05070a)
-      .setStrokeStyle(3, 0xf8fafc).setDepth(1);
+      .setStrokeStyle(3, 0xf8fafc).setDepth(91);
+
+    const leaveBtn = this.add.text(width - 60, this.boxY + 8, "✕ LEAVE", {
+      fontFamily: "monospace", fontSize: "10px", fontStyle: "bold",
+      color: "#ef4444", backgroundColor: "rgba(5,7,10,0.9)",
+      padding: { x: 6, y: 3 },
+    }).setOrigin(0.5, 0).setDepth(99).setInteractive();
+    leaveBtn.on("pointerdown", () => this.close());
 
     this.mycoFrame = this.add.rectangle(28, this.boxY + 26, 40, 40, 0x020617)
-      .setStrokeStyle(2, 0x86efac).setDepth(2);
+      .setStrokeStyle(2, 0x86efac).setDepth(92);
     this.mycoPortrait = this.add.text(28, this.boxY + 26, "👑", { fontSize: "20px" })
-      .setOrigin(0.5).setDepth(3);
+      .setOrigin(0.5).setDepth(93);
     this.add.text(28, this.boxY + 50, "MYCO", {
       fontFamily: "monospace", fontSize: "7px", color: "#86efac",
-    }).setOrigin(0.5).setDepth(2);
+    }).setOrigin(0.5).setDepth(92);
 
     this.npcFrame = this.add.rectangle(width - 28, this.boxY + 26, 40, 40, 0x020617)
-      .setStrokeStyle(2, 0xf8fafc).setDepth(2);
+      .setStrokeStyle(2, 0xf8fafc).setDepth(92);
     this.npcPortrait = this.add.text(width - 28, this.boxY + 26, this.payload.portrait || "🧙", { fontSize: "20px" })
-      .setOrigin(0.5).setDepth(3);
+      .setOrigin(0.5).setDepth(93);
     this.add.text(width - 28, this.boxY + 50, this.payload.title.slice(0, 8), {
       fontFamily: "monospace", fontSize: "7px", color: "#94a3b8",
-    }).setOrigin(0.5).setDepth(2);
+    }).setOrigin(0.5).setDepth(92);
 
     this.speakerText = this.add.text(60, this.boxY + 10, "", {
       fontFamily: "monospace", fontSize: "11px", color: "#facc15",
-    }).setDepth(2);
+    }).setDepth(92);
 
     this.bodyText = this.add.text(16, this.boxY + 28, "", {
       fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
       fontSize: "13px", color: "#f8fafc",
       wordWrap: { width: width - 90 }, lineSpacing: 3,
-    }).setDepth(2);
+    }).setDepth(92);
 
     const state = this.registry.get("gameState") as GameState;
     this.lines = this.getAdaptiveGreeting(state);
@@ -183,7 +191,7 @@ export class DialogueScene extends Phaser.Scene {
         fontFamily: "monospace", fontSize: "11px",
         color: "#dbeafe", backgroundColor: "rgba(5,7,10,0.8)",
         padding: { x: 8, y: 3 },
-      }).setOrigin(0.5).setDepth(5).setInteractive();
+      }).setOrigin(0.5).setDepth(95).setInteractive();
 
       btn.on("pointerdown", () => {
         this.clearChoiceButtons();
@@ -226,7 +234,7 @@ export class DialogueScene extends Phaser.Scene {
         color: "#" + color.toString(16).padStart(6, "0"),
         backgroundColor: "rgba(5,7,10,0.9)",
         padding: { x: 6, y: 5 },
-      }).setOrigin(0.5).setDepth(5).setInteractive();
+      }).setOrigin(0.5).setDepth(95).setInteractive();
 
       btn.on("pointerdown", () => this.handleChoice(choice, state));
       this.choiceButtons.push(btn);
