@@ -2,8 +2,7 @@ const MYCO_MINT = "9BySdih23rwDPZB8auQXX9k5u6a2Nk4GSDji2MB6pump";
 const REQUIRED_MYCO = 10_000;
 const MYCO_DECIMALS = 6;
 const RPC_URLS = [
-  "https://api.mainnet-beta.solana.com",
-  "https://solana-mainnet.g.alchemy.com/v2/demo",
+  "/api/solana/rpc-proxy",
 ];
 
 interface PhantomProvider {
