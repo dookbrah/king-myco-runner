@@ -251,9 +251,11 @@ const start = async (): Promise<void> => {
       const routePath =
         pathname.startsWith("/api/") ||
         pathname.startsWith("/webhooks/") ||
+        pathname.startsWith("/game-phaser/") ||
         pathname === "/health" ||
         pathname === "/dev/myco-quest" ||
-        pathname === "/game/myco-quest"
+        pathname === "/game/myco-quest" ||
+        pathname === "/game/myco-quest-phaser"
           ? pathname
           : `/api${pathname}`;
 
@@ -304,6 +306,46 @@ const start = async (): Promise<void> => {
           return;
         }
         return sendHtml(response, 200, html);
+      }
+
+      if (
+        (method === "GET" || method === "HEAD") &&
+        (routePath === "/game/myco-quest-phaser" || routePath === "/api/game/myco-quest-phaser")
+      ) {
+        const html = await readFile("public/game-phaser/index.html", "utf8");
+        if (method === "HEAD") {
+          response.statusCode = 200;
+          response.setHeader("content-type", "text/html; charset=utf-8");
+          response.end();
+          return;
+        }
+        return sendHtml(response, 200, html);
+      }
+
+      if (
+        (method === "GET" || method === "HEAD") &&
+        routePath.startsWith("/game-phaser/")
+      ) {
+        const filePath = `public${routePath}`;
+        try {
+          const data = await readFile(filePath);
+          const ext = routePath.split(".").pop() ?? "";
+          const mimeTypes: Record<string, string> = {
+            js: "application/javascript",
+            css: "text/css",
+            html: "text/html",
+            json: "application/json",
+            png: "image/png",
+            svg: "image/svg+xml",
+          };
+          response.statusCode = 200;
+          response.setHeader("content-type", mimeTypes[ext] ?? "application/octet-stream");
+          response.setHeader("cache-control", "public, max-age=31536000, immutable");
+          response.end(data);
+          return;
+        } catch (_e) {
+          return sendJson(response, 404, { error: "not_found" });
+        }
       }
 
       if (method === "POST" && routePath === "/api/identity/link") {
