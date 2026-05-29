@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  base: "/game-phaser/",
+  base: "/api/game-phaser/",
   build: {
     outDir: "../public/game-phaser",
     emptyOutDir: true,
