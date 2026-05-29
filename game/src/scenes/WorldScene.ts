@@ -65,6 +65,7 @@ export class WorldScene extends Phaser.Scene {
   private audio!: AudioManager;
   private projectiles: { sprite: Phaser.GameObjects.Rectangle; vx: number; vy: number; damage: number; isHero: boolean; life: number }[] = [];
   private lastShotAt = 0;
+  private contactCooldownUntil = 0;
   private saveTimer = 0;
 
   constructor() {
@@ -113,6 +114,7 @@ export class WorldScene extends Phaser.Scene {
     }
 
     state.mode = "explore";
+    this.contactCooldownUntil = this.time.now + 800;
     this.scene.launch("HudScene");
     linkIdentity(state).catch(() => {});
     this.saveTimer = 0;
@@ -238,7 +240,8 @@ export class WorldScene extends Phaser.Scene {
         e.wanderDirX *= -1;
         e.wanderDirY *= -1;
       }
-      if (Phaser.Math.Distance.Between(state.hero.x, state.hero.y, e.body.x, e.body.y) < (e.def.boss ? 36 : 30)) {
+      if (this.time.now >= this.contactCooldownUntil && Phaser.Math.Distance.Between(state.hero.x, state.hero.y, e.body.x, e.body.y) < (e.def.boss ? 36 : 30)) {
+        this.contactCooldownUntil = this.time.now + 2000;
         state.mode = "battle";
         this.audio.setMode(e.def.boss ? "boss" : "battle");
         this.audio.playSfx("battle");
@@ -381,6 +384,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private checkInteraction(state: GameState): void {
+    if (this.time.now < this.contactCooldownUntil) return;
     for (const n of this.npcs) {
       if (Phaser.Math.Distance.Between(state.hero.x, state.hero.y, n.body.x, n.body.y) < 22) {
         this.audio.playSfx("talk");
@@ -408,6 +412,7 @@ export class WorldScene extends Phaser.Scene {
       const dx = state.hero.x - (s.x + s.w / 2);
       const dy = state.hero.y - (s.y + s.h / 2);
       if (Math.abs(dx) < s.w / 2 + 8 && Math.abs(dy) < s.h / 2 + 8) {
+        this.contactCooldownUntil = this.time.now + 1500;
         this.audio.playSfx("portal");
         this.scene.pause();
         if (s.type === "burn-pit" || s.type === "shrine") { this.scene.launch("BurnPitScene"); }
