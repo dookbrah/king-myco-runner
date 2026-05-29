@@ -173,6 +173,8 @@ export class WorldScene extends Phaser.Scene {
     else if (this.cursors?.down?.isDown || this.wasd?.s?.isDown) ay = 1;
     else if (this.cursors?.left?.isDown || this.wasd?.a?.isDown) ax = -1;
     else if (this.cursors?.right?.isDown || this.wasd?.d?.isDown) ax = 1;
+    const mobileDir = (this as unknown as { _mobileDir?: { x: number; y: number } | null })._mobileDir;
+    if (mobileDir) { ax = mobileDir.x; ay = mobileDir.y; }
     if (ax === 0 && ay === 0) return;
 
     state.hero.facingX = ax;
