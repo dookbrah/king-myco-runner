@@ -304,7 +304,7 @@ export class WorldScene extends Phaser.Scene {
       this.add.rectangle(def.x, def.y + 12, 16, 3, 0x020617, 0.2).setDepth(7);
       const task = NPC_TASKS[Math.floor(Math.random() * NPC_TASKS.length)];
       const label = this.add.text(def.x, def.y - 18, task, { fontFamily: "monospace", fontSize: "7px", color: "#94a3b8" }).setOrigin(0.5).setDepth(9);
-      this.npcs.push({ def, body, accent, feetL, feetR, label, walkDist: 0, wanderDirX: 0, wanderDirY: 0, wanderShiftAt: this.time.now + Math.random() * 3000, task, taskChangeAt: this.time.now + 15000 + Math.random() * 30000, homeX: def.x, homeY: def.y });
+      this.npcs.push({ def, body, accent: acc, feetL, feetR, label, walkDist: 0, wanderDirX: 0, wanderDirY: 0, wanderShiftAt: this.time.now + Math.random() * 3000, task, taskChangeAt: this.time.now + 15000 + Math.random() * 30000, homeX: def.x, homeY: def.y });
     }
   }
 
