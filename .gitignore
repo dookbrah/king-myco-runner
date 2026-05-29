@@ -7,3 +7,4 @@ data/
 .env.local
 playwright-report/
 test-results/
+game/node_modules
