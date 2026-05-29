@@ -353,6 +353,28 @@ const start = async (): Promise<void> => {
         }
       }
 
+      if (method === "POST" && routePath === "/api/solana/rpc-proxy") {
+        const rawBody = await readRawBody(request);
+        try {
+          const rpcUrl = process.env.SOLANA_RPC_URL ?? "https://api.mainnet-beta.solana.com";
+          const rpcRes = await fetch(rpcUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: rawBody,
+          });
+          const rpcData = await rpcRes.text();
+          response.statusCode = 200;
+          response.setHeader("content-type", "application/json; charset=utf-8");
+          response.end(rpcData);
+          return;
+        } catch (error) {
+          return sendJson(response, 502, {
+            error: "rpc_error",
+            message: error instanceof Error ? error.message : "RPC request failed",
+          });
+        }
+      }
+
       if (method === "POST" && routePath === "/api/identity/link") {
         const rawBody = await readRawBody(request);
         const body = parseJsonBody<Record<string, unknown>>(rawBody);
