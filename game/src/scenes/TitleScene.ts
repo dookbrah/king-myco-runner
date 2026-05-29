@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { CLAN_PROFILES } from "../data/clans";
 import type { GameState } from "../systems/GameState";
 import { connectWallet, checkMycoBalance, MYCO_REQUIRED_AMOUNT } from "../systems/SolanaGate";
+import { AudioManager } from "../systems/AudioManager";
 
 export class TitleScene extends Phaser.Scene {
   private starGfx!: Phaser.GameObjects.Graphics;
@@ -11,7 +12,126 @@ export class TitleScene extends Phaser.Scene {
     super({ key: "TitleScene" });
   }
 
+  init(): void {
+    const skipLore = this.registry.get("loreShown") as boolean;
+    if (skipLore) {
+      this.phase = "title";
+    }
+  }
+
+  private phase: "lore" | "title" = "lore";
+  private loreText!: Phaser.GameObjects.Text;
+  private loreY = 0;
+  private audio!: AudioManager;
+
   create(): void {
+    const { width, height } = this.scale;
+
+    if (this.phase === "lore") {
+      this.audio = new AudioManager();
+      this.audio.init();
+      this.audio.setMode("title");
+      this.registry.set("audio", this.audio);
+      this.showLoreCrawl(width, height);
+      return;
+    }
+
+    this.showTitleScreen();
+  }
+
+  private showLoreCrawl(width: number, height: number): void {
+    this.add.rectangle(width / 2, height / 2, width, height, 0x020612).setDepth(0);
+
+    const loreLines = [
+      "",
+      "In the age before corruption,",
+      "the Mycelial Network connected all life.",
+      "",
+      "Five realms thrived under the Crown of Six Arts,",
+      "ruled by King Myco — the Mushroom Sorcerer.",
+      "",
+      "His power flowed through every root,",
+      "every spore, every living thread.",
+      "",
+      "Then came Dark Mycelius.",
+      "",
+      "Once a guardian of the Solana Chainlands,",
+      "he discovered how to inject corruption",
+      "into the digital backbone of all realms.",
+      "",
+      "On the Night of Silent Spores,",
+      "he shattered King Myco's crown",
+      "and scattered the six memory-arts",
+      "across the land.",
+      "",
+      "The realm bosses fell under his control.",
+      "The Rougarou. The Tri-Drake.",
+      "The Evil Crab. The corrupted validators.",
+      "",
+      "The portals sealed.",
+      "The Mycelial Network went dark.",
+      "",
+      "Now, with nothing but a broken staff",
+      "and the last ember of crown fire,",
+      "King Myco rises again.",
+      "",
+      "Reclaim the six memory-arts.",
+      "Defeat the corrupted guardians.",
+      "Restore the network.",
+      "",
+      "Before the darkness becomes permanent.",
+      "",
+      "",
+      "— K I N G   M Y C O   Q U E S T —",
+      "",
+      "",
+    ];
+
+    const fullText = loreLines.join("\n");
+    this.loreText = this.add.text(width / 2, height + 20, fullText, {
+      fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+      fontSize: "14px",
+      color: "#d4a853",
+      align: "center",
+      lineSpacing: 8,
+      wordWrap: { width: width - 60 },
+    }).setOrigin(0.5, 0).setDepth(2);
+
+    this.loreY = height + 20;
+
+    // Gradient overlay top and bottom
+    const gradTop = this.add.graphics().setDepth(3);
+    gradTop.fillGradientStyle(0x020612, 0x020612, 0x020612, 0x020612, 1, 1, 0, 0);
+    gradTop.fillRect(0, 0, width, 60);
+    const gradBot = this.add.graphics().setDepth(3);
+    gradBot.fillGradientStyle(0x020612, 0x020612, 0x020612, 0x020612, 0, 0, 1, 1);
+    gradBot.fillRect(0, height - 60, width, 60);
+
+    // Title at top
+    this.add.text(width / 2, 20, "MYCO QUEST", {
+      fontFamily: "monospace", fontSize: "10px", color: "#64748b", letterSpacing: 4,
+    }).setOrigin(0.5).setDepth(4);
+
+    // Skip button
+    const skipBtn = this.add.text(width - 16, height - 16, "SKIP ▶", {
+      fontFamily: "monospace", fontSize: "11px", color: "#94a3b8",
+      backgroundColor: "rgba(2,6,18,0.8)", padding: { x: 8, y: 4 },
+    }).setOrigin(1, 1).setDepth(5).setInteractive();
+    skipBtn.on("pointerdown", () => this.endLoreCrawl());
+
+    this.input.on("pointerdown", () => {
+      if (this.phase === "lore") this.endLoreCrawl();
+    });
+  }
+
+  private endLoreCrawl(): void {
+    if (this.phase !== "lore") return;
+    this.phase = "title";
+    this.registry.set("loreShown", true);
+    this.scene.restart();
+  }
+
+  private showTitleScreen(): void {
     const { width, height } = this.scale;
     const tile = Math.max(8, Math.round(Math.min(width, height) / 80));
 
@@ -35,6 +155,13 @@ export class TitleScene extends Phaser.Scene {
       });
     }
     this.starGfx = this.add.graphics().setDepth(-1);
+
+    if (!this.audio) {
+      this.audio = new AudioManager();
+      this.audio.init();
+      this.audio.setMode("title");
+      this.registry.set("audio", this.audio);
+    }
 
     const overlay = this.add.dom(width / 2, height / 2).createFromHTML(`
       <div style="text-align:center; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #f8fafc; width: ${Math.min(440, width - 32)}px">
@@ -174,7 +301,16 @@ export class TitleScene extends Phaser.Scene {
     }
   }
 
-  update(): void {
+  update(_time: number, delta: number): void {
+    if (this.phase === "lore") {
+      this.loreY -= delta * 0.03;
+      if (this.loreText) this.loreText.setY(this.loreY);
+      if (this.loreY < -this.loreText.height - 40) {
+        this.endLoreCrawl();
+      }
+      return;
+    }
+    if (!this.starGfx) return;
     const now = this.time.now;
     this.starGfx.clear();
     for (const star of this.stars) {
