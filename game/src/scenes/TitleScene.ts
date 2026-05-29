@@ -124,6 +124,7 @@ export class TitleScene extends Phaser.Scene {
 
         const result = await checkMycoBalance(wallet);
         console.log("MYCO balance check:", wallet, result);
+        console.log("MYCO method used:", result.method);
 
         if (tokenStatus) {
           if (result.hasEnough) {
@@ -132,7 +133,7 @@ export class TitleScene extends Phaser.Scene {
             tokenStatus.style.color = "#86efac";
             enableStart();
           } else {
-            tokenStatus.textContent = `❌ ${result.balance.toLocaleString()} $MYCO — Need ${MYCO_REQUIRED_AMOUNT.toLocaleString()} to play`;
+            tokenStatus.textContent = `❌ ${result.balance.toLocaleString()} $MYCO — Need ${MYCO_REQUIRED_AMOUNT.toLocaleString()} to play (${result.method})`;
             tokenStatus.style.borderColor = "#ef4444";
             tokenStatus.style.color = "#fca5a5";
             disableStart("INSUFFICIENT $MYCO");
