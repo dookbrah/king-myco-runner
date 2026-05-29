@@ -116,6 +116,7 @@ export class WorldScene extends Phaser.Scene {
 
     state.mode = "explore";
     this.contactCooldownUntil = this.time.now + 800;
+    this.addMobileControls();
     this.scene.launch("HudScene");
 
     this.events.on("resume", () => {
@@ -461,6 +462,54 @@ export class WorldScene extends Phaser.Scene {
         return;
       }
     }
+  }
+
+  private addMobileControls(): void {
+    const isMobile = "ontouchstart" in window || navigator.maxTouchPoints > 0 || window.innerWidth <= 900 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (!isMobile) return;
+    const cam = this.cameras.main;
+    const padSize = 44;
+    const padGap = 4;
+    const padX = 16;
+    const padY = cam.height - padSize * 3 - padGap * 2 - 16;
+
+    const makeDpadBtn = (x: number, y: number, label: string, dir: { x: number; y: number }) => {
+      const btn = this.add.text(x, y, label, {
+        fontFamily: "monospace", fontSize: "16px", fontStyle: "bold", color: "#f8fafc",
+        backgroundColor: "rgba(12, 25, 49, 0.88)",
+        padding: { x: 12, y: 8 },
+        fixedWidth: padSize, fixedHeight: padSize,
+        align: "center",
+      }).setScrollFactor(0).setDepth(100).setInteractive();
+      btn.on("pointerdown", () => {
+        const state = this.registry.get("gameState") as GameState;
+        state.hero.facingX = dir.x;
+        state.hero.facingY = dir.y;
+        (this as unknown as { _mobileDir: { x: number; y: number } })._mobileDir = dir;
+      });
+      btn.on("pointerup", () => { (this as unknown as { _mobileDir: null })._mobileDir = null; });
+      btn.on("pointerout", () => { (this as unknown as { _mobileDir: null })._mobileDir = null; });
+      return btn;
+    };
+
+    const cx = padX + padSize + padGap;
+    const cy = padY + padSize + padGap;
+    makeDpadBtn(cx, padY, "▲", { x: 0, y: -1 });
+    makeDpadBtn(padX, cy, "◀", { x: -1, y: 0 });
+    makeDpadBtn(cx + padSize + padGap, cy, "▶", { x: 1, y: 0 });
+    makeDpadBtn(cx, cy + padSize + padGap, "▼", { x: 0, y: 1 });
+
+    const atkBtn = this.add.text(cam.width - 80, cam.height - 80, "🔥", {
+      fontFamily: "monospace", fontSize: "28px",
+      backgroundColor: "rgba(34, 197, 94, 0.25)",
+      padding: { x: 14, y: 10 },
+      fixedWidth: 64, fixedHeight: 64,
+      align: "center",
+    }).setScrollFactor(0).setDepth(100).setInteractive();
+    atkBtn.on("pointerdown", () => {
+      const state = this.registry.get("gameState") as GameState;
+      this.heroShoot(state);
+    });
   }
 
   private drawTerrainOnce(realm: (typeof REALMS)[0]): void {
