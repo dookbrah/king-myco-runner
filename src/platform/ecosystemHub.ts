@@ -455,6 +455,7 @@ export class KingMycoEcosystemHub {
     );
 
     const profile = this.repository.getOrCreateProfile(playerId);
+    const wallet = this.repository.getWallet(playerId);
     const weakestLane = Object.entries(profile.laneMastery).sort(
       (left, right) => left[1] - right[1],
     )[0]?.[0] ?? "tactics";
@@ -465,21 +466,102 @@ export class KingMycoEcosystemHub {
           (encounter) => encounter.suggestedLearningObjective,
         )?.suggestedLearningObjective;
 
-    const recommendations = [
-      `Focus one rotation on ${weakestLane} lane consistency.`,
-      `Use your lowest-mastery element to trigger adaptive unlock opportunities.`,
-      `Target a clean streak of 3 encounters before increasing risk actions.`,
+    const prompt = (request.prompt ?? "").toLowerCase();
+    const isMycoQuestion = prompt.includes("myco") || prompt.includes("$myco") || prompt.includes("token");
+    const isSolanaQuestion = prompt.includes("solana") || prompt.includes("sol") || prompt.includes("wallet") || prompt.includes("blockchain") || prompt.includes("web3");
+    const isLoreQuestion = prompt.includes("lore") || prompt.includes("story") || prompt.includes("kingdom") || prompt.includes("dark mycelius");
+    const isGameQuestion = prompt.includes("game") || prompt.includes("play") || prompt.includes("how") || prompt.includes("tip");
+
+    const wisdomPrefixes = [
+      "🍄 *adjusts mushroom cap wisely*",
+      "🌿 The mycelial threads whisper...",
+      "✨ *staff glows with ancient knowledge*",
+      "🔮 The spore-sight reveals...",
+      "👑 The Crown Fragment remembers...",
+      "⚡ Through the root network I sense...",
     ];
+    const prefix = wisdomPrefixes[Math.floor(Math.random() * wisdomPrefixes.length)];
 
-    if (nextObjective) {
-      recommendations.unshift(nextObjective);
+    let response: string;
+    const recommendations: string[] = [];
+
+    if (isMycoQuestion) {
+      response = `${prefix}\n\n` +
+        `$MYCO is the lifeblood of the Mycelial Network — the fungal token that powers all realm commerce. ` +
+        `It flows through every transaction like spores through wind.\n\n` +
+        `🍄 Token: $MYCO\n` +
+        `⛓️ Chain: Solana (SPL)\n` +
+        `🏰 Utility: Hold 10,000 to enter King Myco Quest. Burn for realm power. Stake for governance.\n\n` +
+        `The more $MYCO the community holds, the stronger the Mycelial Network becomes. ` +
+        `Dark Mycelius tried to corrupt it — but fungal networks are resilient. They always grow back. 🌱`;
+      recommendations.push(
+        "Hold $MYCO to access King Myco Quest and earn spore rewards.",
+        "$MYCO burns strengthen the realm network — sacrifice fuels restoration.",
+        "The token's power grows with the community. Every holder is a node in the network.",
+      );
+    } else if (isSolanaQuestion) {
+      response = `${prefix}\n\n` +
+        `Ah, the Solana Chainlands... the digital backbone of all realm commerce. ` +
+        `Fast as lightning, cheap as morning dew on a mushroom cap.\n\n` +
+        `🔗 Solana processes thousands of transactions per second — ` +
+        `each one a pulse in the Mycelial Network.\n\n` +
+        `Your Phantom wallet is your key to the kingdom. Connect it, verify it, ` +
+        `and the chain recognizes you as a Crown Bearer.\n\n` +
+        `The validators are healing. Each $MYCO holder strengthens the consensus. ` +
+        `Dark Mycelius corrupted the chain once — but we rebuild, block by block. ⛓️✨`;
+      recommendations.push(
+        "Connect Phantom wallet to verify your identity on-chain.",
+        "Solana's speed means instant spore rewards — no waiting for confirmations.",
+        "Your wallet signature carries the old crown hash. The chain remembers.",
+      );
+    } else if (isLoreQuestion) {
+      response = `${prefix}\n\n` +
+        `Long ago, the Mycelial Network connected five realms through an underground root lattice. ` +
+        `King Myco — the Mushroom Sorcerer — maintained harmony through the Crown of Six Arts.\n\n` +
+        `Dark Mycelius was once the Chainlands' guardian. Brilliant, yes. But ambition corrupted him. ` +
+        `He injected false transactions into the root lattice, poisoning the validators one by one.\n\n` +
+        `On the Night of Silent Spores, he shattered the Crown and scattered its memory-arts. ` +
+        `The Rougarou, the Tri-Drake, the Evil Crab — all fell under his influence.\n\n` +
+        `Now King Myco rises with a broken staff and the last ember of crown fire. ` +
+        `The quest: reclaim six arts, defeat five bosses, restore the network. 🍄👑`;
+      recommendations.push(
+        "Each realm boss guards a memory-art. Defeat them to restore the Crown.",
+        "The Mycelial Network heals when corruption is purged — boss by boss.",
+        "Dark Mycelius awaits in the Solana Chainlands. Prepare well.",
+      );
+    } else if (isGameQuestion) {
+      response = `${prefix}\n\n` +
+        `The path of the Crown Bearer is walked one step at a time, young spore.\n\n` +
+        `🎮 Move with arrows/WASD (4 directions only — like the old ways)\n` +
+        `🔥 Space to cast green flame in the direction you face\n` +
+        `🏰 Walk into doors to enter buildings\n` +
+        `🗣️ Walk into NPCs to hear their wisdom\n` +
+        `⚔️ Walk into enemies to engage in battle\n` +
+        `🌀 Walk into portals to travel between realms\n\n` +
+        `Your ${weakestLane} lane needs attention. The spores grow strongest where you practice most. ` +
+        `And remember — mercy often reveals paths that violence cannot. 🌿`;
+      recommendations.push(
+        `Train your ${weakestLane} lane — the director adapts to your growth.`,
+        "Explore structures for collectible nodes. Each gives +15-25 spores.",
+        "NPCs offer quests, puzzles, and clues. Talk to everyone.",
+        "Hold $MYCO for access. Burn spores for realm power.",
+      );
+    } else {
+      response = `${prefix}\n\n` +
+        `Hmm... *twirls staff thoughtfully*\n\n` +
+        `Your current growth edge is the ${weakestLane} lane. ` +
+        `The mycelial threads suggest you focus there next.\n\n` +
+        `You carry ${wallet.spores} spores and have walked ${profile.sessionsPlayed} sessions. ` +
+        `${profile.morality >= 0 ? "The light path guides you — compassion opens hidden shrine routes." : "The shadow grows... but even darkness has its power in the right hands."}\n\n` +
+        `${nextObjective ? `Your next objective: ${nextObjective}` : "Seek the nearest realm boss. Each one you free restores a piece of the Crown."}\n\n` +
+        `Remember: the strongest mushroom grows from the darkest soil. 🍄✨`;
+      recommendations.push(
+        `Focus on ${weakestLane} lane consistency for your next rotation.`,
+        "Use your lowest-mastery element to trigger adaptive unlocks.",
+        "Target a clean streak of 3 encounters before increasing risk.",
+      );
+      if (nextObjective) recommendations.unshift(nextObjective);
     }
-
-    const response =
-      `Profile synced for ${playerId}. ` +
-      `Your current growth edge is ${weakestLane}. ` +
-      `${nextObjective ?? "Prioritize precision plus exploration actions"} ` +
-      `to force the director to open more unique encounters.`;
 
     await this.emitEvent("coaching_generated", {
       playerId,
@@ -487,6 +569,7 @@ export class KingMycoEcosystemHub {
       payload: {
         focusLane: weakestLane,
         recommendationCount: recommendations.length,
+        questionType: isMycoQuestion ? "myco" : isSolanaQuestion ? "solana" : isLoreQuestion ? "lore" : isGameQuestion ? "game" : "general",
       },
     });
 
