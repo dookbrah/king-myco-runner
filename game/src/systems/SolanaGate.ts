@@ -2,10 +2,12 @@ const MYCO_MINT = "9BySdih23rwDPZB8auQXX9k5u6a2Nk4GSDji2MB6pump";
 const REQUIRED_MYCO = 10_000;
 const RPC_URL = "https://api.mainnet-beta.solana.com";
 
+const TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+const TOKEN_2022_PROGRAM = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
+
 interface PhantomProvider {
   isPhantom?: boolean;
   connect: () => Promise<{ publicKey?: { toBase58?: () => string; toString?: () => string } }>;
-  signMessage?: (message: Uint8Array, encoding: string) => Promise<{ signature: Uint8Array }>;
 }
 
 function getPhantom(): PhantomProvider | null {
@@ -30,57 +32,81 @@ export async function connectWallet(): Promise<string | null> {
   return null;
 }
 
-export async function checkMycoBalance(walletAddress: string): Promise<{ balance: number; hasEnough: boolean }> {
+async function rpcCall(method: string, params: unknown[]): Promise<unknown> {
+  const res = await fetch(RPC_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+  });
+  return res.json();
+}
+
+async function getTokenBalanceForProgram(walletAddress: string, programId: string): Promise<number> {
   try {
-    const body = {
-      jsonrpc: "2.0",
-      id: 1,
-      method: "getTokenAccountsByOwner",
-      params: [
-        walletAddress,
-        { mint: MYCO_MINT },
-        { encoding: "jsonParsed" },
-      ],
-    };
+    const data = await rpcCall("getTokenAccountsByOwner", [
+      walletAddress,
+      { mint: MYCO_MINT },
+      { encoding: "jsonParsed", commitment: "confirmed" },
+    ]) as { result?: { value?: Array<{ account?: { data?: { parsed?: { info?: { tokenAmount?: { uiAmount?: number } } } } } }> } };
 
-    const res = await fetch(RPC_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    let total = 0;
+    for (const account of data?.result?.value ?? []) {
+      total += account?.account?.data?.parsed?.info?.tokenAmount?.uiAmount ?? 0;
+    }
+    return total;
+  } catch (_e) {
+    return 0;
+  }
+}
 
-    const data = await res.json() as {
-      result?: {
-        value?: Array<{
-          account?: {
-            data?: {
-              parsed?: {
-                info?: {
-                  tokenAmount?: {
-                    uiAmount?: number;
-                  };
-                };
-              };
-            };
-          };
-        }>;
-      };
-    };
+async function getTokenBalanceByAccounts(walletAddress: string): Promise<number> {
+  try {
+    const data = await rpcCall("getTokenAccountsByOwner", [
+      walletAddress,
+      { programId: TOKEN_PROGRAM },
+      { encoding: "jsonParsed", commitment: "confirmed" },
+    ]) as { result?: { value?: Array<{ account?: { data?: { parsed?: { info?: { mint?: string; tokenAmount?: { uiAmount?: number } } } } } }> } };
 
-    const accounts = data?.result?.value ?? [];
-    let totalBalance = 0;
-    for (const account of accounts) {
-      const amount = account?.account?.data?.parsed?.info?.tokenAmount?.uiAmount ?? 0;
-      totalBalance += amount;
+    let total = 0;
+    for (const account of data?.result?.value ?? []) {
+      const info = account?.account?.data?.parsed?.info;
+      if (info?.mint === MYCO_MINT) {
+        total += info?.tokenAmount?.uiAmount ?? 0;
+      }
     }
 
-    return {
-      balance: Math.floor(totalBalance),
-      hasEnough: totalBalance >= REQUIRED_MYCO,
-    };
+    if (total > 0) return total;
+
+    const data2022 = await rpcCall("getTokenAccountsByOwner", [
+      walletAddress,
+      { programId: TOKEN_2022_PROGRAM },
+      { encoding: "jsonParsed", commitment: "confirmed" },
+    ]) as { result?: { value?: Array<{ account?: { data?: { parsed?: { info?: { mint?: string; tokenAmount?: { uiAmount?: number } } } } } }> } };
+
+    for (const account of data2022?.result?.value ?? []) {
+      const info = account?.account?.data?.parsed?.info;
+      if (info?.mint === MYCO_MINT) {
+        total += info?.tokenAmount?.uiAmount ?? 0;
+      }
+    }
+
+    return total;
   } catch (_e) {
-    return { balance: 0, hasEnough: false };
+    return 0;
   }
+}
+
+export async function checkMycoBalance(walletAddress: string): Promise<{ balance: number; hasEnough: boolean }> {
+  let balance = await getTokenBalanceForProgram(walletAddress, TOKEN_PROGRAM);
+
+  if (balance === 0) {
+    balance = await getTokenBalanceByAccounts(walletAddress);
+  }
+
+  return {
+    balance: Math.floor(balance),
+    hasEnough: balance >= REQUIRED_MYCO,
+  };
 }
 
 export const MYCO_TOKEN_MINT = MYCO_MINT;
