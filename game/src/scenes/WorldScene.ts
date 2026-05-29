@@ -183,8 +183,13 @@ export class WorldScene extends Phaser.Scene {
     const ny = state.hero.y + ay * speed * dt;
 
     const realm = REALMS.find((r) => r.id === state.currentRealmId) ?? REALMS[0];
-    const blocked = STRUCTURES.filter((s) => s.solid && s.region === realm.id).some((s) =>
-      nx - 7 < s.x + s.w && nx + 7 > s.x && ny - 8 < s.y + s.h && ny + 8 > s.y);
+    const blocked = STRUCTURES.filter((s) => s.solid && s.region === realm.id).some((s) => {
+      const doorX = s.x + s.w / 2;
+      const doorY = s.y + s.h - 4;
+      const nearDoor = Math.abs(nx - doorX) < 10 && Math.abs(ny - doorY) < 12;
+      if (nearDoor) return false;
+      return nx - 7 < s.x + s.w && nx + 7 > s.x && ny - 8 < s.y + s.h && ny + 8 > s.y;
+    });
 
     if (!blocked) {
       state.hero.x = Phaser.Math.Clamp(nx, realm.x + 16, realm.x + realm.w - 16);
@@ -439,9 +444,9 @@ export class WorldScene extends Phaser.Scene {
     }
     const realm = REALMS.find((r) => r.id === state.currentRealmId) ?? REALMS[0];
     for (const s of STRUCTURES.filter((st) => st.region === realm.id)) {
-      const dx = state.hero.x - (s.x + s.w / 2);
-      const dy = state.hero.y - (s.y + s.h / 2);
-      if (Math.abs(dx) < s.w / 2 + 8 && Math.abs(dy) < s.h / 2 + 8) {
+      const doorX = s.x + s.w / 2;
+      const doorY = s.y + s.h - 4;
+      if (Phaser.Math.Distance.Between(state.hero.x, state.hero.y, doorX, doorY) < 20) {
         this.contactCooldownUntil = this.time.now + 1500;
         this.audio.playSfx("portal");
         this.scene.pause();
