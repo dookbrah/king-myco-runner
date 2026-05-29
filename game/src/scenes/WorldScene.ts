@@ -426,10 +426,19 @@ export class WorldScene extends Phaser.Scene {
       if (Phaser.Math.Distance.Between(state.hero.x, state.hero.y, n.body.x, n.body.y) < 50) {
         this.audio.playSfx("talk");
         this.scene.pause();
+        const npcPortraits: Record<string, string> = {
+          "elder-myca": "🧙", "spore-weaver": "🧵", "crown-archivist": "📜",
+          "fen-witch": "🧪", "moss-hermit": "🌿", "ember-smith": "🔥",
+          "peak-scout": "🏔️", "reef-diver": "🌊", "coral-singer": "🎵",
+          "chain-oracle": "⛓️", "hash-monk": "📿", "green-trader": "💰",
+          "root-sage": "🌱", "ash-wanderer": "🌋",
+        };
         this.scene.launch("DialogueScene", {
-          title: n.def.name, portrait: "🧙", body: n.def.intro,
-          choices: [{ id: "myco", label: "Mycoside", color: "#22c55e" }, { id: "dark", label: "Darkside", color: "#ef4444" }, { id: "close", label: "Leave", color: "#94a3b8" }],
-          onChoice: (id: string) => { if (id === "myco") state.hero.morality += 3; else if (id === "dark") state.hero.morality -= 3; state.progress.interactedNpcs.add(n.def.id); },
+          title: n.def.name,
+          portrait: npcPortraits[n.def.id] ?? "🧙",
+          body: n.def.intro,
+          npcId: n.def.id,
+          onChoice: (id: string) => { state.progress.interactedNpcs.add(n.def.id); },
           onClose: () => { state.mode = "explore"; },
         } satisfies DialoguePayload);
         return;
