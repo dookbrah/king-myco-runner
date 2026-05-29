@@ -3,6 +3,10 @@ import { BootScene } from "./scenes/BootScene";
 import { TitleScene } from "./scenes/TitleScene";
 import { WorldScene } from "./scenes/WorldScene";
 import { BattleScene } from "./scenes/BattleScene";
+import { DialogueScene } from "./scenes/DialogueScene";
+import { InteriorScene } from "./scenes/InteriorScene";
+import { CutsceneScene } from "./scenes/CutsceneScene";
+import { BurnPitScene } from "./scenes/BurnPitScene";
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -24,7 +28,16 @@ const config: Phaser.Types.Core.GameConfig = {
     touch: true,
     keyboard: true,
   },
-  scene: [BootScene, TitleScene, WorldScene, BattleScene],
+  scene: [
+    BootScene,
+    TitleScene,
+    WorldScene,
+    BattleScene,
+    DialogueScene,
+    InteriorScene,
+    CutsceneScene,
+    BurnPitScene,
+  ],
 };
 
 new Phaser.Game(config);
