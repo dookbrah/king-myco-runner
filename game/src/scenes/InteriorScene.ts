@@ -1,5 +1,7 @@
 import Phaser from "phaser";
 import type { GameState } from "../systems/GameState";
+import { generateHeroSprites } from "../systems/SpriteFactory";
+import { CLAN_PROFILES } from "../data/clans";
 import type { AudioManager } from "../systems/AudioManager";
 import type { StructureDef } from "../data/structures";
 
@@ -102,6 +104,11 @@ export class InteriorScene extends Phaser.Scene {
     this.heroX = Phaser.Math.Clamp(this.heroX + (dx / mag) * speed * dt, 20, this.scale.width - 20);
     this.heroY = Phaser.Math.Clamp(this.heroY + (dy / mag) * speed * dt, 50, this.scale.height - 40);
     this.heroSprite.setPosition(this.heroX, this.heroY);
+    const dir = dy < 0 ? "up" : dy > 0 ? "down" : dx < 0 ? "left" : "right";
+    const frame = Math.floor((this.time.now / 150) % 4);
+    if (this.heroSprite instanceof Phaser.GameObjects.Sprite) {
+      this.heroSprite.setTexture(`hero-${dir}-${frame}`);
+    }
 
     for (const ie of this.interiorEnemies) {
       if (!ie.alive) continue;
