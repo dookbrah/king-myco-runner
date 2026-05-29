@@ -7,10 +7,12 @@
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
       html, body { width: 100%; height: 100%; overflow: hidden; background: #040913; }
-      #game-container { width: 100%; height: 100%; }
+      #game-container { width: 100%; height: 100%; position: relative; }
       #game-container canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
+      #game-container > div { position: absolute !important; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+      #game-container > div * { pointer-events: auto; }
     </style>
-    <script type="module" crossorigin src="/api/game-phaser/assets/index-30bb6hVa.js"></script>
+    <script type="module" crossorigin src="/api/game-phaser/assets/index-8sy2YmVr.js"></script>
   </head>
   <body>
     <div id="game-container"></div>

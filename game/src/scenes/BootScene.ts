@@ -9,6 +9,7 @@ export class BootScene extends Phaser.Scene {
   create(): void {
     const saved = loadGameState();
     const state: GameState = saved ?? createInitialState();
+    state.mode = "intro";
     this.registry.set("gameState", state);
     this.scene.start("TitleScene");
   }
