@@ -142,6 +142,18 @@ export class TitleScene extends Phaser.Scene {
       });
     }
 
+    const NICK_LOCK_KEY = "mycoQuestNickLock";
+    const savedLocks = JSON.parse(localStorage.getItem(NICK_LOCK_KEY) ?? "{}") as Record<string, string>;
+    const state = this.registry.get("gameState") as GameState;
+
+    if (state.web3.wallet && savedLocks[state.web3.wallet]) {
+      const locked = savedLocks[state.web3.wallet];
+      if (nicknameInput) { nicknameInput.value = locked; nicknameInput.disabled = true; nicknameInput.style.opacity = "0.7"; }
+      state.nickname = locked;
+    } else if (state.nickname && nicknameInput) {
+      nicknameInput.value = state.nickname;
+    }
+
     if (startBtn) {
       startBtn.addEventListener("click", () => {
         if (startBtn.disabled) return;
@@ -150,9 +162,12 @@ export class TitleScene extends Phaser.Scene {
           if (statusText) statusText.textContent = "Enter a nickname to begin!";
           return;
         }
-        const state = this.registry.get("gameState") as GameState;
         state.nickname = nick;
         state.playerClan = clanSelect?.value ?? "myco";
+        if (state.web3.wallet && !savedLocks[state.web3.wallet]) {
+          savedLocks[state.web3.wallet] = nick;
+          localStorage.setItem(NICK_LOCK_KEY, JSON.stringify(savedLocks));
+        }
         state.mode = "explore";
         this.scene.start("WorldScene");
       });
