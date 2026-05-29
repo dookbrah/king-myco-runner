@@ -10,7 +10,7 @@ import { saveGameState } from "../systems/GameState";
 import { AudioManager } from "../systems/AudioManager";
 import { linkIdentity } from "../systems/ApiClient";
 import type { DialoguePayload } from "./DialogueScene";
-import { generatePickupTexture, generateProjectileTexture } from "../systems/SpriteFactory";
+import { generatePickupTexture, generateProjectileTexture, generateHeroSprites, generateEnemySprite, generateNpcSprite, generateStructureSprite, generateTerrainTile, generatePortalTexture } from "../systems/SpriteFactory";
 import { createSporeParticles, createPickupMagnet, createPortalFlash, createBattleTransition } from "../systems/Particles";
 
 interface RuntimeEnemy {
@@ -57,13 +57,6 @@ interface Pickup {
 }
 
 export class WorldScene extends Phaser.Scene {
-  private heroBody!: Phaser.GameObjects.Rectangle;
-  private heroCrown!: Phaser.GameObjects.Rectangle;
-  private heroRobe!: Phaser.GameObjects.Rectangle;
-  private heroFeetL!: Phaser.GameObjects.Rectangle;
-  private heroFeetR!: Phaser.GameObjects.Rectangle;
-  private heroEyeL!: Phaser.GameObjects.Rectangle;
-  private heroEyeR!: Phaser.GameObjects.Rectangle;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: Record<string, Phaser.Input.Keyboard.Key>;
   private enemies: RuntimeEnemy[] = [];
@@ -102,7 +95,7 @@ export class WorldScene extends Phaser.Scene {
     this.spawnNpcs(realm);
     this.spawnPickups(realm);
 
-    this.cameras.main.startFollow(this.heroBody, true, 0.12, 0.12);
+    this.cameras.main.startFollow(this.heroSprite, true, 0.12, 0.12);
     this.cameras.main.setBounds(realm.x, realm.y, realm.w, realm.h);
     this.cameras.main.setZoom(1.5);
     this.cameras.main.setBackgroundColor(0x040913);
@@ -148,33 +141,26 @@ export class WorldScene extends Phaser.Scene {
   private createHero(state: GameState): void {
     const clan = CLAN_PROFILES[state.playerClan] ?? CLAN_PROFILES.myco;
     const c = (hex: string) => Phaser.Display.Color.HexStringToColor(hex).color;
-    const x = state.hero.x, y = state.hero.y;
-
-    this.add.rectangle(x, y + 14, 22, 4, 0x020617, 0.25).setDepth(9);
-    this.heroRobe = this.add.rectangle(x, y + 6, 18, 12, c(clan.colors.robe)).setDepth(10);
-    this.heroBody = this.add.rectangle(x, y - 4, 14, 10, c(clan.colors.cap)).setDepth(11);
-    this.heroCrown = this.add.rectangle(x, y - 12, 12, 4, 0xfacc15).setDepth(12);
-    this.heroEyeL = this.add.rectangle(x - 3, y - 4, 3, 3, 0x86efac).setDepth(12);
-    this.heroEyeR = this.add.rectangle(x + 3, y - 4, 3, 3, 0x86efac).setDepth(12);
-    this.heroFeetL = this.add.rectangle(x - 5, y + 13, 4, 3, c(clan.colors.primary)).setDepth(10);
-    this.heroFeetR = this.add.rectangle(x + 5, y + 13, 4, 3, c(clan.colors.primary)).setDepth(10);
-    this.add.rectangle(x + 12, y, 2, 18, 0x713f12).setDepth(11);
-    this.add.rectangle(x + 12, y - 10, 6, 4, 0x22c55e).setDepth(11);
+    generateHeroSprites(this, { cap: c(clan.colors.cap), robe: c(clan.colors.robe), primary: c(clan.colors.primary) });
+    this.heroSprite = this.add.sprite(state.hero.x, state.hero.y, "hero-down-0").setDepth(10);
   }
+
+  private heroSprite!: Phaser.GameObjects.Sprite;
 
   private moveHero(state: GameState, dt: number): void {
     let ax = 0, ay = 0;
-    if (this.cursors?.up?.isDown || this.wasd?.w?.isDown) ay -= 1;
-    if (this.cursors?.down?.isDown || this.wasd?.s?.isDown) ay += 1;
-    if (this.cursors?.left?.isDown || this.wasd?.a?.isDown) ax -= 1;
-    if (this.cursors?.right?.isDown || this.wasd?.d?.isDown) ax += 1;
+    if (this.cursors?.up?.isDown || this.wasd?.w?.isDown) ay = -1;
+    else if (this.cursors?.down?.isDown || this.wasd?.s?.isDown) ay = 1;
+    else if (this.cursors?.left?.isDown || this.wasd?.a?.isDown) ax = -1;
+    else if (this.cursors?.right?.isDown || this.wasd?.d?.isDown) ax = 1;
     if (ax === 0 && ay === 0) return;
 
-    const mag = Math.hypot(ax, ay) || 1;
+    state.hero.facingX = ax;
+    state.hero.facingY = ay;
     const sprint = this.cursors?.shift?.isDown ? 1.34 : 1;
     const speed = state.hero.speed * sprint;
-    const nx = state.hero.x + (ax / mag) * speed * dt;
-    const ny = state.hero.y + (ay / mag) * speed * dt;
+    const nx = state.hero.x + ax * speed * dt;
+    const ny = state.hero.y + ay * speed * dt;
 
     const realm = REALMS.find((r) => r.id === state.currentRealmId) ?? REALMS[0];
     const blocked = STRUCTURES.filter((s) => s.solid && s.region === realm.id).some((s) =>
@@ -184,43 +170,19 @@ export class WorldScene extends Phaser.Scene {
       state.hero.x = Phaser.Math.Clamp(nx, realm.x + 16, realm.x + realm.w - 16);
       state.hero.y = Phaser.Math.Clamp(ny, realm.y + 16, realm.y + realm.h - 16);
     }
-    state.hero.facingX = ax / mag;
-    state.hero.facingY = ay / mag;
     state.hero.walkFrame = (state.hero.walkFrame + dt * 10) % 4;
     this.syncHeroPosition(state);
   }
 
   private syncHeroPosition(state: GameState): void {
-    const x = state.hero.x, y = state.hero.y;
-    this.heroBody.setPosition(x, y - 4);
-    this.heroCrown.setPosition(x, y - 12);
-    this.heroRobe.setPosition(x, y + 6);
-    this.heroEyeL.setPosition(x - 3, y - 4);
-    this.heroEyeR.setPosition(x + 3, y - 4);
+    this.heroSprite.setPosition(state.hero.x, state.hero.y);
+    const dir = state.hero.facingY < 0 ? "up" : state.hero.facingY > 0 ? "down" : state.hero.facingX < 0 ? "left" : state.hero.facingX > 0 ? "right" : "down";
+    const frame = Math.floor(state.hero.walkFrame) % 4;
+    this.heroSprite.setTexture(`hero-${dir}-${frame}`);
   }
 
   private animateWalking(state: GameState): void {
-    const f = Math.floor(state.hero.walkFrame) % 4;
-    const x = state.hero.x, y = state.hero.y;
-    const offL = f === 1 ? -2 : f === 3 ? 1 : 0;
-    const offR = f === 3 ? 2 : f === 1 ? -1 : 0;
-    this.heroFeetL.setPosition(x - 5 + offL, y + 13 + (f === 1 ? 1 : 0));
-    this.heroFeetR.setPosition(x + 5 + offR, y + 13 + (f === 3 ? 1 : 0));
 
-    for (const e of this.enemies) {
-      if (!e.active) continue;
-      const ef = Math.floor(e.walkDist / 12) % 4;
-      const ex = e.body.x, ey = e.body.y;
-      e.feetL.setPosition(ex - 6 + (ef === 1 ? -2 : 0), ey + 13 + (ef === 1 ? 1 : 0));
-      e.feetR.setPosition(ex + 6 + (ef === 3 ? 2 : 0), ey + 13 + (ef === 3 ? 1 : 0));
-    }
-
-    for (const n of this.npcs) {
-      const nf = Math.floor(n.walkDist / 12) % 4;
-      const nx = n.body.x, ny = n.body.y;
-      n.feetL.setPosition(nx - 5 + (nf === 1 ? -1 : 0), ny + 11 + (nf === 1 ? 1 : 0));
-      n.feetR.setPosition(nx + 5 + (nf === 3 ? 1 : 0), ny + 11 + (nf === 3 ? 1 : 0));
-    }
   }
 
   private spawnEnemies(realm: (typeof REALMS)[0]): void {
@@ -231,17 +193,17 @@ export class WorldScene extends Phaser.Scene {
       const bc = Phaser.Display.Color.HexStringToColor(bHex).color;
       const ac = Phaser.Display.Color.HexStringToColor(aHex).color;
 
-      const body = this.add.rectangle(def.x, def.y, 22, 22, bc).setDepth(5);
-      const accent = this.add.rectangle(def.x, def.y - 2, 18, 10, ac).setDepth(6);
-      const eyeL = this.add.rectangle(def.x - 4, def.y, 3, 3, 0x020617).setDepth(7);
-      const eyeR = this.add.rectangle(def.x + 4, def.y, 3, 3, 0x020617).setDepth(7);
-      const feetL = this.add.rectangle(def.x - 6, def.y + 13, 6, 3, bc).setDepth(5);
-      const feetR = this.add.rectangle(def.x + 6, def.y + 13, 6, 3, bc).setDepth(5);
-      this.add.rectangle(def.x, def.y + 14, 20, 4, 0x020617, 0.2).setDepth(4);
+      const texKey = generateEnemySprite(this, def.kind, bc, ac);
+      const body = this.add.sprite(def.x, def.y, texKey).setDepth(5);
+      const accent = body;
+      const eyeL = body;
+      const eyeR = body;
+      const feetL = body;
+      const feetR = body;
 
       if (def.boss) {
-        this.add.rectangle(def.x, def.y, 34, 34).setStrokeStyle(2, 0xfacc15).setDepth(8);
-        this.add.text(def.x, def.y - 22, "★ BOSS", { fontFamily: "monospace", fontSize: "9px", color: "#facc15" }).setOrigin(0.5).setDepth(8);
+        this.add.rectangle(def.x, def.y, 26, 26).setStrokeStyle(2, 0xfacc15).setDepth(8);
+        this.add.text(def.x, def.y - 16, "★ BOSS", { fontFamily: "monospace", fontSize: "8px", color: "#facc15" }).setOrigin(0.5).setDepth(8);
       }
 
       const hp = Math.round((def.boss ? 220 : 60) * (regionScale[def.region] ?? 1));
@@ -271,9 +233,6 @@ export class WorldScene extends Phaser.Scene {
       const ny = e.body.y + e.wanderDirY * speed * dt;
       if (nx > realm.x + 20 && nx < realm.x + realm.w - 20 && ny > realm.y + 20 && ny < realm.y + realm.h - 20) {
         e.body.setPosition(nx, ny);
-        e.accent.setPosition(nx, ny - 2);
-        e.eyeL.setPosition(nx - 4, ny);
-        e.eyeR.setPosition(nx + 4, ny);
         e.walkDist += speed * dt;
       } else {
         e.wanderDirX *= -1;
@@ -297,11 +256,11 @@ export class WorldScene extends Phaser.Scene {
     for (const def of NPCS.filter((n) => n.region === realm.id)) {
       const pi = def.id.split("").reduce((s, c) => s + c.charCodeAt(0), 0) % palettes.length;
       const [cloak, accent] = palettes[pi];
-      const body = this.add.rectangle(def.x, def.y, 18, 20, cloak).setDepth(8);
-      const acc = this.add.rectangle(def.x, def.y - 2, 14, 8, accent).setDepth(8);
-      const feetL = this.add.rectangle(def.x - 5, def.y + 11, 5, 2, cloak).setDepth(8);
-      const feetR = this.add.rectangle(def.x + 5, def.y + 11, 5, 2, cloak).setDepth(8);
-      this.add.rectangle(def.x, def.y + 12, 16, 3, 0x020617, 0.2).setDepth(7);
+      const texKey = generateNpcSprite(this, def.id, cloak, accent);
+      const body = this.add.sprite(def.x, def.y, texKey).setDepth(8);
+      const acc = body;
+      const feetL = body;
+      const feetR = body;
       const task = NPC_TASKS[Math.floor(Math.random() * NPC_TASKS.length)];
       const label = this.add.text(def.x, def.y - 18, task, { fontFamily: "monospace", fontSize: "7px", color: "#94a3b8" }).setOrigin(0.5).setDepth(9);
       this.npcs.push({ def, body, accent: acc, feetL, feetR, label, walkDist: 0, wanderDirX: 0, wanderDirY: 0, wanderShiftAt: this.time.now + Math.random() * 3000, task, taskChangeAt: this.time.now + 15000 + Math.random() * 30000, homeX: def.x, homeY: def.y });
@@ -330,8 +289,7 @@ export class WorldScene extends Phaser.Scene {
       const nx = n.body.x + dx * 22 * dt, ny = n.body.y + dy * 22 * dt;
       if (nx > realm.x + 10 && nx < realm.x + realm.w - 10 && ny > realm.y + 10 && ny < realm.y + realm.h - 10) {
         n.body.setPosition(nx, ny);
-        n.accent.setPosition(nx, ny - 2);
-        n.label.setPosition(nx, ny - 18);
+        n.label.setPosition(nx, ny - 14);
         n.walkDist += Math.abs(dx * 22 * dt) + Math.abs(dy * 22 * dt);
       }
     }
@@ -359,7 +317,7 @@ export class WorldScene extends Phaser.Scene {
           if (!e.active) continue;
           if (Phaser.Math.Distance.Between(p.sprite.x, p.sprite.y, e.body.x, e.body.y) < 20) {
             e.hp -= p.damage;
-            if (e.hp <= 0) { e.active = false; e.body.setVisible(false); e.accent.setVisible(false); e.eyeL.setVisible(false); e.eyeR.setVisible(false); e.feetL.setVisible(false); e.feetR.setVisible(false); state.hero.spores += 20; this.audio.playSfx("coin"); }
+            if (e.hp <= 0) { e.active = false; e.body.setVisible(false); state.hero.spores += 20; this.audio.playSfx("coin"); }
             p.sprite.destroy(); this.projectiles.splice(i, 1); break;
           }
         }
@@ -420,10 +378,8 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private checkInteraction(state: GameState): void {
-    if (!this.wasd?.e?.isDown) return;
-    if (this.wasd.e.getDuration() > 100) return;
     for (const n of this.npcs) {
-      if (Phaser.Math.Distance.Between(state.hero.x, state.hero.y, n.body.x, n.body.y) < 50) {
+      if (Phaser.Math.Distance.Between(state.hero.x, state.hero.y, n.body.x, n.body.y) < 22) {
         this.audio.playSfx("talk");
         this.scene.pause();
         const npcPortraits: Record<string, string> = {
@@ -446,7 +402,9 @@ export class WorldScene extends Phaser.Scene {
     }
     const realm = REALMS.find((r) => r.id === state.currentRealmId) ?? REALMS[0];
     for (const s of STRUCTURES.filter((st) => st.region === realm.id)) {
-      if (Phaser.Math.Distance.Between(state.hero.x, state.hero.y, s.x + s.w / 2, s.y + s.h / 2) < 46) {
+      const dx = state.hero.x - (s.x + s.w / 2);
+      const dy = state.hero.y - (s.y + s.h / 2);
+      if (Math.abs(dx) < s.w / 2 + 8 && Math.abs(dy) < s.h / 2 + 8) {
         this.audio.playSfx("portal");
         this.scene.pause();
         if (s.type === "burn-pit" || s.type === "shrine") { this.scene.launch("BurnPitScene"); }
@@ -459,24 +417,11 @@ export class WorldScene extends Phaser.Scene {
   private drawTerrainOnce(realm: (typeof REALMS)[0]): void {
     const colorA = Phaser.Display.Color.HexStringToColor(realm.colorA).color;
     const colorB = Phaser.Display.Color.HexStringToColor(realm.colorB).color;
-    const tileKey = `terrain-tile-${realm.id}`;
-    if (!this.textures.exists(tileKey)) {
-      const tileGfx = this.make.graphics({ x: 0, y: 0 });
-      const t = 64;
-      tileGfx.fillStyle(colorA);
-      tileGfx.fillRect(0, 0, t, t);
-      tileGfx.fillStyle(colorB);
-      tileGfx.fillRect(t, 0, t, t);
-      tileGfx.fillStyle(colorB);
-      tileGfx.fillRect(0, t, t, t);
-      tileGfx.fillStyle(colorA);
-      tileGfx.fillRect(t, t, t, t);
-      tileGfx.generateTexture(tileKey, t * 2, t * 2);
-      tileGfx.destroy();
-    }
-    for (let y = realm.y; y < realm.y + realm.h; y += 128) {
-      for (let x = realm.x; x < realm.x + realm.w; x += 128) {
-        this.add.image(x + 64, y + 64, tileKey).setDepth(0);
+    const tileKey = generateTerrainTile(this, colorA, colorB, realm.id);
+    const tw = 32;
+    for (let y = realm.y; y < realm.y + realm.h; y += tw) {
+      for (let x = realm.x; x < realm.x + realm.w; x += tw) {
+        this.add.image(x + tw / 2, y + tw / 2, tileKey).setDepth(0);
       }
     }
     const border = this.add.graphics().setDepth(0);
@@ -485,28 +430,20 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private drawStructuresOnce(realm: (typeof REALMS)[0]): void {
-    const gfx = this.add.graphics().setDepth(2);
-    const colors: Record<string, number> = { house: 0x92400e, castle: 0x1e3a5f, "mushroom-shop": 0x7c2d12, tower: 0x1f2937, cave: 0x374151, dungeon: 0x1e1b4b, "burn-pit": 0x451a03, shrine: 0x4c1d95 };
     for (const s of STRUCTURES.filter((st) => st.region === realm.id)) {
-      gfx.fillStyle(colors[s.type] ?? 0x374151);
-      gfx.fillRect(s.x, s.y, s.w, s.h);
-      gfx.fillStyle((colors[s.type] ?? 0x374151) + 0x181818);
-      gfx.fillRect(s.x + 3, s.y - 5, s.w - 6, 6);
-      this.add.text(s.x + s.w / 2, s.y - 8, s.name, { fontFamily: "monospace", fontSize: "7px", color: "#94a3b8" }).setOrigin(0.5).setDepth(3);
+      const texKey = generateStructureSprite(this, s.type, s.w, s.h);
+      this.add.image(s.x + s.w / 2, s.y + s.h / 2, texKey).setDepth(2);
+      this.add.text(s.x + s.w / 2, s.y - 6, s.name, { fontFamily: "monospace", fontSize: "7px", color: "#bfdbfe" }).setOrigin(0.5).setDepth(3);
     }
   }
 
   private drawPortalsOnce(realm: (typeof REALMS)[0]): void {
-    const gfx = this.add.graphics().setDepth(2);
+    generatePortalTexture(this);
     for (const p of PORTALS) {
       const cx = p.x + p.w / 2, cy = p.y + p.h / 2;
       if (!(cx >= realm.x && cx <= realm.x + realm.w && cy >= realm.y && cy <= realm.y + realm.h)) continue;
-      gfx.fillStyle(0x22d3ee, 0.4);
-      gfx.fillRect(p.x, p.y, p.w, p.h);
-      gfx.fillStyle(0xf8fafc);
-      gfx.fillRect(cx - 1, p.y + 4, 2, p.h - 8);
-      gfx.fillRect(p.x + 4, cy - 1, p.w - 8, 2);
-      this.add.text(cx, p.y + p.h + 5, p.name, { fontFamily: "monospace", fontSize: "6px", color: "#7dd3fc" }).setOrigin(0.5).setDepth(3);
+      this.add.image(cx, cy, "portal").setDepth(2);
+      this.add.text(cx, cy + 14, p.name, { fontFamily: "monospace", fontSize: "6px", color: "#7dd3fc" }).setOrigin(0.5).setDepth(3);
     }
   }
 }
