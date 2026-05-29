@@ -99,7 +99,7 @@ export class WorldScene extends Phaser.Scene {
 
     this.cameras.main.startFollow(this.heroSprite, true, 0.12, 0.12);
     this.cameras.main.setBounds(realm.x, realm.y, realm.w, realm.h);
-    this.cameras.main.setZoom(1.5);
+    this.cameras.main.setZoom(2.0);
     this.cameras.main.setBackgroundColor(0x040913);
 
     if (this.input.keyboard) {
