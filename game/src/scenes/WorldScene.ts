@@ -11,6 +11,10 @@ import { AudioManager } from "../systems/AudioManager";
 import { linkIdentity } from "../systems/ApiClient";
 import type { DialoguePayload } from "./DialogueScene";
 import type { StructureDef } from "../data/structures";
+import { generateHeroTexture, generateEnemyTexture, generateNpcTexture, generatePickupTexture } from "../systems/SpriteFactory";
+import { OverworldCombat } from "../systems/OverworldCombat";
+import { createSporeParticles, createPickupMagnet, createPortalFlash, createBattleTransition } from "../systems/Particles";
+import { saveGameState } from "../systems/GameState";
 
 interface RuntimeEnemy {
   def: (typeof BASE_ENEMIES)[0];
@@ -46,7 +50,9 @@ export class WorldScene extends Phaser.Scene {
   private wasd!: Record<string, Phaser.Input.Keyboard.Key>;
   private enemies: RuntimeEnemy[] = [];
   private npcs: RuntimeNpc[] = [];
+  private pickups: { sprite: Phaser.GameObjects.Sprite; x: number; y: number; value: number; golden: boolean; collected: boolean }[] = [];
   private audio!: AudioManager;
+  private combat!: OverworldCombat;
   private realmGfx!: Phaser.GameObjects.Graphics;
 
   constructor() {
@@ -99,7 +105,10 @@ export class WorldScene extends Phaser.Scene {
     }
 
     this.addMobileControls();
+    this.combat = new OverworldCombat(this);
+    this.spawnPickups(realm, state);
     state.mode = "explore";
+    this.scene.launch("HudScene");
     linkIdentity(state).catch(() => {});
   }
 
@@ -113,7 +122,13 @@ export class WorldScene extends Phaser.Scene {
     this.checkPortals(state);
     this.checkNpcInteraction(state);
     this.checkStructureInteraction(state);
+    this.updatePickups(state);
+    this.combat.update(dt, state, this.enemies.map((e) => ({ x: e.container.x, y: e.container.y, hp: e.hp, active: e.active })));
+    if (this.input.keyboard && this.input.keyboard.addKey("SPACE").isDown) {
+      this.combat.heroShoot(state);
+    }
     this.animateHeroFeet(state);
+    if (this.time.now % 60000 < 100) saveGameState(state);
   }
 
   private createHero(state: GameState): void {
@@ -235,8 +250,10 @@ export class WorldScene extends Phaser.Scene {
         state.mode = "battle";
         this.audio.setMode(e.def.boss ? "boss" : "battle");
         this.audio.playSfx("battle");
-        this.scene.launch("BattleScene", { enemy: e.def });
-        this.scene.pause();
+        createBattleTransition(this, () => {
+          this.scene.launch("BattleScene", { enemy: e.def });
+          this.scene.pause();
+        });
         break;
       }
     }
@@ -310,6 +327,7 @@ export class WorldScene extends Phaser.Scene {
       if (portal.destRealm === realm.id) continue;
       if (Phaser.Math.Distance.Between(state.hero.x, state.hero.y, px, py) < 36) {
         this.audio.playSfx("portal");
+        createPortalFlash(this);
         state.currentRealmId = portal.destRealm;
         state.hero.x = portal.destX;
         state.hero.y = portal.destY;
@@ -398,6 +416,44 @@ export class WorldScene extends Phaser.Scene {
           onClose: () => { state.mode = "explore"; },
         } satisfies DialoguePayload);
         return;
+      }
+    }
+  }
+
+  private spawnPickups(realm: (typeof REALMS)[0], state: GameState): void {
+    const positions = [
+      { x: realm.x + 200, y: realm.y + 200, value: 12, golden: false },
+      { x: realm.x + realm.w * 0.3, y: realm.y + realm.h * 0.4, value: 14, golden: false },
+      { x: realm.x + realm.w * 0.7, y: realm.y + realm.h * 0.3, value: 16, golden: false },
+      { x: realm.x + realm.w * 0.5, y: realm.y + realm.h * 0.6, value: 10, golden: false },
+      { x: realm.x + realm.w * 0.2, y: realm.y + realm.h * 0.8, value: 18, golden: false },
+      { x: realm.x + realm.w * 0.8, y: realm.y + realm.h * 0.7, value: 20, golden: false },
+      { x: realm.x + realm.w * 0.5, y: realm.y + realm.h * 0.2, value: 8, golden: true },
+      { x: realm.x + realm.w * 0.9, y: realm.y + realm.h * 0.5, value: 5, golden: true },
+    ];
+    for (const pos of positions) {
+      const key = generatePickupTexture(this, pos.golden);
+      const sprite = this.add.sprite(pos.x, pos.y, key).setDepth(4);
+      this.pickups.push({ sprite, x: pos.x, y: pos.y, value: pos.value, golden: pos.golden, collected: false });
+    }
+  }
+
+  private updatePickups(state: GameState): void {
+    const magnetRange = 48;
+    for (const pickup of this.pickups) {
+      if (pickup.collected) continue;
+      const dist = Phaser.Math.Distance.Between(state.hero.x, state.hero.y, pickup.x, pickup.y);
+      if (dist < magnetRange) {
+        pickup.collected = true;
+        createPickupMagnet(this, pickup.sprite, state.hero.x, state.hero.y, () => {
+          if (pickup.golden) {
+            state.hero.goldenSpores += pickup.value;
+          } else {
+            state.hero.spores += pickup.value;
+          }
+          this.audio.playSfx("pickup");
+          createSporeParticles(this, state.hero.x, state.hero.y, pickup.golden);
+        });
       }
     }
   }
