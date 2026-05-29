@@ -255,6 +255,7 @@ const start = async (): Promise<void> => {
         pathname.startsWith("/api/") ||
         pathname.startsWith("/webhooks/") ||
         pathname.startsWith("/game-phaser/") ||
+        pathname.startsWith("/api/game-phaser/") ||
         pathname === "/health" ||
         pathname === "/dev/myco-quest" ||
         pathname === "/game/myco-quest" ||
@@ -327,9 +328,10 @@ const start = async (): Promise<void> => {
 
       if (
         (method === "GET" || method === "HEAD") &&
-        routePath.startsWith("/game-phaser/")
+        (routePath.startsWith("/game-phaser/") || routePath.startsWith("/api/game-phaser/"))
       ) {
-        const filePath = join(projectRoot, `public${routePath}`);
+        const cleanPath = routePath.startsWith("/api/game-phaser/") ? routePath.replace("/api", "") : routePath;
+        const filePath = join(projectRoot, `public${cleanPath}`);
         try {
           const data = await readFile(filePath);
           const ext = routePath.split(".").pop() ?? "";
