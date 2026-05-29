@@ -1,6 +1,9 @@
 import { createServer, IncomingMessage, ServerResponse } from "node:http";
 import { URL } from "node:url";
 import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+
+const projectRoot = join(__dirname, "..");
 import { SourceAuthService } from "./platform/auth";
 import { KingMycoEcosystemHub } from "./platform/ecosystemHub";
 import { DeepPartial, LiveOpsConfig } from "./platform/liveOps";
@@ -278,7 +281,7 @@ const start = async (): Promise<void> => {
         (method === "GET" || method === "HEAD") &&
         (routePath === "/dev/myco-quest" || routePath === "/api/dev/myco-quest")
       ) {
-        const html = await readFile("public/myco-quest-dev.html", "utf8");
+        const html = await readFile(join(projectRoot, "public/myco-quest-dev.html"), "utf8");
         if (method === "HEAD") {
           response.statusCode = 200;
           response.setHeader("content-type", "text/html; charset=utf-8");
@@ -295,7 +298,7 @@ const start = async (): Promise<void> => {
         (method === "GET" || method === "HEAD") &&
         (routePath === "/game/myco-quest" || routePath === "/api/game/myco-quest")
       ) {
-        const html = await readFile("public/myco-quest-game.html", "utf8");
+        const html = await readFile(join(projectRoot, "public/myco-quest-game.html"), "utf8");
         if (method === "HEAD") {
           response.statusCode = 200;
           response.setHeader("content-type", "text/html; charset=utf-8");
@@ -312,7 +315,7 @@ const start = async (): Promise<void> => {
         (method === "GET" || method === "HEAD") &&
         (routePath === "/game/myco-quest-phaser" || routePath === "/api/game/myco-quest-phaser")
       ) {
-        const html = await readFile("public/game-phaser/index.html", "utf8");
+        const html = await readFile(join(projectRoot, "public/game-phaser/index.html"), "utf8");
         if (method === "HEAD") {
           response.statusCode = 200;
           response.setHeader("content-type", "text/html; charset=utf-8");
@@ -326,7 +329,7 @@ const start = async (): Promise<void> => {
         (method === "GET" || method === "HEAD") &&
         routePath.startsWith("/game-phaser/")
       ) {
-        const filePath = `public${routePath}`;
+        const filePath = join(projectRoot, `public${routePath}`);
         try {
           const data = await readFile(filePath);
           const ext = routePath.split(".").pop() ?? "";
