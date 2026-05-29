@@ -123,6 +123,7 @@ export class TitleScene extends Phaser.Scene {
         }
 
         const result = await checkMycoBalance(wallet);
+        console.log("MYCO balance check:", wallet, result);
 
         if (tokenStatus) {
           if (result.hasEnough) {
