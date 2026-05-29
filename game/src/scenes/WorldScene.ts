@@ -465,28 +465,30 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private addMobileControls(): void {
-    const cam = this.cameras.main;
-    const padSize = 44;
+    const vw = this.scale.width;
+    const vh = this.scale.height;
+    const padSize = 48;
     const padGap = 4;
-    const padX = 16;
-    const padY = cam.height - padSize * 3 - padGap * 2 - 16;
+    const padX = 12;
+    const padY = vh - padSize * 3 - padGap * 2 - 12;
 
     const makeDpadBtn = (x: number, y: number, label: string, dir: { x: number; y: number }) => {
       const btn = this.add.text(x, y, label, {
-        fontFamily: "monospace", fontSize: "16px", fontStyle: "bold", color: "#f8fafc",
-        backgroundColor: "rgba(12, 25, 49, 0.88)",
-        padding: { x: 12, y: 8 },
+        fontFamily: "monospace", fontSize: "18px", fontStyle: "bold", color: "#f8fafc",
+        backgroundColor: "rgba(12, 25, 49, 0.9)",
+        padding: { x: 12, y: 10 },
         fixedWidth: padSize, fixedHeight: padSize,
         align: "center",
-      }).setScrollFactor(0).setDepth(100).setInteractive();
+      }).setScrollFactor(0).setDepth(200).setInteractive();
       btn.on("pointerdown", () => {
         const state = this.registry.get("gameState") as GameState;
         state.hero.facingX = dir.x;
         state.hero.facingY = dir.y;
         (this as unknown as { _mobileDir: { x: number; y: number } })._mobileDir = dir;
+        btn.setBackgroundColor("rgba(34, 197, 94, 0.5)");
       });
-      btn.on("pointerup", () => { (this as unknown as { _mobileDir: null })._mobileDir = null; });
-      btn.on("pointerout", () => { (this as unknown as { _mobileDir: null })._mobileDir = null; });
+      btn.on("pointerup", () => { (this as unknown as { _mobileDir: null })._mobileDir = null; btn.setBackgroundColor("rgba(12, 25, 49, 0.9)"); });
+      btn.on("pointerout", () => { (this as unknown as { _mobileDir: null })._mobileDir = null; btn.setBackgroundColor("rgba(12, 25, 49, 0.9)"); });
       return btn;
     };
 
@@ -497,16 +499,29 @@ export class WorldScene extends Phaser.Scene {
     makeDpadBtn(cx + padSize + padGap, cy, "▶", { x: 1, y: 0 });
     makeDpadBtn(cx, cy + padSize + padGap, "▼", { x: 0, y: 1 });
 
-    const atkBtn = this.add.text(cam.width - 80, cam.height - 80, "🔥", {
-      fontFamily: "monospace", fontSize: "28px",
-      backgroundColor: "rgba(34, 197, 94, 0.25)",
-      padding: { x: 14, y: 10 },
-      fixedWidth: 64, fixedHeight: 64,
+    const atkBtn = this.add.text(vw - 76, vh - 76, "🔥", {
+      fontFamily: "monospace", fontSize: "32px",
+      backgroundColor: "rgba(34, 197, 94, 0.3)",
+      padding: { x: 14, y: 12 },
+      fixedWidth: 68, fixedHeight: 68,
       align: "center",
-    }).setScrollFactor(0).setDepth(100).setInteractive();
+    }).setScrollFactor(0).setDepth(200).setInteractive();
     atkBtn.on("pointerdown", () => {
       const state = this.registry.get("gameState") as GameState;
       this.heroShoot(state);
+      atkBtn.setBackgroundColor("rgba(34, 197, 94, 0.7)");
+    });
+    atkBtn.on("pointerup", () => atkBtn.setBackgroundColor("rgba(34, 197, 94, 0.3)"));
+
+    // Menu button (bottom-right above attack)
+    const menuBtn = this.add.text(vw - 52, vh - 150, "☰", {
+      fontFamily: "monospace", fontSize: "22px",
+      backgroundColor: "rgba(12, 25, 49, 0.9)",
+      padding: { x: 10, y: 8 },
+    }).setScrollFactor(0).setDepth(200).setInteractive();
+    menuBtn.on("pointerdown", () => {
+      const audio = this.registry.get("audio") as AudioManager | undefined;
+      if (audio) { audio.musicOn = !audio.musicOn; audio.sfxOn = !audio.sfxOn; }
     });
   }
 
