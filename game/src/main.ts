@@ -7,6 +7,7 @@ import { DialogueScene } from "./scenes/DialogueScene";
 import { InteriorScene } from "./scenes/InteriorScene";
 import { CutsceneScene } from "./scenes/CutsceneScene";
 import { BurnPitScene } from "./scenes/BurnPitScene";
+import { HudScene } from "./scenes/HudScene";
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -37,6 +38,7 @@ const config: Phaser.Types.Core.GameConfig = {
     InteriorScene,
     CutsceneScene,
     BurnPitScene,
+    HudScene,
   ],
 };
 
