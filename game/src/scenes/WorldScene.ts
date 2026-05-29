@@ -335,12 +335,16 @@ export class WorldScene extends Phaser.Scene {
 
   private heroShoot(state: GameState): void {
     const now = this.time.now;
-    if (now - this.lastShotAt < 300) return;
+    if (now - this.lastShotAt < 280) return;
     this.lastShotAt = now;
-    const ax = state.hero.facingX || 0, ay = state.hero.facingY || -1;
-    const mag = Math.hypot(ax, ay) || 1;
-    const sprite = this.add.rectangle(state.hero.x, state.hero.y, 6, 6, 0x22c55e).setDepth(15);
-    this.projectiles.push({ sprite, vx: (ax / mag) * 280, vy: (ay / mag) * 280, damage: 8 + state.hero.attack * 3, isHero: true, life: 1.2 });
+    const fx = state.hero.facingX;
+    const fy = state.hero.facingY;
+    let vx = 0, vy = 0;
+    if (Math.abs(fx) > Math.abs(fy)) { vx = fx > 0 ? 300 : -300; }
+    else { vy = fy > 0 ? 300 : (fy < 0 ? -300 : 300); }
+    const sprite = this.add.rectangle(state.hero.x + vx * 0.03, state.hero.y + vy * 0.03, 8, 8, 0x22c55e).setDepth(15);
+    this.audio.playSfx("strike");
+    this.projectiles.push({ sprite, vx, vy, damage: 8 + state.hero.attack * 3, isHero: true, life: 1.0 });
   }
 
   private updateProjectiles(state: GameState, dt: number): void {
