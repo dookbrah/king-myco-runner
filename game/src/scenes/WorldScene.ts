@@ -448,21 +448,31 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private drawTerrainOnce(realm: (typeof REALMS)[0]): void {
-    const rt = this.add.renderTexture(realm.x, realm.y, realm.w, realm.h).setOrigin(0).setDepth(0);
-    const gfx = this.make.graphics({ x: 0, y: 0 });
-    const tile = TILE_SIZE;
     const colorA = Phaser.Display.Color.HexStringToColor(realm.colorA).color;
     const colorB = Phaser.Display.Color.HexStringToColor(realm.colorB).color;
-    for (let y = 0; y < realm.h; y += tile) {
-      for (let x = 0; x < realm.w; x += tile) {
-        gfx.fillStyle(((Math.floor(x / tile) + Math.floor(y / tile)) % 2) === 0 ? colorA : colorB);
-        gfx.fillRect(x, y, tile, tile);
+    const tileKey = `terrain-tile-${realm.id}`;
+    if (!this.textures.exists(tileKey)) {
+      const tileGfx = this.make.graphics({ x: 0, y: 0 });
+      const t = 64;
+      tileGfx.fillStyle(colorA);
+      tileGfx.fillRect(0, 0, t, t);
+      tileGfx.fillStyle(colorB);
+      tileGfx.fillRect(t, 0, t, t);
+      tileGfx.fillStyle(colorB);
+      tileGfx.fillRect(0, t, t, t);
+      tileGfx.fillStyle(colorA);
+      tileGfx.fillRect(t, t, t, t);
+      tileGfx.generateTexture(tileKey, t * 2, t * 2);
+      tileGfx.destroy();
+    }
+    for (let y = realm.y; y < realm.y + realm.h; y += 128) {
+      for (let x = realm.x; x < realm.x + realm.w; x += 128) {
+        this.add.image(x + 64, y + 64, tileKey).setDepth(0);
       }
     }
-    gfx.lineStyle(2, 0x2f4678);
-    gfx.strokeRect(0, 0, realm.w, realm.h);
-    rt.draw(gfx);
-    gfx.destroy();
+    const border = this.add.graphics().setDepth(0);
+    border.lineStyle(2, 0x2f4678);
+    border.strokeRect(realm.x, realm.y, realm.w, realm.h);
   }
 
   private drawStructuresOnce(realm: (typeof REALMS)[0]): void {
