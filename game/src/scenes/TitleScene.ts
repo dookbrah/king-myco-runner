@@ -3,8 +3,8 @@ import { CLAN_PROFILES } from "../data/clans";
 import type { GameState } from "../systems/GameState";
 
 export class TitleScene extends Phaser.Scene {
+  private starGfx!: Phaser.GameObjects.Graphics;
   private stars: { x: number; y: number; brightness: number; speed: number }[] = [];
-  private tileSize = 10;
 
   constructor() {
     super({ key: "TitleScene" });
@@ -12,16 +12,28 @@ export class TitleScene extends Phaser.Scene {
 
   create(): void {
     const { width, height } = this.scale;
-    this.tileSize = Math.max(8, Math.round(Math.min(width, height) / 80));
+    const tile = Math.max(8, Math.round(Math.min(width, height) / 80));
 
-    for (let i = 0; i < 60; i++) {
+    const bgGfx = this.add.graphics().setDepth(-2);
+    const horizonY = Math.round(height * 0.5);
+    for (let y = 0; y < height; y += tile) {
+      for (let x = 0; x < width; x += tile) {
+        const checker = ((Math.floor(x / tile) + Math.floor(y / tile)) % 2) === 0;
+        bgGfx.fillStyle(y < horizonY ? (checker ? 0x0a1328 : 0x060b17) : (checker ? 0x1a3a2a : 0x143024));
+        bgGfx.fillRect(x, y, tile, tile);
+      }
+    }
+
+    this.stars = [];
+    for (let i = 0; i < 50; i++) {
       this.stars.push({
         x: Math.random() * width,
-        y: Math.random() * height * 0.45,
+        y: Math.random() * horizonY,
         brightness: 0.3 + Math.random() * 0.7,
         speed: 0.2 + Math.random() * 0.8,
       });
     }
+    this.starGfx = this.add.graphics().setDepth(-1);
 
     const overlay = this.add.dom(width / 2, height / 2).createFromHTML(`
       <div style="text-align:center; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #f8fafc; width: ${Math.min(420, width - 40)}px">
@@ -41,8 +53,7 @@ export class TitleScene extends Phaser.Scene {
           <p id="ph-status" style="font-size:11px; color:#94a3b8; margin:4px 0 0; text-align:center">Enter a nickname to begin.</p>
         </div>
       </div>
-    `);
-    overlay.setOrigin(0.5, 0.5);
+    `).setOrigin(0.5, 0.5);
 
     const startBtn = overlay.getChildByID("ph-start") as HTMLButtonElement | null;
     const nicknameInput = overlay.getChildByID("ph-nickname") as HTMLInputElement | null;
@@ -68,32 +79,12 @@ export class TitleScene extends Phaser.Scene {
   }
 
   update(): void {
-    const { width, height } = this.scale;
-    const gfx = this.add.graphics();
-    gfx.clear();
-
-    const tile = this.tileSize;
-    const horizonY = Math.round(height * 0.5);
-
-    for (let y = 0; y < height; y += tile) {
-      for (let x = 0; x < width; x += tile) {
-        const checker = ((x / tile + y / tile) % 2) === 0;
-        if (y < horizonY) {
-          gfx.fillStyle(checker ? 0x0a1328 : 0x060b17);
-        } else {
-          gfx.fillStyle(checker ? 0x1a3a2a : 0x143024);
-        }
-        gfx.fillRect(x, y, tile, tile);
-      }
-    }
-
     const now = this.time.now;
+    this.starGfx.clear();
     for (const star of this.stars) {
       const alpha = star.brightness * (0.5 + 0.5 * Math.sin(now * 0.002 * star.speed));
-      gfx.fillStyle(0xf8fafc, alpha);
-      gfx.fillRect(Math.round(star.x), Math.round(star.y), 2, 2);
+      this.starGfx.fillStyle(0xf8fafc, alpha);
+      this.starGfx.fillRect(Math.round(star.x), Math.round(star.y), 2, 2);
     }
-
-    gfx.setDepth(-1);
   }
 }
