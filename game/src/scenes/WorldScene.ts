@@ -465,8 +465,6 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private addMobileControls(): void {
-    const isMobile = "ontouchstart" in window || navigator.maxTouchPoints > 0 || window.innerWidth <= 900 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if (!isMobile) return;
     const cam = this.cameras.main;
     const padSize = 44;
     const padGap = 4;

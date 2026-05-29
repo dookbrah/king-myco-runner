@@ -79,7 +79,7 @@ export class InteriorScene extends Phaser.Scene {
       this.cursors = this.input.keyboard.createCursorKeys();
     }
 
-    const exitBtn = this.add.text(120, 172, "[ EXIT ]", {
+    const exitBtn = this.add.text(width / 2, height - 20, "[ EXIT ]", {
       fontFamily: "monospace", fontSize: "12px", color: "#ef4444",
       backgroundColor: "rgba(5,7,10,0.8)", padding: { x: 10, y: 4 },
     }).setOrigin(0.5).setInteractive();
@@ -101,8 +101,9 @@ export class InteriorScene extends Phaser.Scene {
     if (this.cursors.right.isDown) dx += 1;
     if (dx === 0 && dy === 0) return;
     const mag = Math.hypot(dx, dy);
-    this.heroX = Phaser.Math.Clamp(this.heroX + (dx / mag) * speed * dt, 16, 224);
-    this.heroY = Phaser.Math.Clamp(this.heroY + (dy / mag) * speed * dt, 24, 168);
+    const { width: sw, height: sh } = this.scale;
+    this.heroX = Phaser.Math.Clamp(this.heroX + (dx / mag) * speed * dt, 24, sw - 24);
+    this.heroY = Phaser.Math.Clamp(this.heroY + (dy / mag) * speed * dt, 50, sh - 30);
     this.heroSprite.setPosition(this.heroX, this.heroY);
     const dir = dy < 0 ? "up" : dy > 0 ? "down" : dx < 0 ? "left" : "right";
     const frame = Math.floor((this.time.now / 150) % 4);
@@ -114,10 +115,11 @@ export class InteriorScene extends Phaser.Scene {
       if (!ie.alive) continue;
       ie.x += ie.vx * dt;
       ie.y += ie.vy * dt;
-      if (ie.x < 16 || ie.x > 224) ie.vx *= -1;
-      if (ie.y < 20 || ie.y > 160) ie.vy *= -1;
-      ie.x = Phaser.Math.Clamp(ie.x, 16, 224);
-      ie.y = Phaser.Math.Clamp(ie.y, 20, 160);
+      const { width: bw, height: bh } = this.scale;
+      if (ie.x < 24 || ie.x > bw - 24) ie.vx *= -1;
+      if (ie.y < 50 || ie.y > bh - 40) ie.vy *= -1;
+      ie.x = Phaser.Math.Clamp(ie.x, 24, bw - 24);
+      ie.y = Phaser.Math.Clamp(ie.y, 50, bh - 40);
       ie.sprite.setPosition(ie.x, ie.y);
 
       if (Phaser.Math.Distance.Between(this.heroX, this.heroY, ie.x, ie.y) < 18) {
@@ -168,8 +170,9 @@ export class InteriorScene extends Phaser.Scene {
 
     const count = this.structure.type === "dungeon" ? 4 : this.structure.type === "cave" ? 3 : 2;
     for (let i = 0; i < count; i++) {
-      const ex = 30 + Math.random() * 180;
-      const ey = 30 + Math.random() * 120;
+      const { width: ew, height: eh } = this.scale;
+      const ex = 40 + Math.random() * (ew - 80);
+      const ey = 60 + Math.random() * (eh - 140);
       const sprite = this.add.rectangle(ex, ey, 14, 14, 0xef4444).setDepth(6);
       this.add.rectangle(ex, ey, 14, 14).setStrokeStyle(1, 0xfca5a5).setDepth(6);
       this.interiorEnemies.push({
@@ -191,8 +194,9 @@ export class InteriorScene extends Phaser.Scene {
 
     for (let i = 0; i < count; i++) {
       const def = nodeTypes[i % nodeTypes.length];
-      const nx = 30 + Math.random() * 180;
-      const ny = 30 + Math.random() * 120;
+      const { width: nw, height: nh } = this.scale;
+      const nx = 40 + Math.random() * (nw - 80);
+      const ny = 60 + Math.random() * (nh - 140);
       const nodeData: InteriorNode = { x: nx, y: ny, kind: def.kind, label: def.label, solved: false };
 
       const dot = this.add.rectangle(0, 0, 14, 14, def.color);
