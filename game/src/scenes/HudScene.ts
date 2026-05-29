@@ -104,13 +104,45 @@ NPCs Met: ${state?.progress?.interactedNpcs?.size ?? 0}
 Clues: ${state?.progress?.clues?.size ?? 0}
 Morality: ${state?.hero?.morality ?? 0}`;
 
-    const fullText = invText + "\n\n" + web3Text + "\n\n" + boardText;
+    const settingsText = `== SETTINGS ==
+🔊 Music: ON  |  SFX: ON
+📱 View: Landscape`;
+
+    const fullText = invText + "\n\n" + web3Text + "\n\n" + boardText + "\n\n" + settingsText;
 
     const text = this.add.text(8, 8, fullText, {
       fontFamily: "monospace", fontSize: "8px", color: "#dbeafe", lineSpacing: 2,
     });
 
-    this.menuContainer = this.add.container(mx, my, [bg, text]);
+    const musicBtn = this.add.text(8, menuH - 44, "♪ Music On/Off", {
+      fontFamily: "monospace", fontSize: "9px", color: "#facc15",
+      backgroundColor: "rgba(20,20,40,0.8)", padding: { x: 6, y: 3 },
+    }).setInteractive();
+    musicBtn.on("pointerdown", () => {
+      const audio = this.registry.get("audio") as { musicOn: boolean } | undefined;
+      if (audio) audio.musicOn = !audio.musicOn;
+    });
+
+    const sfxBtn = this.add.text(90, menuH - 44, "🔊 SFX On/Off", {
+      fontFamily: "monospace", fontSize: "9px", color: "#60a5fa",
+      backgroundColor: "rgba(20,20,40,0.8)", padding: { x: 6, y: 3 },
+    }).setInteractive();
+    sfxBtn.on("pointerdown", () => {
+      const audio = this.registry.get("audio") as { sfxOn: boolean } | undefined;
+      if (audio) audio.sfxOn = !audio.sfxOn;
+    });
+
+    const viewBtn = this.add.text(8, menuH - 24, "📱 Landscape / Portrait", {
+      fontFamily: "monospace", fontSize: "9px", color: "#22c55e",
+      backgroundColor: "rgba(20,20,40,0.8)", padding: { x: 6, y: 3 },
+    }).setInteractive();
+    viewBtn.on("pointerdown", () => {
+      const el = document.documentElement;
+      if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+      try { (screen.orientation as unknown as { lock: (s: string) => Promise<void> }).lock("landscape").catch(() => {}); } catch(_e) {}
+    });
+
+    this.menuContainer = this.add.container(mx, my, [bg, text, musicBtn, sfxBtn, viewBtn]);
     this.menuContainer.setDepth(80);
     this.menuContainer.setVisible(false);
   }
