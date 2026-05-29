@@ -23,6 +23,7 @@ interface RuntimeEnemy {
   feetR: Phaser.GameObjects.Rectangle;
   active: boolean;
   walkDist: number;
+  respawnAt: number;
   wanderDirX: number;
   wanderDirY: number;
   directionShiftAt: number;
@@ -116,6 +117,23 @@ export class WorldScene extends Phaser.Scene {
     state.mode = "explore";
     this.contactCooldownUntil = this.time.now + 800;
     this.scene.launch("HudScene");
+
+    this.events.on("resume", () => {
+      state.mode = "explore";
+      this.contactCooldownUntil = this.time.now + 2000;
+      const battleIdx = this.registry.get("battleEnemyIdx") as number | undefined;
+      if (typeof battleIdx === "number" && battleIdx >= 0 && battleIdx < this.enemies.length) {
+        const e = this.enemies[battleIdx];
+        if (e.active) {
+          e.active = false;
+          e.respawnAt = this.time.now + (e.def.boss ? 120000 : 45000);
+          this.tweens.add({ targets: e.body, alpha: 0, scaleX: 1.8, scaleY: 1.8, duration: 300, onComplete: () => e.body.setVisible(false) });
+          const dt = this.add.text(e.body.x, e.body.y - 12, "DEFEATED", { fontFamily: "monospace", fontSize: "9px", fontStyle: "bold", color: "#facc15" }).setOrigin(0.5).setDepth(20);
+          this.tweens.add({ targets: dt, y: e.body.y - 28, alpha: 0, duration: 800, onComplete: () => dt.destroy() });
+        }
+      }
+      this.registry.set("battleEnemyIdx", -1);
+    });
     linkIdentity(state).catch(() => {});
     this.saveTimer = 0;
   }
@@ -211,7 +229,7 @@ export class WorldScene extends Phaser.Scene {
       const hp = Math.round((def.boss ? 220 : 60) * (regionScale[def.region] ?? 1));
       this.enemies.push({
         def, body, accent, eyeL, eyeR, feetL, feetR,
-        active: true, walkDist: 0,
+        active: true, walkDist: 0, respawnAt: 0,
         wanderDirX: Phaser.Math.FloatBetween(-1, 1),
         wanderDirY: Phaser.Math.FloatBetween(-1, 1),
         directionShiftAt: this.time.now + Phaser.Math.Between(1000, 3000),
@@ -224,7 +242,18 @@ export class WorldScene extends Phaser.Scene {
     const now = this.time.now;
     const realm = REALMS.find((r) => r.id === state.currentRealmId) ?? REALMS[0];
     for (const e of this.enemies) {
-      if (!e.active) continue;
+      if (!e.active) {
+        if (e.respawnAt > 0 && now >= e.respawnAt) {
+          e.active = true;
+          e.respawnAt = 0;
+          e.hp = e.maxHp;
+          e.body.setVisible(true);
+          e.body.setAlpha(1);
+          e.body.setScale(1);
+          e.body.setPosition(e.def.x, e.def.y);
+        }
+        continue;
+      }
       if (now >= e.directionShiftAt) {
         e.wanderDirX = Phaser.Math.FloatBetween(-1, 1);
         e.wanderDirY = Phaser.Math.FloatBetween(-1, 1);
@@ -242,6 +271,7 @@ export class WorldScene extends Phaser.Scene {
       }
       if (this.time.now >= this.contactCooldownUntil && Phaser.Math.Distance.Between(state.hero.x, state.hero.y, e.body.x, e.body.y) < (e.def.boss ? 36 : 30)) {
         this.contactCooldownUntil = this.time.now + 2000;
+        this.registry.set("battleEnemyIdx", this.enemies.indexOf(e));
         state.mode = "battle";
         this.audio.setMode(e.def.boss ? "boss" : "battle");
         this.audio.playSfx("battle");
