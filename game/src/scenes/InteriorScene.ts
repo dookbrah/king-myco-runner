@@ -62,6 +62,7 @@ export class InteriorScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     this.spawnInteriorNodes(width, height, state);
+    this.spawnInteriorEnemies(width, height);
 
     const shadow = this.add.rectangle(0, 12, 18, 4, 0x020617, 0.3);
     const body = this.add.rectangle(0, 0, 14, 18, 0x166534);
@@ -102,6 +103,39 @@ export class InteriorScene extends Phaser.Scene {
     this.heroY = Phaser.Math.Clamp(this.heroY + (dy / mag) * speed * dt, 50, this.scale.height - 40);
     this.heroSprite.setPosition(this.heroX, this.heroY);
 
+    for (const ie of this.interiorEnemies) {
+      if (!ie.alive) continue;
+      ie.x += ie.vx * dt;
+      ie.y += ie.vy * dt;
+      if (ie.x < 20 || ie.x > this.scale.width - 20) ie.vx *= -1;
+      if (ie.y < 60 || ie.y > this.scale.height - 60) ie.vy *= -1;
+      ie.x = Phaser.Math.Clamp(ie.x, 20, this.scale.width - 20);
+      ie.y = Phaser.Math.Clamp(ie.y, 60, this.scale.height - 60);
+      ie.sprite.setPosition(ie.x, ie.y);
+
+      if (Phaser.Math.Distance.Between(this.heroX, this.heroY, ie.x, ie.y) < 18) {
+        ie.hp -= 15;
+        const audio = this.registry.get("audio") as AudioManager | undefined;
+        audio?.playSfx("hit");
+        if (ie.hp <= 0) {
+          ie.alive = false;
+          const state = this.registry.get("gameState") as GameState;
+          state.hero.spores += 25;
+          audio?.playSfx("coin");
+          this.tweens.add({
+            targets: ie.sprite, alpha: 0, scaleX: 2, scaleY: 2,
+            duration: 300, onComplete: () => ie.sprite.destroy(),
+          });
+          const deathText = this.add.text(ie.x, ie.y - 10, "+25", {
+            fontFamily: "monospace", fontSize: "12px", fontStyle: "bold", color: "#22c55e",
+          }).setOrigin(0.5).setDepth(20);
+          this.tweens.add({ targets: deathText, y: ie.y - 30, alpha: 0, duration: 600, onComplete: () => deathText.destroy() });
+        } else {
+          this.tweens.add({ targets: ie.sprite, x: ie.x + (Math.random() - 0.5) * 8, duration: 80, yoyo: true });
+        }
+      }
+    }
+
     for (const node of this.nodes) {
       if (node.data.solved) continue;
       if (Phaser.Math.Distance.Between(this.heroX, this.heroY, node.data.x, node.data.y) < 24) {
@@ -116,6 +150,27 @@ export class InteriorScene extends Phaser.Scene {
         }).setOrigin(0.5);
         this.tweens.add({ targets: label, y: node.data.y - 40, alpha: 0, duration: 800, onComplete: () => label.destroy() });
       }
+    }
+  }
+
+  private interiorEnemies: { sprite: Phaser.GameObjects.Rectangle; hp: number; maxHp: number; x: number; y: number; vx: number; vy: number; alive: boolean }[] = [];
+
+  private spawnInteriorEnemies(width: number, height: number): void {
+    const enemyTypes = ["dungeon", "cave", "tower", "castle"];
+    if (!enemyTypes.includes(this.structure.type)) return;
+
+    const count = this.structure.type === "dungeon" ? 4 : this.structure.type === "cave" ? 3 : 2;
+    for (let i = 0; i < count; i++) {
+      const ex = 60 + Math.random() * (width - 120);
+      const ey = 70 + Math.random() * (height - 160);
+      const sprite = this.add.rectangle(ex, ey, 14, 14, 0xef4444).setDepth(6);
+      this.add.rectangle(ex, ey, 14, 14).setStrokeStyle(1, 0xfca5a5).setDepth(6);
+      this.interiorEnemies.push({
+        sprite, hp: 30, maxHp: 30, x: ex, y: ey,
+        vx: (Math.random() - 0.5) * 40,
+        vy: (Math.random() - 0.5) * 40,
+        alive: true,
+      });
     }
   }
 

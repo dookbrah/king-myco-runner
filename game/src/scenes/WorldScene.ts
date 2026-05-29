@@ -317,7 +317,10 @@ export class WorldScene extends Phaser.Scene {
           if (!e.active) continue;
           if (Phaser.Math.Distance.Between(p.sprite.x, p.sprite.y, e.body.x, e.body.y) < 20) {
             e.hp -= p.damage;
-            if (e.hp <= 0) { e.active = false; e.body.setVisible(false); state.hero.spores += 20; this.audio.playSfx("coin"); }
+            if (e.hp <= 0) { e.active = false;
+            this.tweens.add({ targets: e.body, alpha: 0, scaleX: 1.8, scaleY: 1.8, duration: 300, onComplete: () => e.body.setVisible(false) });
+            const deathLabel = this.add.text(e.body.x, e.body.y - 12, "+20", { fontFamily: "monospace", fontSize: "11px", fontStyle: "bold", color: "#22c55e" }).setOrigin(0.5).setDepth(20);
+            this.tweens.add({ targets: deathLabel, y: e.body.y - 30, alpha: 0, duration: 600, onComplete: () => deathLabel.destroy() }); state.hero.spores += 20; this.audio.playSfx("coin"); }
             p.sprite.destroy(); this.projectiles.splice(i, 1); break;
           }
         }

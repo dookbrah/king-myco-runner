@@ -44,6 +44,15 @@ export class HudScene extends Phaser.Scene {
 
     this.minimap = this.add.graphics();
     this.drawMinimap();
+    this.createMenu();
+
+    const { width: w2, height: h2 } = this.scale;
+    const menuBtn = this.add.text(w2 - 8, h2 - 8, "☰ MENU", {
+      fontFamily: "monospace", fontSize: "11px", fontStyle: "bold",
+      color: "#facc15", backgroundColor: "rgba(5,7,10,0.85)",
+      padding: { x: 8, y: 5 },
+    }).setOrigin(1, 1).setDepth(70).setInteractive();
+    menuBtn.on("pointerdown", () => this.toggleMenu());
   }
 
   update(): void {
@@ -60,6 +69,61 @@ export class HudScene extends Phaser.Scene {
     this.realmText.setText(`${realm?.name ?? "Unknown"} // ${state.nickname || "Explorer"}`);
 
     this.drawMinimap();
+  }
+
+  private menuOpen = false;
+  private menuContainer!: Phaser.GameObjects.Container;
+
+  private createMenu(): void {
+    const { width, height } = this.scale;
+    const menuW = 200, menuH = 240;
+    const mx = width - menuW - 8, my = height - menuH - 36;
+
+    const bg = this.add.rectangle(menuW / 2, menuH / 2, menuW, menuH, 0x05070a).setStrokeStyle(2, 0x3d5f96);
+
+    const state = this.registry.get("gameState") as GameState;
+    const inv = state?.inventory ?? {} as Record<string, number>;
+    const invText = `== INVENTORY ==
+Myco Potion: ${inv.mycoPotion ?? 0}
+Mana Dew: ${inv.manaDew ?? 0}
+Smoke Bomb: ${inv.smokeBomb ?? 0}
+Armor Shards: ${inv.armorShards ?? 0}
+Guard Runes: ${inv.guardRunes ?? 0}
+Spell Dust: ${inv.spellDust ?? 0}
+Boss Sigils: ${inv.bossSigils ?? 0}`;
+
+    const web3Text = `== WEB3 ==
+Wallet: ${state?.web3?.wallet ? state.web3.wallet.slice(0, 6) + "..." : "none"}
+$MYCO: verified
+Chain Rank: ${state?.web3?.chainRank ?? "Unranked"}`;
+
+    const boardText = `== STATS ==
+Enemies: ${state?.progress?.enemyWins ?? 0}
+Bosses: ${state?.progress?.bossWins ?? 0}
+NPCs Met: ${state?.progress?.interactedNpcs?.size ?? 0}
+Clues: ${state?.progress?.clues?.size ?? 0}
+Morality: ${state?.hero?.morality ?? 0}`;
+
+    const fullText = invText + "\n\n" + web3Text + "\n\n" + boardText;
+
+    const text = this.add.text(8, 8, fullText, {
+      fontFamily: "monospace", fontSize: "8px", color: "#dbeafe", lineSpacing: 2,
+    });
+
+    this.menuContainer = this.add.container(mx, my, [bg, text]);
+    this.menuContainer.setDepth(80);
+    this.menuContainer.setVisible(false);
+  }
+
+  private toggleMenu(): void {
+    this.menuOpen = !this.menuOpen;
+    if (this.menuOpen) {
+      const state = this.registry.get("gameState") as GameState;
+      const inv = state?.inventory ?? {} as Record<string, number>;
+      this.menuContainer.setVisible(true);
+    } else {
+      this.menuContainer.setVisible(false);
+    }
   }
 
   private drawMinimap(): void {
