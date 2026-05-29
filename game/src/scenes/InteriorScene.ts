@@ -1,7 +1,8 @@
 import Phaser from "phaser";
 import type { GameState } from "../systems/GameState";
-import { generateHeroSprites } from "../systems/SpriteFactory";
+import { generateHeroSprites, generateEnemySprite } from "../systems/SpriteFactory";
 import { CLAN_PROFILES } from "../data/clans";
+import { ENEMY_PALETTES } from "../data/enemies";
 import type { AudioManager } from "../systems/AudioManager";
 import type { StructureDef } from "../data/structures";
 
@@ -173,8 +174,13 @@ export class InteriorScene extends Phaser.Scene {
       const { width: ew, height: eh } = this.scale;
       const ex = 40 + Math.random() * (ew - 80);
       const ey = 60 + Math.random() * (eh - 140);
-      const sprite = this.add.rectangle(ex, ey, 14, 14, 0xef4444).setDepth(6);
-      this.add.rectangle(ex, ey, 14, 14).setStrokeStyle(1, 0xfca5a5).setDepth(6);
+      const enemyKinds = ["block-wraith", "shard-lich", "rot-spore", "mold-raider", "hash-raider"];
+      const kind = enemyKinds[i % enemyKinds.length];
+      const [base, accent] = ENEMY_PALETTES[kind] ?? ["#ef4444", "#fca5a5"];
+      const baseC = Phaser.Display.Color.HexStringToColor(base).color;
+      const accentC = Phaser.Display.Color.HexStringToColor(accent).color;
+      const texKey = generateEnemySprite(this, kind + "-int-" + i, baseC, accentC);
+      const sprite = this.add.sprite(ex, ey, texKey).setDepth(6);
       this.interiorEnemies.push({
         sprite, hp: 30, maxHp: 30, x: ex, y: ey,
         vx: (Math.random() - 0.5) * 40,
@@ -199,8 +205,9 @@ export class InteriorScene extends Phaser.Scene {
       const ny = 60 + Math.random() * (nh - 140);
       const nodeData: InteriorNode = { x: nx, y: ny, kind: def.kind, label: def.label, solved: false };
 
-      const dot = this.add.rectangle(0, 0, 14, 14, def.color);
-      const label = this.add.text(0, -12, def.label, {
+      const dot = this.add.rectangle(0, 0, 16, 16, def.color).setStrokeStyle(1, Phaser.Display.Color.IntegerToColor(def.color).lighten(30).color);
+      this.add.rectangle(0, 2, 12, 8, Phaser.Display.Color.IntegerToColor(def.color).darken(20).color);
+      const label = this.add.text(0, -14, def.label, {
         fontFamily: "monospace", fontSize: "8px", color: "#dbeafe",
       }).setOrigin(0.5);
       const container = this.add.container(nx, ny, [dot, label]).setDepth(5);
