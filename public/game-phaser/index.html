@@ -61,43 +61,31 @@
     </script>
     <script type="module" crossorigin src="/api/game-phaser/assets/index-CfLMMOZF.js"></script>
     <script>
-      // Bridge: HTML buttons → Phaser game input
+      // Bridge: HTML buttons → Phaser keyboard (dispatch on document with all required properties)
+      let prevKey = null;
       setInterval(() => {
         const dir = window.__mobileDir;
-        const canvas = document.querySelector("#game-container canvas");
-        if (!canvas) return;
         
-        // Simulate keyboard events that Phaser reads
-        const keyMap = {up:"ArrowUp",down:"ArrowDown",left:"ArrowLeft",right:"ArrowRight"};
-        
-        // Release all first
-        ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].forEach(key => {
-          canvas.dispatchEvent(new KeyboardEvent("keyup", {key, bubbles:true}));
-        });
-        window.dispatchEvent(new KeyboardEvent("keyup", {key:"ArrowUp", bubbles:true}));
-        window.dispatchEvent(new KeyboardEvent("keyup", {key:"ArrowDown", bubbles:true}));
-        window.dispatchEvent(new KeyboardEvent("keyup", {key:"ArrowLeft", bubbles:true}));
-        window.dispatchEvent(new KeyboardEvent("keyup", {key:"ArrowRight", bubbles:true}));
+        // Release previous key
+        if (prevKey && (!dir || (dir.y===-1?"ArrowUp":dir.y===1?"ArrowDown":dir.x===-1?"ArrowLeft":"ArrowRight") !== prevKey)) {
+          document.dispatchEvent(new KeyboardEvent("keyup", {key:prevKey, code:prevKey, keyCode:({ArrowUp:38,ArrowDown:40,ArrowLeft:37,ArrowRight:39})[prevKey]||0, bubbles:true, cancelable:true}));
+          prevKey = null;
+        }
         
         if (dir) {
-          let key = "";
-          if (dir.y === -1) key = "ArrowUp";
-          else if (dir.y === 1) key = "ArrowDown";
-          else if (dir.x === -1) key = "ArrowLeft";
-          else if (dir.x === 1) key = "ArrowRight";
-          if (key) {
-            window.dispatchEvent(new KeyboardEvent("keydown", {key, bubbles:true}));
+          let key = dir.y===-1?"ArrowUp":dir.y===1?"ArrowDown":dir.x===-1?"ArrowLeft":"ArrowRight";
+          if (key !== prevKey) {
+            document.dispatchEvent(new KeyboardEvent("keydown", {key, code:key, keyCode:({ArrowUp:38,ArrowDown:40,ArrowLeft:37,ArrowRight:39})[key]||0, bubbles:true, cancelable:true, repeat:false}));
+            prevKey = key;
           }
         }
         
         if (window.__mobileAttack) {
-          window.dispatchEvent(new KeyboardEvent("keydown", {key:" ", code:"Space", bubbles:true}));
+          document.dispatchEvent(new KeyboardEvent("keydown", {key:" ", code:"Space", keyCode:32, bubbles:true, cancelable:true}));
           window.__mobileAttack = false;
-          setTimeout(() => {
-            window.dispatchEvent(new KeyboardEvent("keyup", {key:" ", code:"Space", bubbles:true}));
-          }, 50);
+          setTimeout(() => document.dispatchEvent(new KeyboardEvent("keyup", {key:" ", code:"Space", keyCode:32, bubbles:true, cancelable:true})), 80);
         }
-      }, 33); // ~30fps polling
+      }, 16); // 60fps for responsive controls
     </script>
   </body>
 </html>
