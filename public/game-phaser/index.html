@@ -60,5 +60,44 @@
       }
     </script>
     <script type="module" crossorigin src="/api/game-phaser/assets/index-CfLMMOZF.js"></script>
+    <script>
+      // Bridge: HTML buttons → Phaser game input
+      setInterval(() => {
+        const dir = window.__mobileDir;
+        const canvas = document.querySelector("#game-container canvas");
+        if (!canvas) return;
+        
+        // Simulate keyboard events that Phaser reads
+        const keyMap = {up:"ArrowUp",down:"ArrowDown",left:"ArrowLeft",right:"ArrowRight"};
+        
+        // Release all first
+        ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].forEach(key => {
+          canvas.dispatchEvent(new KeyboardEvent("keyup", {key, bubbles:true}));
+        });
+        window.dispatchEvent(new KeyboardEvent("keyup", {key:"ArrowUp", bubbles:true}));
+        window.dispatchEvent(new KeyboardEvent("keyup", {key:"ArrowDown", bubbles:true}));
+        window.dispatchEvent(new KeyboardEvent("keyup", {key:"ArrowLeft", bubbles:true}));
+        window.dispatchEvent(new KeyboardEvent("keyup", {key:"ArrowRight", bubbles:true}));
+        
+        if (dir) {
+          let key = "";
+          if (dir.y === -1) key = "ArrowUp";
+          else if (dir.y === 1) key = "ArrowDown";
+          else if (dir.x === -1) key = "ArrowLeft";
+          else if (dir.x === 1) key = "ArrowRight";
+          if (key) {
+            window.dispatchEvent(new KeyboardEvent("keydown", {key, bubbles:true}));
+          }
+        }
+        
+        if (window.__mobileAttack) {
+          window.dispatchEvent(new KeyboardEvent("keydown", {key:" ", code:"Space", bubbles:true}));
+          window.__mobileAttack = false;
+          setTimeout(() => {
+            window.dispatchEvent(new KeyboardEvent("keyup", {key:" ", code:"Space", bubbles:true}));
+          }, 50);
+        }
+      }, 33); // ~30fps polling
+    </script>
   </body>
 </html>
