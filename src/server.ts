@@ -506,6 +506,29 @@ const start = async (): Promise<void> => {
         return sendJson(response, 200, receipt);
       }
 
+      if (method === "GET" && routePath === "/api/rpg/burn-pit/status") {
+        const source = parseSource(parsedUrl.searchParams.get("source"));
+        const externalId = parsedUrl.searchParams.get("externalId");
+        if (!externalId || externalId.trim().length === 0) {
+          return sendJson(response, 400, { error: "bad_request", message: "externalId required" });
+        }
+        const claimsRaw = parsedUrl.searchParams.get("walletAddress");
+        const claims = claimsRaw ? { walletAddress: claimsRaw } : {};
+        const playerId = hub.resolvePlayerId(source, externalId.trim());
+        if (!playerId) {
+          return sendJson(response, 200, {
+            playerId: null,
+            totalBurned: 0,
+            burnedToday: 0,
+            dailyLimit: 1000,
+            remainingToday: 1000,
+            recentEvents: [],
+          });
+        }
+        const ledger = hub.getBurnPitStatus(playerId);
+        return sendJson(response, 200, ledger);
+      }
+
       if (method === "POST" && routePath === "/api/rpg/burn-pit/record") {
         const rawBody = await readRawBody(request);
         const body = parseJsonBody<Record<string, unknown>>(rawBody);
