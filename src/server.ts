@@ -506,6 +506,32 @@ const start = async (): Promise<void> => {
         return sendJson(response, 200, receipt);
       }
 
+      if (method === "GET" && routePath === "/api/ecosystem/leaderboard") {
+        const limitRaw = parsedUrl.searchParams.get("limit");
+        const limit = limitRaw && Number.isFinite(Number(limitRaw)) ? Number(limitRaw) : 20;
+        const leaderboard = hub.getEcosystemLeaderboard(limit);
+        return sendJson(response, 200, leaderboard);
+      }
+
+      if (method === "GET" && routePath === "/api/ecosystem/leaderboard/announce") {
+        const text = hub.formatLeaderboardAnnouncement();
+        return sendJson(response, 200, { text });
+      }
+
+      if (method === "GET" && routePath === "/api/player/stats") {
+        const source = parseSource(parsedUrl.searchParams.get("source"));
+        const externalId = parsedUrl.searchParams.get("externalId");
+        if (!externalId || externalId.trim().length === 0) {
+          return sendJson(response, 400, { error: "bad_request", message: "externalId required" });
+        }
+        const playerId = hub.resolvePlayerId(source, externalId.trim());
+        if (!playerId) {
+          return sendJson(response, 200, { playerId: null, message: "Player not found" });
+        }
+        const stats = hub.getUnifiedPlayerStats(playerId);
+        return sendJson(response, 200, stats);
+      }
+
       if (method === "GET" && routePath === "/api/rpg/burn-pit/status") {
         const source = parseSource(parsedUrl.searchParams.get("source"));
         const externalId = parsedUrl.searchParams.get("externalId");
