@@ -49,7 +49,7 @@ export class DialogueScene extends Phaser.Scene {
   create(): void {
     const { width, height } = this.scale;
     this.boxH = Math.min(200, Math.round(height * 0.35));
-    this.boxY = height - this.boxH - 8;
+    this.boxY = Math.round((height - this.boxH) / 2);
 
     this.add.rectangle(width / 2, height / 2, width, height, 0x020617, 0.6).setDepth(90);
     this.add.rectangle(width / 2, this.boxY + this.boxH / 2, width - 12, this.boxH, 0x05070a)
