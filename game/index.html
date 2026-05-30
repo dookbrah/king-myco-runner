@@ -2,11 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <title>Myco Quest - Phaser 3 Edition</title>
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      html, body { width: 100%; height: 100%; overflow: hidden; background: #040913; }
+      html, body { width: 100%; height: 100%; overflow: hidden; background: #040913; position: fixed; touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
       #game-container { width: 100%; height: 100%; position: relative; }
       #game-container canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
       #game-container > div { position: absolute !important; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
@@ -15,6 +17,48 @@
   </head>
   <body>
     <div id="game-container"></div>
+    <div id="mobile-controls" style="position:fixed; bottom:0; left:0; right:0; z-index:9999; display:flex; justify-content:space-between; align-items:flex-end; padding:12px; pointer-events:none; touch-action:none">
+      <div style="display:grid; grid-template-columns:52px 52px 52px; grid-template-rows:52px 52px 52px; gap:4px; pointer-events:auto">
+        <div></div>
+        <button id="btn-up" style="background:rgba(12,25,49,0.92); border:2px solid #3d5f96; border-radius:8px; color:#f8fafc; font-size:20px; display:flex; align-items:center; justify-content:center; touch-action:none">▲</button>
+        <div></div>
+        <button id="btn-left" style="background:rgba(12,25,49,0.92); border:2px solid #3d5f96; border-radius:8px; color:#f8fafc; font-size:20px; display:flex; align-items:center; justify-content:center; touch-action:none">◀</button>
+        <div></div>
+        <button id="btn-right" style="background:rgba(12,25,49,0.92); border:2px solid #3d5f96; border-radius:8px; color:#f8fafc; font-size:20px; display:flex; align-items:center; justify-content:center; touch-action:none">▶</button>
+        <div></div>
+        <button id="btn-down" style="background:rgba(12,25,49,0.92); border:2px solid #3d5f96; border-radius:8px; color:#f8fafc; font-size:20px; display:flex; align-items:center; justify-content:center; touch-action:none">▼</button>
+        <div></div>
+      </div>
+      <button id="btn-attack" style="width:72px; height:72px; border-radius:50%; background:rgba(34,197,94,0.3); border:3px solid #22c55e; color:#f8fafc; font-size:28px; pointer-events:auto; touch-action:none">🔥</button>
+    </div>
+    <script>
+      const dirs = {up:{x:0,y:-1},down:{x:0,y:1},left:{x:-1,y:0},right:{x:1,y:0}};
+      window.__mobileDir = null;
+      window.__mobileAttack = false;
+      Object.entries(dirs).forEach(([id, dir]) => {
+        const btn = document.getElementById("btn-" + id);
+        if (!btn) return;
+        const start = (e) => { e.preventDefault(); window.__mobileDir = dir; btn.style.background = "rgba(34,197,94,0.5)"; };
+        const end = (e) => { e.preventDefault(); window.__mobileDir = null; btn.style.background = "rgba(12,25,49,0.92)"; };
+        btn.addEventListener("touchstart", start, {passive:false});
+        btn.addEventListener("touchend", end, {passive:false});
+        btn.addEventListener("touchcancel", end, {passive:false});
+        btn.addEventListener("mousedown", start);
+        btn.addEventListener("mouseup", end);
+        btn.addEventListener("mouseleave", end);
+      });
+      const atkBtn = document.getElementById("btn-attack");
+      if (atkBtn) {
+        const atkStart = (e) => { e.preventDefault(); window.__mobileAttack = true; atkBtn.style.background = "rgba(34,197,94,0.7)"; };
+        const atkEnd = (e) => { e.preventDefault(); window.__mobileAttack = false; atkBtn.style.background = "rgba(34,197,94,0.3)"; };
+        atkBtn.addEventListener("touchstart", atkStart, {passive:false});
+        atkBtn.addEventListener("touchend", atkEnd, {passive:false});
+        atkBtn.addEventListener("touchcancel", atkEnd, {passive:false});
+        atkBtn.addEventListener("mousedown", atkStart);
+        atkBtn.addEventListener("mouseup", atkEnd);
+        atkBtn.addEventListener("mouseleave", atkEnd);
+      }
+    </script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

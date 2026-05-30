@@ -116,7 +116,7 @@ export class WorldScene extends Phaser.Scene {
 
     state.mode = "explore";
     this.contactCooldownUntil = this.time.now + 800;
-    this.addMobileControls();
+    // Mobile controls handled by HTML overlay
     this.scene.launch("HudScene");
 
     this.events.on("resume", () => {
@@ -154,6 +154,10 @@ export class WorldScene extends Phaser.Scene {
     this.animateWalking(state);
 
     if (this.wasd?.space?.isDown) this.heroShoot(state);
+    if ((window as unknown as { __mobileAttack?: boolean }).__mobileAttack) {
+      this.heroShoot(state);
+      (window as unknown as { __mobileAttack: boolean }).__mobileAttack = false;
+    }
 
     this.saveTimer += dt;
     if (this.saveTimer > 60) { saveGameState(state); this.saveTimer = 0; }
@@ -174,7 +178,7 @@ export class WorldScene extends Phaser.Scene {
     else if (this.cursors?.down?.isDown || this.wasd?.s?.isDown) ay = 1;
     else if (this.cursors?.left?.isDown || this.wasd?.a?.isDown) ax = -1;
     else if (this.cursors?.right?.isDown || this.wasd?.d?.isDown) ax = 1;
-    const mobileDir = (this as unknown as { _mobileDir?: { x: number; y: number } | null })._mobileDir;
+    const mobileDir = (window as unknown as { __mobileDir?: { x: number; y: number } | null }).__mobileDir;
     if (mobileDir) { ax = mobileDir.x; ay = mobileDir.y; }
     if (ax === 0 && ay === 0) return;
 
