@@ -100,6 +100,10 @@ export class KingMycoRepository {
     );
   }
 
+  getAllPlayerIds(): string[] {
+    return Object.keys(this.state.profiles ?? {});
+  }
+
   lookupPlayerId(
     source: EcosystemSource,
     externalId: string,

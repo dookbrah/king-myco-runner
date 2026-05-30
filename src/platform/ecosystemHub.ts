@@ -583,6 +583,107 @@ export class KingMycoEcosystemHub {
     };
   }
 
+  getUnifiedPlayerStats(playerId: string) {
+    const profile = this.repository.getOrCreateProfile(playerId);
+    const wallet = this.repository.getWallet(playerId);
+    const identities = this.repository.getIdentities(playerId);
+    const burnLedger = this.repository.getBurnPitLedger(playerId);
+    const campaign = this.repository.getOrCreateCampaign(playerId);
+    const today = new Date().toISOString().slice(0, 10);
+
+    return {
+      playerId,
+      identities: identities.map((i) => ({ source: i.source, externalId: i.externalId })),
+      spores: {
+        current: wallet.spores,
+        lifetime: wallet.lifetimeSpores,
+        totalBurned: burnLedger.totalBurned,
+        burnedToday: burnLedger.dailyBurned[today] ?? 0,
+      },
+      progress: {
+        sessionsPlayed: profile.sessionsPlayed,
+        skill: Math.round(profile.skill * 100) / 100,
+        morality: Math.round(profile.morality * 100) / 100,
+        victories: campaign.victories,
+        defeats: campaign.defeats,
+      },
+      magic: {
+        learnedSpells: profile.learnedMagic,
+        unlockedElements: profile.unlockedElements,
+        masteredElements: profile.masteredElements,
+        mastery: profile.magicMastery,
+      },
+      clan: {
+        streak: wallet.sessionStreak,
+      },
+      laneMastery: profile.laneMastery,
+    };
+  }
+
+  getEcosystemLeaderboard(limit = 20): {
+    players: Array<{ playerId: string; nickname: string; score: number; spores: number; burned: number; victories: number; sources: string[] }>;
+    clans: Array<{ clanId: string; totalSpores: number; totalBurned: number; memberCount: number; avgScore: number }>;
+  } {
+    const allPlayers = this.repository.getAllPlayerIds();
+    const playerStats: Array<{ playerId: string; nickname: string; score: number; spores: number; burned: number; victories: number; sources: string[] }> = [];
+    const clanAgg: Record<string, { totalSpores: number; totalBurned: number; members: number; scoreSum: number }> = {};
+
+    for (const playerId of allPlayers.slice(0, 200)) {
+      const profile = this.repository.getOrCreateProfile(playerId);
+      const wallet = this.repository.getWallet(playerId);
+      const identities = this.repository.getIdentities(playerId);
+      const burnLedger = this.repository.getBurnPitLedger(playerId);
+      const campaign = this.repository.getOrCreateCampaign(playerId);
+
+      const nickname = identities[0]?.externalId ?? playerId.slice(0, 8);
+      const sources = [...new Set(identities.map((i) => i.source))];
+      const score = Math.round(
+        wallet.lifetimeSpores * 0.3 +
+        burnLedger.totalBurned * 0.5 +
+        campaign.victories * 50 +
+        profile.sessionsPlayed * 10 +
+        profile.masteredElements.length * 100 +
+        profile.learnedMagic.length * 30
+      );
+
+      playerStats.push({ playerId, nickname, score, spores: wallet.lifetimeSpores, burned: burnLedger.totalBurned, victories: campaign.victories, sources });
+
+      const clanId = "myco";
+      if (!clanAgg[clanId]) clanAgg[clanId] = { totalSpores: 0, totalBurned: 0, members: 0, scoreSum: 0 };
+      clanAgg[clanId].totalSpores += wallet.lifetimeSpores;
+      clanAgg[clanId].totalBurned += burnLedger.totalBurned;
+      clanAgg[clanId].members += 1;
+      clanAgg[clanId].scoreSum += score;
+    }
+
+    playerStats.sort((a, b) => b.score - a.score);
+    const clans = Object.entries(clanAgg).map(([clanId, data]) => ({
+      clanId,
+      totalSpores: data.totalSpores,
+      totalBurned: data.totalBurned,
+      memberCount: data.members,
+      avgScore: data.members > 0 ? Math.round(data.scoreSum / data.members) : 0,
+    })).sort((a, b) => b.totalSpores - a.totalSpores);
+
+    return { players: playerStats.slice(0, limit), clans };
+  }
+
+  formatLeaderboardAnnouncement(): string {
+    const { players, clans } = this.getEcosystemLeaderboard(10);
+    let text = "🏆 *MYCO QUEST LEADERBOARD* 🏆\n\n";
+    text += "👑 *Top Players:*\n";
+    players.forEach((p, i) => {
+      const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`;
+      text += `${medal} ${p.nickname} — ${p.score.toLocaleString()} pts | ${p.spores.toLocaleString()} spores | ${p.burned.toLocaleString()} burned\n`;
+    });
+    text += "\n🍄 *Clan Rankings:*\n";
+    clans.forEach((c, i) => {
+      text += `${i + 1}. ${c.clanId} — ${c.totalSpores.toLocaleString()} spores | ${c.totalBurned.toLocaleString()} burned | ${c.memberCount} members\n`;
+    });
+    text += "\n_Burn spores. Master magic. Climb the ranks._\n#STAYWEIRD #STAYPOWERFUL";
+    return text;
+  }
+
   getBurnPitStatus(playerId: string) {
     const ledger = this.repository.getBurnPitLedger(playerId);
     const today = new Date().toISOString().slice(0, 10);
