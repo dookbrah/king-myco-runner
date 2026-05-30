@@ -583,6 +583,29 @@ export class KingMycoEcosystemHub {
     };
   }
 
+  getBurnPitStatus(playerId: string) {
+    const ledger = this.repository.getBurnPitLedger(playerId);
+    const today = new Date().toISOString().slice(0, 10);
+    const burnedToday = ledger.dailyBurned[today] ?? 0;
+    const dailyLimit = BURN_PIT_DAILY_LIMIT;
+    return {
+      playerId,
+      totalBurned: ledger.totalBurned,
+      burnedToday,
+      dailyLimit,
+      remainingToday: Math.max(0, dailyLimit - burnedToday),
+      lastBurnAt: ledger.lastBurnAt ?? null,
+      recentEvents: ledger.events.slice(0, 10).map((e) => ({
+        id: e.id,
+        sporesBurned: e.sporesBurned,
+        dayKey: e.dayKey,
+        timestamp: e.timestamp,
+        source: (e as unknown as Record<string, unknown>).source ?? null,
+        pitName: e.pitName ?? null,
+      })),
+    };
+  }
+
   async getRpgMap(request: RpgMapRequest): Promise<RpgMapSnapshot> {
     const playerId = this.repository.resolveOrCreatePlayer(
       request.source,
